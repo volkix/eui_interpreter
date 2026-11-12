@@ -4,12 +4,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.openeuphoria</groupId>
-    <artifactId>eui-java</artifactId>
-    <version>4.1.0</version>
+    <groupId>org.euphorix</groupId>
+    <artifactId>euphorix</artifactId>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>OpenEuphoria 4.x Interpreter (JDK 25)</name>
-    <description>OpenEuphoria 4.x Clean-Room Bytecode Compiler &amp; Register-VM for JDK 25</description>
+    <name>Euphorix Virtual Machine (Java 25 - OpenEuphoria Syntax)</name>
+    <description>Euphorix: High-Performance Java 25 Register-VM executing OpenEuphoria syntax</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -90,7 +90,7 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <outputFile>${project.basedir}/eui.jar</outputFile>
+                            <outputFile>${project.basedir}/euphorix.jar</outputFile>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <filters>
                                 <filter>

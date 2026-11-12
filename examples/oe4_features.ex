@@ -1,7 +1,7 @@
 -- =============================================================================
 -- examples/oe4_features.ex
--- Testet die neuen Phase-2-Features von OpenEuphoria 4.x:
---   1. Echte `include`-Direktive direkt aus /tmp/openeuphoria/include/std/sort.e
+-- Testet die Features von Euphorix mit OpenEuphoria-Syntax:
+--   1. Echte `include`-Direktive direkt aus eu_include/std/sort.e
 --   2. `ifdef LINUX then ... end ifdef`
 --   3. Default-Parameter & ausgelassene Argumente (`foo(10, , 30)`)
 --   4. Forward-Referenzen (Aufruf einer Funktion vor ihrer Deklaration)
@@ -13,7 +13,7 @@
 include std/sort.e as stdsort
 include std/mathcons.e
 
-puts(1, "=== OpenEuphoria 4.x Phase-2 Komplett-Test ===\n\n")
+puts(1, "=== Euphorix Feature-Test (OpenEuphoria-Syntax) ===\n\n")
 
 -- 1. Bedingte Kompilierung (`ifdef`)
 ifdef LINUX and BITS64 then

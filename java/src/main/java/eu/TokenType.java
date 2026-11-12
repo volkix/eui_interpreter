@@ -17,7 +17,7 @@ public enum TokenType {
     KwSequence("sequence"),
     KwObject("object"),
 
-    // Declarations & Scoping Keywords (OpenEuphoria 4.x)
+    // Declarations & Scoping Keywords (Euphorix / OpenEuphoria Syntax)
     KwConstant("constant"),
     KwEnum("enum"),
     KwGlobal("global"),
@@ -37,7 +37,7 @@ public enum TokenType {
     KwReturn("return"),
     KwEnd("end"),
 
-    // Control Flow (OpenEuphoria 4.x)
+    // Control Flow (Euphorix / OpenEuphoria Syntax)
     KwIf("if"),
     KwThen("then"),
     KwElsif("elsif"),

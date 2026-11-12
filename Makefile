@@ -1,14 +1,14 @@
 # ==============================================================================
-# OpenEuphoria 4.x (Java 25 Enterprise Edition for Linux 64-Bit)
+# Euphorix 1.0 (Java 25 High-Performance VM for OpenEuphoria Syntax)
 # ==============================================================================
 
 JDK25_HOME     := /home/volkix/prg/jdk25
 JAVA           := $(JDK25_HOME)/bin/java
 MVN            := JAVA_HOME=$(JDK25_HOME) mvn
 JAVA_SRCS      := $(wildcard java/src/main/java/eu/*.java)
-JAVA_JAR       := eui.jar
-JAVA_BIN       := eui-java
-STANDALONE_BIN := eui-standalone
+JAVA_JAR       := euphorix.jar
+JAVA_BIN       := euphorix
+STANDALONE_BIN := euphorix-standalone
 EU_STDLIB      := $(wildcard eu_include/std/*.e eu_include/std/*/*.e eu_include/euphoria/*.e)
 
 .PHONY: all java fatjar standalone test test-java test-standalone clean
@@ -21,15 +21,20 @@ fatjar: $(JAVA_JAR)
 
 $(JAVA_JAR): pom.xml $(JAVA_SRCS) $(EU_STDLIB)
 	$(MVN) package -DskipTests
+	@ln -sf $(JAVA_JAR) eui.jar
 
 $(JAVA_BIN): $(JAVA_JAR)
 	@printf '#!/usr/bin/env bash\nDIR="$$(cd "$$(dirname "$${BASH_SOURCE[0]}")" && pwd)"\nexec $(JAVA) --enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 -Dawt.useSystemAAFontSettings=lcd -Dswing.aatext=true -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine -Djdk.internal.httpclient.disableHostnameVerification=true -jar "$$DIR/$(JAVA_JAR)" "$$@"\n' > $(JAVA_BIN)
 	@chmod +x $(JAVA_BIN)
+	@ln -sf $(JAVA_BIN) eui-java
+	@ln -sf $(JAVA_BIN) eux
 
 standalone: $(STANDALONE_BIN)
 
 $(STANDALONE_BIN): $(JAVA_JAR) tools/build_standalone.sh
 	./tools/build_standalone.sh $(STANDALONE_BIN)
+	@ln -sf $(STANDALONE_BIN) eui-standalone
+	@ln -sf $(STANDALONE_BIN) eux-standalone
 
 test: test-java
 
@@ -68,4 +73,4 @@ test-standalone: $(STANDALONE_BIN)
 	./$(STANDALONE_BIN) tests/t_concurrency.ex
 
 clean:
-	rm -rf java/target $(JAVA_JAR) $(STANDALONE_BIN)
+	rm -rf java/target $(JAVA_JAR) eui.jar $(JAVA_BIN) eui-java eux $(STANDALONE_BIN) eui-standalone eux-standalone

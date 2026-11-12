@@ -1,13 +1,13 @@
-# OpenEuphoria 4.x Enterprise Edition (Java 25 Runtime)
+# Euphorix 1.0 (Java 25 VM for OpenEuphoria Syntax)
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Java 25](https://img.shields.io/badge/Java-25%20(Loom%20%7C%20FFM)-orange.svg)](https://openjdk.org/)
 [![Platform](https://img.shields.io/badge/Platform-Linux%2064--bit%20%7C%20Windows-green.svg)]()
 [![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen.svg)]()
 
-A clean-room, register-based Virtual Machine and standard library implementation for **OpenEuphoria 4.x** powered by **Java 25**, featuring **Virtual Threads (Project Loom)**, native **Java Interoperability**, **Swing GUI**, **Go-Style Concurrency & Async/Await**, and enterprise SQL database drivers.
+> **Note on Syntax Compatibility:** **Euphorix** is an independent, clean-room high-performance Virtual Machine written in Java 25. It natively interprets and executes the **OpenEuphoria 4.x syntax** and standard library while bringing modern Java 25 capabilities (Virtual Threads, Go-style Channels, Async/Await, Swing Desktop GUI, JDBC SQL, UTF-8, JSON/XML).
 
-Available as both a portable JAR executable (`eui.jar`) and a **completely self-contained 53 MB single-binary** (`eui-standalone`) requiring no pre-installed Java.
+Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`) and a **completely self-contained 53 MB single-binary** (`euphorix-standalone`) requiring no pre-installed Java.
 
 ---
 
@@ -40,8 +40,8 @@ Available as both a portable JAR executable (`eui.jar`) and a **completely self-
   * **XML**: W3C XPath 1.0 DOM and XSD Schema validation (`std/xml.e`).
   * **HTTP/HTTPS**: Asynchronous HTTP client & multi-threaded server (`std/http.e`).
 * **Dual-Platform Ready**:
-  * **Linux 64-bit**: `./eui-java` (shell wrapper) and `./eui-standalone` (self-extracting binary).
-  * **Microsoft Windows**: `eui.cmd` and `eui.bat` launchers with dynamic platform adaptation.
+  * **Linux 64-bit**: `./euphorix` (or `./eux`), `./euphorix-standalone`, plus `eui-java` alias.
+  * **Microsoft Windows**: `euphorix.cmd` and `euphorix.bat` launchers with dynamic platform adaptation.
 
 ---
 
@@ -50,24 +50,26 @@ Available as both a portable JAR executable (`eui.jar`) and a **completely self-
 ### 1. Interactive REPL
 ```bash
 # Launch interactive REPL
-./eui-java
+./euphorix
 ```
 
-### 2. Run a Euphoria Script
+### 2. Run a Script
 ```bash
 # Linux (with Java 25 installed)
-./eui-java my_script.ex
+./euphorix my_script.ex
+# or short:
+./eux my_script.ex
 
 # Linux (Standalone, zero dependencies)
-./eui-standalone my_script.ex
+./euphorix-standalone my_script.ex
 
 # Windows
-eui.cmd my_script.ex
+euphorix.cmd my_script.ex
 ```
 
 ### 3. Run the Desktop GUI Demo
 ```bash
-./eui-java demo/gui_demo.ex
+./euphorix demo/gui_demo.ex
 ```
 
 ---
@@ -111,12 +113,12 @@ include std/java.e
 
 gui:set_theme("flatlaf-dark")
 
-atom win = gui:window("OpenEuphoria Enterprise", 450, 300)
-atom lbl = gui:text_label("Welcome to Java 25 Euphoria!")
+atom win = gui:window("Euphorix Desktop", 450, 300)
+atom lbl = gui:text_label("Welcome to Euphorix (Java 25 VM)!")
 atom btn = gui:button("Click Me")
 
 procedure on_click(atom sender)
-    java:call_static("javax.swing.JOptionPane", "showMessageDialog", {0, "Hello from Euphoria!"})
+    java:call_static("javax.swing.JOptionPane", "showMessageDialog", {0, "Hello from Euphorix!"})
 end procedure
 
 gui:on_click(btn, routine_id("on_click"))
@@ -133,7 +135,7 @@ gui:wait_window(win)
 The project is built using **GNU Make** and **Apache Maven** with Java 25:
 
 ```bash
-# Build eui.jar and eui-java wrapper
+# Build euphorix.jar and euphorix executable
 make
 
 # Build self-contained single-binary (bundles minimal JRE via jlink)
@@ -151,37 +153,37 @@ make test-standalone
 ## 📁 Repository Structure
 
 ```
-├── HANDBUCH.md            # Comprehensive German manual (13 chapters)
-├── MANUAL.md              # Comprehensive English manual (13 chapters)
-├── README.md              # Project overview & quick start
-├── LICENSE                # GNU General Public License v3.0
-├── Makefile               # Build & test automation
-├── pom.xml                # Maven project definition (FlatLaf, SQLite, PostgreSQL, Jackson)
-├── eui-java               # Linux executable shell launcher
-├── eui.cmd / eui.bat      # Windows executable batch launchers
-├── eui.jar                # Shaded executable Fat-JAR (19 MB)
-├── eui-standalone         # Self-extracting single binary with minimal JRE (53 MB)
-├── eu_include/            # OpenEuphoria standard library
+├── HANDBUCH.md               # Comprehensive German manual (13 chapters)
+├── MANUAL.md                 # Comprehensive English manual (13 chapters)
+├── README.md                 # Project overview & quick start
+├── LICENSE                   # GNU General Public License v3.0
+├── Makefile                  # Build & test automation
+├── pom.xml                   # Maven project definition (FlatLaf, SQLite, PostgreSQL, Jackson)
+├── euphorix (eui-java, eux)  # Linux executable shell launcher & aliases
+├── euphorix.cmd / .bat       # Windows executable batch launchers
+├── euphorix.jar (eui.jar)    # Shaded executable Fat-JAR (19 MB)
+├── euphorix-standalone       # Self-extracting single binary with minimal JRE (53 MB)
+├── eu_include/               # OpenEuphoria-compatible standard library
 │   └── std/
-│       ├── thread.e       # Virtual Threads & Async/Await
-│       ├── channel.e      # Go-Style CSP Channels
-│       ├── task.e         # Cooperative & Preemptive Tasks
-│       ├── gui.e          # Swing Desktop GUI & Themes
-│       ├── java.e         # Dynamic Java Reflection Interop
-│       ├── sqlite.e       # SQLite 3 Database Engine
-│       ├── pgsql.e        # PostgreSQL Database Engine
-│       ├── utf8.e         # UTF-8 Unicode String Engine
+│       ├── thread.e          # Virtual Threads & Async/Await
+│       ├── channel.e         # Go-Style CSP Channels
+│       ├── task.e            # Cooperative & Preemptive Tasks
+│       ├── gui.e             # Swing Desktop GUI & Themes
+│       ├── java.e            # Dynamic Java Reflection Interop
+│       ├── sqlite.e          # SQLite 3 Database Engine
+│       ├── pgsql.e           # PostgreSQL Database Engine
+│       ├── utf8.e            # UTF-8 Unicode String Engine
 │       └── ...
-├── java/src/main/java/eu/ # Java 25 Clean-Room Register VM Implementation
-│   ├── VM.java            # Bytecode execution loop & machine functions
-│   ├── Compiler.java      # Lexical analyzer & AST compiler
-│   ├── JavaInterop.java   # Dynamic reflection & proxy bridge
-│   ├── Sequence.java      # Copy-on-Write Euphoria sequence
-│   └── Value.java         # Tagged union values & NaN-boxing
-├── demo/                  # Interactive GUI demonstrations
-├── examples/              # REST microservices, database, XML, and stdlib examples
-├── tests/                 # Unit & regression tests (100% passing)
-└── tools/                 # Standalone packager (`build_standalone.sh`)
+├── java/src/main/java/eu/    # Java 25 Clean-Room Register VM Implementation
+│   ├── VM.java               # Bytecode execution loop & machine functions
+│   ├── Compiler.java         # Lexical analyzer & AST compiler
+│   ├── JavaInterop.java      # Dynamic reflection & proxy bridge
+│   ├── Sequence.java         # Copy-on-Write Euphoria sequence
+│   └── Value.java            # Tagged union values & NaN-boxing
+├── demo/                     # Interactive GUI demonstrations
+├── examples/                 # REST microservices, database, XML, and stdlib examples
+├── tests/                    # Unit & regression tests (100% passing)
+└── tools/                    # Test runner (`RunAllTests.java`) & packager (`build_standalone.sh`)
 ```
 
 ---

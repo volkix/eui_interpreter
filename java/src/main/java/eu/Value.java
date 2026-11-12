@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 /**
- * OpenEuphoria 4.x Value representation (48-bit signed Integer, IEEE-754 double Atom,
+ * Euphorix Value representation for OpenEuphoria syntax (48-bit signed Integer, IEEE-754 double Atom,
  * Reference-Counted Copy-on-Write Sequence, or NONE).
  */
 public final class Value {

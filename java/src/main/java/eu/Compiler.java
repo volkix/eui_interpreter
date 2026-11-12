@@ -16,7 +16,7 @@ import java.util.Set;
 import static eu.Bytecode.*;
 
 /**
- * Single-Pass OpenEuphoria 4.x Bytecode Compiler targeting the 32-bit Register VM.
+ * Single-Pass Euphorix Bytecode Compiler targeting the 32-bit Register VM (executing OpenEuphoria syntax).
  */
 public final class Compiler {
 
@@ -284,6 +284,7 @@ public final class Compiler {
         definedSymbols.add("LONG64");
         definedSymbols.add("X86_64");
         definedSymbols.add("EUI");
+        definedSymbols.add("EUPHORIX");
         definedSymbols.add("JAVA");
 
         includeDirs.add(".");

@@ -1,8 +1,11 @@
-# OpenEuphoria 4.x (Java 25 Enterprise Edition für Linux 64-Bit) – Entwicklerhandbuch & API-Referenz
+# Euphorix 1.0 (Java 25 VM für OpenEuphoria-Syntax) – Entwicklerhandbuch & API-Referenz
 
 > 🇬🇧 **English version available:** [MANUAL.md](file:///home/volkix/prj/intpret/MANUAL.md) | 📄 **Übersicht:** [README.md](file:///home/volkix/prj/intpret/README.md) | ⚖️ **Lizenz:** [GNU GPLv3](file:///home/volkix/prj/intpret/LICENSE)
 
-Dieses Handbuch ist die vollständige Dokumentation und Referenz für die **Java 25 Enterprise Edition** des OpenEuphoria 4.x Interpreters (`./eui-java` bzw. `eui.jar`), optimiert exklusiv für **Linux 64-Bit (`x86_64`)**.
+> [!NOTE]
+> **Hinweis zur OpenEuphoria-Syntax:** **Euphorix** ist eine eigenständige, von Grund auf neu entwickelte Hochleistungs-VM in Java 25. Sie interpretiert die etablierte, intuitive **OpenEuphoria 4.x-Syntax** und Standardbibliothek in Reinform, erweitert diese jedoch um modernste Java-25-Fähigkeiten (Virtual Threads, Go-Style Channels, Async/Await Futures, Swing/FlatLaf Desktop-GUI, JDBC für SQLite & PostgreSQL, UTF-8 und JSON/XML).
+
+Dieses Handbuch ist die vollständige Dokumentation und Referenz für **Euphorix** (`./euphorix` bzw. `euphorix-standalone` und `euphorix.jar`). Kompatibilitäts-Aliase wie `./eui-java` und `./eui-standalone` bleiben vollumfänglich erhalten.
 
 Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria mit den modernsten Fähigkeiten der Java-Plattform (OpenJDK 25):
 * **Virtuelle Threads (Project Loom)** für hochskalierbare Server, asynchrone Pipelines und Subprozesse – komplett **ohne fehleranfälliges POSIX `fork()`**.

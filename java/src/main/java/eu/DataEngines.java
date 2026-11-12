@@ -54,7 +54,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * Native Data & Web Engines for OpenEuphoria (JSON, JSONPath, JSON-Schema Draft 2020-12,
+ * Native Data & Web Engines for Euphorix (JSON, JSONPath, JSON-Schema Draft 2020-12,
  * XML DOM, W3C XPath 1.0, W3C XSD Schema, and UTF-8 Unicode Engine).
  */
 public final class DataEngines {

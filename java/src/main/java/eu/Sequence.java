@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Reference-Counted, Copy-on-Write Dynamic Array of Values for OpenEuphoria.
+ * Reference-Counted, Copy-on-Write Dynamic Array of Values for Euphorix (OpenEuphoria syntax).
  */
 public final class Sequence {
     public int refCount = 0;

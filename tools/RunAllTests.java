@@ -8,15 +8,15 @@ import java.util.concurrent.*;
 import java.util.regex.*;
 
 /**
- * High-Performance OpenEuphoria Test Runner in Java 25.
+ * High-Performance Euphorix Test Runner in Java 25 (executing OpenEuphoria test suites).
  * Replaces the legacy Python test runner (tools/run_all_tests.py).
  *
  * Usage:
  *   java tools/RunAllTests.java [interpreter_bin] [filter_or_files...]
  * Examples:
- *   java tools/RunAllTests.java ./eui-java
- *   java tools/RunAllTests.java ./eui-standalone tests/t_gui.e
- *   java tools/RunAllTests.java ./eui-java concurrency
+ *   java tools/RunAllTests.java ./euphorix
+ *   java tools/RunAllTests.java ./euphorix-standalone tests/t_gui.e
+ *   java tools/RunAllTests.java ./euphorix concurrency
  */
 public class RunAllTests {
 
@@ -100,7 +100,9 @@ public class RunAllTests {
             rootDir = rootDir.resolve("..").normalize().toAbsolutePath();
         }
 
-        Path interpreterBin = rootDir.resolve("eui-java");
+        Path interpreterBin = Files.exists(rootDir.resolve("euphorix"))
+            ? rootDir.resolve("euphorix")
+            : rootDir.resolve("eui-java");
         List<String> explicitFiles = new ArrayList<>();
         String filterPattern = null;
 
@@ -161,7 +163,7 @@ public class RunAllTests {
         }
 
         System.out.println("============================================================");
-        System.out.printf(" OpenEuphoria Test-Suite (Java 25 Runner)%n");
+        System.out.printf(" Euphorix Test-Suite (Java 25 Runner - OpenEuphoria Syntax)%n");
         System.out.printf(" Interpreter : %s%n", interpreterBin);
         System.out.printf(" Testdateien : %d%n", testCases.size());
         System.out.printf(" EUINC       : %s%n", rootDir.resolve("eu_include"));

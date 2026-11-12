@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * CLI Entry Point & REPL for the Java 25 OpenEuphoria 4.x Interpreter ({@code eui-java}).
+ * CLI Entry Point & REPL for the Euphorix Virtual Machine (OpenEuphoria syntax) ({@code euphorix}).
  */
 public final class Main {
 
@@ -46,12 +46,12 @@ public final class Main {
     }
 
     private static void runRepl(boolean dumpBytecode, List<String> includeDirs, List<String> defines) {
-        System.out.println("OpenEuphoria 4.x Clean-Room VM (Java 25 / CoW Register-VM)");
+        System.out.println("Euphorix 1.0.0 (Java 25 VM für OpenEuphoria-Syntax)");
         System.out.println("Tippe Euphoria-Anweisungen ein (oder 'exit' zum Beenden):");
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
             for (;;) {
-                System.out.print("eu> ");
+                System.out.print("euphorix> ");
                 System.out.flush();
                 String line = reader.readLine();
                 if (line == null) {
@@ -63,7 +63,7 @@ public final class Main {
                 }
                 if (line.isBlank()) continue;
 
-                runSource(line, "<repl>", dumpBytecode, List.of("eui-java", "<repl>"), includeDirs, defines);
+                runSource(line, "<repl>", dumpBytecode, List.of("euphorix", "<repl>"), includeDirs, defines);
             }
         } catch (IOException ignored) {}
     }
@@ -89,22 +89,31 @@ public final class Main {
                 var cs = Main.class.getProtectionDomain().getCodeSource();
                 if (cs != null && cs.getLocation() != null) {
                     Path jarDir = Path.of(cs.getLocation().toURI()).getParent();
-                    if (jarDir != null && Files.exists(jarDir.resolve("eui-java"))) {
-                        selfExe = jarDir.resolve("eui-java").toAbsolutePath().toString();
+                    if (jarDir != null) {
+                        if (Files.exists(jarDir.resolve("euphorix"))) {
+                            selfExe = jarDir.resolve("euphorix").toAbsolutePath().toString();
+                        } else if (Files.exists(jarDir.resolve("eui-java"))) {
+                            selfExe = jarDir.resolve("eui-java").toAbsolutePath().toString();
+                        }
                     }
                 }
             } catch (Exception ignored) {}
             if (selfExe == null || selfExe.isBlank()) {
-                if (Files.exists(Path.of("eui-java"))) {
+                if (Files.exists(Path.of("euphorix"))) {
+                    selfExe = "./euphorix";
+                } else if (Files.exists(Path.of("eui-java"))) {
                     selfExe = "./eui-java";
                 } else {
-                    selfExe = "eui-java";
+                    selfExe = "euphorix";
                 }
             }
         }
         scriptArgs.add(selfExe);
 
-        String euinc = System.getenv("EUINC");
+        String euinc = System.getenv("EUPHORIX_INC");
+        if (euinc == null || euinc.isBlank()) {
+            euinc = System.getenv("EUINC");
+        }
         if (euinc != null && !euinc.isBlank()) {
             for (String p : euinc.split(java.util.regex.Pattern.quote(java.io.File.pathSeparator))) {
                 if (!p.isBlank()) includeDirs.add(p.trim());
@@ -116,7 +125,7 @@ public final class Main {
             if (filename == null && (arg.equals("-batch") || arg.equals("--batch"))) {
                 continue;
             } else if (filename == null && (arg.equals("-v") || arg.equals("--version"))) {
-                System.out.println("Euphoria Interpreter 4.1.0 (Java 25)");
+                System.out.println("Euphorix 1.0.0 (Java 25 VM / OpenEuphoria 4.x Syntax)");
                 System.exit(0);
             } else if (filename == null && (arg.equals("--disasm") || arg.equals("-disasm"))) {
                 dumpBytecode = true;
@@ -137,7 +146,7 @@ public final class Main {
             } else if (filename == null && (arg.startsWith("-D") || arg.startsWith("-d")) && arg.length() > 2) {
                 defines.add(arg.substring(2));
             } else if (filename == null && (arg.equals("-h") || arg.equals("--help"))) {
-                System.out.println("Verwendung: eui-java [-batch] [--disasm] [-i dir] [-D TAG] [-e \"code\"] [datei.ex [args...]]");
+                System.out.println("Verwendung: euphorix [-batch] [--disasm] [-i dir] [-D TAG] [-e \"code\"] [datei.ex [args...]]");
                 System.exit(0);
             } else if (filename == null) {
                 filename = arg;

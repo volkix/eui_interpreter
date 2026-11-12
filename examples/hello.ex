@@ -1,13 +1,13 @@
 -- =============================================================================
 -- examples/hello.ex
--- Demonstriert die Stärken von OpenEuphoria 4.x auf unserer neuen Register-VM:
+-- Demonstriert die Stärken von Euphorix (OpenEuphoria-Syntax auf Register-VM):
 --   1. Automatische Vektor-/Sequenz-Arithmetik
 --   2. Copy-on-Write (CoW) Wertsemantik & 1-basierte Indizierung mit `$`
 --   3. Slicing & Slice-Ersetzung (`s[2..3] = ...`)
---   4. OpenEuphoria 4.x `enum`, `switch`, `loop ... until`, `function`/`procedure`
+--   4. OpenEuphoria-Syntax `enum`, `switch`, `loop ... until`, `function`/`procedure`
 -- =============================================================================
 
-puts(1, "=== OpenEuphoria 4.x Clean-Room VM Demo ===\n\n")
+puts(1, "=== Euphorix Clean-Room VM Demo (OpenEuphoria-Syntax) ===\n\n")
 
 -- 1. Vektor-Arithmetik direkt auf beliebig verschachtelten Sequenzen
 sequence a = {10, 20, 30, 40}

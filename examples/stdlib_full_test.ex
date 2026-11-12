@@ -1,4 +1,4 @@
--- OpenEuphoria 4.x Comprehensive Standard Library & Feature Test Suite
+-- Euphorix Comprehensive Standard Library & Feature Test Suite (OpenEuphoria Syntax)
 include std/sequence.e
 include std/sort.e
 include std/math.e
@@ -29,7 +29,7 @@ procedure assert_eq(sequence msg, object actual, object expected)
     puts(1, "[OK] " & msg & "\n")
 end procedure
 
-puts(1, "=== OpenEuphoria 4.x Complete Feature & Stdlib Test ===\n")
+puts(1, "=== Euphorix Complete Feature & Stdlib Test (OpenEuphoria Syntax) ===\n")
 
 -- 1. Complex default parameter expressions (referencing earlier parameters & functions)
 function slice_with_default(sequence s, integer start_idx = 1, integer stop_idx = length(s) - 1)

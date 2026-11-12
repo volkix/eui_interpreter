@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * High-performance Java Reflection & Virtual Thread Subprocess Management for OpenEuphoria on Linux 64-bit.
+ * High-performance Java Reflection & Virtual Thread Subprocess Management for Euphorix (OpenEuphoria syntax).
  */
 public final class JavaInterop {
 

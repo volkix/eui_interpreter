@@ -18,7 +18,7 @@ puts(1, "=== JSON/JSONPath & JSON-Schema 2020-12 (jsoncons), XML/XPath/XSD (libx
 -- 1. JSON & JSONPath Verarbeitung (jsoncons 1.5)
 -- =============================================================================
 sequence raw_json = `{
-    "company": "OpenEuphoria GmbH",
+    "company": "Euphorix GmbH",
     "founded": 1993,
     "active": true,
     "employees": [
@@ -29,7 +29,7 @@ sequence raw_json = `{
 
 object doc = json:decode(raw_json)
 assert_eq("json:is_object", json:is_object(doc), 1)
-assert_eq("json:get String", json:get(doc, "company"), "OpenEuphoria GmbH")
+assert_eq("json:get String", json:get(doc, "company"), "Euphorix GmbH")
 assert_eq("json:get Integer", json:get(doc, "founded"), 1993)
 assert_eq("json:get Bool", json:get(doc, "active"), 1)
 assert_eq("json:get Array-Pfad [2]", json:get(doc, "employees[2].name"), "Bernd")

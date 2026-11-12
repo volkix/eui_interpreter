@@ -39,7 +39,7 @@ atom rb = gui:radio_button("Choice A", 1)
 test_true("radio_button creation", rb > 0)
 test_true("radio_button selected", gui:is_selected(rb))
 
-atom combo = gui:combo_box({"Linux", "FreeBSD", "OpenEuphoria"})
+atom combo = gui:combo_box({"Linux", "FreeBSD", "Euphorix"})
 test_true("combo_box creation", combo > 0)
 test_equal("combo_box getItemCount", 3, java:call_method(combo, "getItemCount", {}))
 

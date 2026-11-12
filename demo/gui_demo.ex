@@ -1,7 +1,7 @@
 --****
--- == OpenEuphoria Swing GUI Demo
+-- == Euphorix Swing GUI Demo
 --
--- Demonstriert die native Java 25 Swing-Integration in OpenEuphoria.
+-- Demonstriert die native Java 25 Swing-Integration in Euphorix (OpenEuphoria-Syntax).
 --
 
 include std/gui.e as gui
@@ -9,7 +9,7 @@ include std/text.e
 include std/java.e as java
 
 -- 1. Hauptfenster anlegen (620x460)
-atom win = gui:window("OpenEuphoria 4.1 GUI Demo (Java 25 Swing & GTK)", 620, 460)
+atom win = gui:window("Euphorix 1.0 GUI Demo (Java 25 Swing & GTK)", 620, 460)
 gui:set_layout(win, gui:BORDER_LAYOUT)
 gui:set_padding(win, 12, 14, 12, 14)
 
@@ -17,7 +17,7 @@ gui:set_padding(win, 12, 14, 12, 14)
 atom pnl_top = gui:panel(gui:GRID_LAYOUT, 2, 1, 0, 6)
 gui:set_padding(pnl_top, 5, 5, 12, 5)
 
-atom lbl_title = gui:text_label("OpenEuphoria GUI: Native Linux-Oberfläche", gui:ALIGN_CENTER)
+atom lbl_title = gui:text_label("Euphorix GUI: Native Linux-Oberfläche (OpenEuphoria-Syntax)", gui:ALIGN_CENTER)
 gui:set_font(lbl_title, "Ubuntu", 17, 1)
 
 atom lbl_sub = gui:text_label("100% UTF-8 Unterstützung für Umlaute (ä, ö, ü, ß) & moderne Schriftarten", gui:ALIGN_CENTER)

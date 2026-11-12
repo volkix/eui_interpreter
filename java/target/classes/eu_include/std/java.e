@@ -2,7 +2,7 @@
 -- == Java Interoperability
 --
 -- Exposes Java Virtual Machine reflection, dynamic JAR loading, object creation,
--- method invocation, and field manipulation to OpenEuphoria.
+-- method invocation, and field manipulation to Euphorix (OpenEuphoria syntax).
 --
 
 namespace java

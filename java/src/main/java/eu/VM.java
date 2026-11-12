@@ -44,7 +44,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Register-based Virtual Machine for OpenEuphoria 4.x ({@code eui}) on JDK 25.
+ * Register-based Virtual Machine for Euphorix on JDK 25 (executing OpenEuphoria syntax).
  */
 public final class VM {
     public static final int REGISTER_STACK_SIZE = 65536;

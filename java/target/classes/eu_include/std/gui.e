@@ -1,5 +1,5 @@
 --****
--- == Swing GUI API for OpenEuphoria on Java 25
+-- == Swing GUI API for Euphorix on Java 25 (OpenEuphoria Syntax)
 --
 -- Provides a clean, declarative, high-level graphical user interface API
 -- powered natively by Java Swing and AWT on Linux 64-bit.

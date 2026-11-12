@@ -370,7 +370,7 @@ public final class Bytecode {
         }
 
         public void disassemble(PrintStream out) {
-            out.println("=== OpenEuphoria Register-VM Bytecode Dump ===");
+            out.println("=== Euphorix Register-VM Bytecode Dump ===");
             for (RoutineProto r : routines) {
                 out.printf("\nRoutine %s (arity=%d..%d, max_regs=%d):\n",
                         r.name, r.minArity, r.arity, r.maxRegs);
