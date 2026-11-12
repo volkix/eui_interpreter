@@ -1,0 +1,6 @@
+t_c_fwd_enum_type.e:11
+<0074>:: Errors resolving the following references:
+	'foo' (t_c_fwd_enum_type.e:11) has not been declared.
+
+	THURSDAY = foo,
+	              ^

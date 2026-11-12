@@ -1,0 +1,4 @@
+/home/matt/eu/oe/tests/t_c_switch_rt_dup.e:6 in procedure foo() 
+duplicate values in a switch: A and D 
+
+... called from t_c_switch_rt_dup.e:16 

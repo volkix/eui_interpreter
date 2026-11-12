@@ -1,0 +1,12 @@
+/home/volkix/prj/intpret/java/src/main/java/eu/Bytecode.java
+/home/volkix/prj/intpret/java/src/main/java/eu/Compiler.java
+/home/volkix/prj/intpret/java/src/main/java/eu/DataEngines.java
+/home/volkix/prj/intpret/java/src/main/java/eu/JavaInterop.java
+/home/volkix/prj/intpret/java/src/main/java/eu/Lexer.java
+/home/volkix/prj/intpret/java/src/main/java/eu/Main.java
+/home/volkix/prj/intpret/java/src/main/java/eu/Sequence.java
+/home/volkix/prj/intpret/java/src/main/java/eu/Token.java
+/home/volkix/prj/intpret/java/src/main/java/eu/TokenType.java
+/home/volkix/prj/intpret/java/src/main/java/eu/VM.java
+/home/volkix/prj/intpret/java/src/main/java/eu/Value.java
+/home/volkix/prj/intpret/java/src/main/java/eu/VarType.java

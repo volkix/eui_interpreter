@@ -1,0 +1,207 @@
+package eu;
+
+import eu.Bytecode.Program;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * CLI Entry Point & REPL for the Java 25 OpenEuphoria 4.x Interpreter ({@code eui-java}).
+ */
+public final class Main {
+
+    private static boolean runSource(String src, String filePath, boolean dumpBytecode,
+                                     List<String> cliArgs, List<String> includeDirs, List<String> defines) {
+        Compiler compiler = new Compiler(src, filePath);
+        for (String dir : includeDirs) {
+            compiler.addIncludeDir(dir);
+        }
+        for (String def : defines) {
+            compiler.defineSymbol(def);
+        }
+
+        Program prog = new Program();
+        prog.cliArgs.addAll(cliArgs);
+        if (!compiler.compile(prog)) {
+            System.err.println(compiler.errorMessage());
+            return false;
+        }
+
+        if (dumpBytecode) {
+            prog.disassemble(System.out);
+        }
+
+        VM vm = new VM();
+        if (!vm.execute(prog)) {
+            System.err.println(vm.error());
+            return false;
+        }
+        return true;
+    }
+
+    private static void runRepl(boolean dumpBytecode, List<String> includeDirs, List<String> defines) {
+        System.out.println("OpenEuphoria 4.x Clean-Room VM (Java 25 / CoW Register-VM)");
+        System.out.println("Tippe Euphoria-Anweisungen ein (oder 'exit' zum Beenden):");
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8))) {
+            for (;;) {
+                System.out.print("eu> ");
+                System.out.flush();
+                String line = reader.readLine();
+                if (line == null) {
+                    System.out.println();
+                    break;
+                }
+                if (line.equals("exit") || line.equals("quit")) {
+                    break;
+                }
+                if (line.isBlank()) continue;
+
+                runSource(line, "<repl>", dumpBytecode, List.of("eui-java", "<repl>"), includeDirs, defines);
+            }
+        } catch (IOException ignored) {}
+    }
+
+    public static void main(String[] args) {
+        if (System.getProperty("awt.useSystemAAFontSettings") == null) {
+            System.setProperty("awt.useSystemAAFontSettings", "lcd");
+        }
+        if (System.getProperty("swing.aatext") == null) {
+            System.setProperty("swing.aatext", "true");
+        }
+
+        boolean dumpBytecode = false;
+        String filename = null;
+        String evalCode = null;
+        List<String> includeDirs = new ArrayList<>();
+        List<String> defines = new ArrayList<>();
+        List<String> scriptArgs = new ArrayList<>();
+
+        String selfExe = System.getProperty("eui.bin");
+        if (selfExe == null || selfExe.isBlank()) {
+            try {
+                var cs = Main.class.getProtectionDomain().getCodeSource();
+                if (cs != null && cs.getLocation() != null) {
+                    Path jarDir = Path.of(cs.getLocation().toURI()).getParent();
+                    if (jarDir != null && Files.exists(jarDir.resolve("eui-java"))) {
+                        selfExe = jarDir.resolve("eui-java").toAbsolutePath().toString();
+                    }
+                }
+            } catch (Exception ignored) {}
+            if (selfExe == null || selfExe.isBlank()) {
+                if (Files.exists(Path.of("eui-java"))) {
+                    selfExe = "./eui-java";
+                } else {
+                    selfExe = "eui-java";
+                }
+            }
+        }
+        scriptArgs.add(selfExe);
+
+        String euinc = System.getenv("EUINC");
+        if (euinc != null && !euinc.isBlank()) {
+            for (String p : euinc.split(java.util.regex.Pattern.quote(java.io.File.pathSeparator))) {
+                if (!p.isBlank()) includeDirs.add(p.trim());
+            }
+        }
+
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if (filename == null && (arg.equals("-batch") || arg.equals("--batch"))) {
+                continue;
+            } else if (filename == null && (arg.equals("-v") || arg.equals("--version"))) {
+                System.out.println("Euphoria Interpreter 4.1.0 (Java 25)");
+                System.exit(0);
+            } else if (filename == null && (arg.equals("--disasm") || arg.equals("-disasm"))) {
+                dumpBytecode = true;
+            } else if (filename == null && arg.equals("-e") && i + 1 < args.length) {
+                evalCode = args[++i];
+            } else if (filename == null && arg.equals("-c") && i + 1 < args.length) {
+                loadCfgFile(args[++i], includeDirs, defines);
+            } else if (filename == null && arg.startsWith("-c=")) {
+                loadCfgFile(arg.substring(3), includeDirs, defines);
+            } else if (filename == null && (arg.equals("-i") || arg.equals("-I")) && i + 1 < args.length) {
+                includeDirs.add(args[++i]);
+            } else if (filename == null && (arg.startsWith("-i=") || arg.startsWith("-I="))) {
+                includeDirs.add(arg.substring(3));
+            } else if (filename == null && (arg.startsWith("-d=") || arg.startsWith("-D="))) {
+                defines.add(arg.substring(3));
+            } else if (filename == null && (arg.equals("-d") || arg.equals("-D")) && i + 1 < args.length) {
+                defines.add(args[++i]);
+            } else if (filename == null && (arg.startsWith("-D") || arg.startsWith("-d")) && arg.length() > 2) {
+                defines.add(arg.substring(2));
+            } else if (filename == null && (arg.equals("-h") || arg.equals("--help"))) {
+                System.out.println("Verwendung: eui-java [-batch] [--disasm] [-i dir] [-D TAG] [-e \"code\"] [datei.ex [args...]]");
+                System.exit(0);
+            } else if (filename == null) {
+                filename = arg;
+                scriptArgs.add(filename);
+            } else {
+                scriptArgs.add(arg);
+            }
+        }
+
+        if (evalCode != null) {
+            scriptArgs.add("-e");
+            boolean ok = runSource(evalCode, "<eval>", dumpBytecode, scriptArgs, includeDirs, defines);
+            System.exit(ok ? 0 : 1);
+        }
+
+        if (filename == null) {
+            runRepl(dumpBytecode, includeDirs, defines);
+            System.exit(0);
+        }
+
+        Path path = Path.of(filename);
+        if (!Files.isRegularFile(path)) {
+            System.err.printf("Fehler: Datei '%s' konnte nicht geöffnet werden.%n", filename);
+            System.exit(1);
+        }
+
+        try {
+            String source;
+            try {
+                source = Files.readString(path, StandardCharsets.UTF_8);
+            } catch (java.nio.charset.MalformedInputException mie) {
+                source = Files.readString(path, StandardCharsets.ISO_8859_1);
+            }
+            boolean ok = runSource(source, filename, dumpBytecode, scriptArgs, includeDirs, defines);
+            System.exit(ok ? 0 : 1);
+        } catch (IOException e) {
+            System.err.printf("Fehler: Datei '%s' konnte nicht geöffnet werden.%n", filename);
+            System.exit(1);
+        }
+    }
+
+    private static void loadCfgFile(String pathStr, List<String> includeDirs, List<String> defines) {
+        Path p = Path.of(pathStr);
+        if (!Files.exists(p)) return;
+        try {
+            for (String line : Files.readAllLines(p)) {
+                line = line.trim();
+                if (line.isEmpty() || line.startsWith("--")) continue;
+                String[] tokens = line.split("\\s+");
+                for (int i = 0; i < tokens.length; i++) {
+                    String t = tokens[i];
+                    if ((t.equals("-d") || t.equals("-D")) && i + 1 < tokens.length) {
+                        defines.add(tokens[++i]);
+                    } else if (t.startsWith("-d=") || t.startsWith("-D=")) {
+                        defines.add(t.substring(3));
+                    } else if ((t.startsWith("-D") || t.startsWith("-d")) && t.length() > 2) {
+                        defines.add(t.substring(2));
+                    } else if ((t.equals("-i") || t.equals("-I")) && i + 1 < tokens.length) {
+                        includeDirs.add(tokens[++i]);
+                    } else if (t.startsWith("-i=") || t.startsWith("-I=")) {
+                        includeDirs.add(t.substring(3));
+                    }
+                }
+            }
+        } catch (IOException ignored) {}
+    }
+}

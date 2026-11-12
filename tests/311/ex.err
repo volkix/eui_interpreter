@@ -1,0 +1,22 @@
+/home/volkix/prj/intpret/tests/311/t_c_311_safe_leading_border.e:4
+<0052>:: can't find 'safe.e' in any of ...
+	/home/volkix/prj/intpret/tests/311
+	/home/volkix/prj/intpret/tests/311/t_c_311_safe_leading_border.e
+	/home/volkix/prj/intpret/eu_include
+
+include safe.e
+              ^
+
+
+--- Defined Words ---
+EU4
+EU4_1
+EU4_1_0
+CONSOLE
+UNIX
+LINUX
+X86_64
+BITS64
+LONG64
+EUI
+-------------------
