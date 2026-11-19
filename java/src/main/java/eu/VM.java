@@ -59,13 +59,15 @@ public final class VM {
     }
 
     public static final class CallFrame {
-        public final RoutineProto routine;
+        public RoutineProto routine;
+        public int[] code;
         public int ip;
-        public final int baseReg;
-        public final int callerRetReg;
+        public int baseReg;
+        public int callerRetReg;
 
         public CallFrame(RoutineProto routine, int ip, int baseReg, int callerRetReg) {
             this.routine = routine;
+            this.code = (routine != null) ? routine.fastCode() : null;
             this.ip = ip;
             this.baseReg = baseReg;
             this.callerRetReg = callerRetReg;
@@ -254,10 +256,64 @@ public final class VM {
         MH_UNSETENV = unsetenv;
     }
 
+    private static final int OP_LOAD_K          = 0;
+    private static final int OP_LOAD_IMM        = 1;
+    private static final int OP_LOAD_NONE       = 2;
+    private static final int OP_MOVE            = 3;
+    private static final int OP_GET_GLOBAL      = 4;
+    private static final int OP_SET_GLOBAL      = 5;
+    private static final int OP_TAKE_GLOBAL     = 6;
+    private static final int OP_CHECK_TYPE      = 7;
+    private static final int OP_ADD             = 8;
+    private static final int OP_SUB             = 9;
+    private static final int OP_MUL             = 10;
+    private static final int OP_DIV             = 11;
+    private static final int OP_CONCAT          = 12;
+    private static final int OP_EQ              = 13;
+    private static final int OP_NEQ             = 14;
+    private static final int OP_LT              = 15;
+    private static final int OP_LE              = 16;
+    private static final int OP_GT              = 17;
+    private static final int OP_GE              = 18;
+    private static final int OP_AND             = 19;
+    private static final int OP_OR              = 20;
+    private static final int OP_XOR             = 21;
+    private static final int OP_NEG             = 22;
+    private static final int OP_NOT             = 23;
+    private static final int OP_EQUAL_OBJ       = 24;
+    private static final int OP_NEW_SEQ         = 25;
+    private static final int OP_LEN             = 26;
+    private static final int OP_GET_IDX         = 27;
+    private static final int OP_SET_IDX         = 28;
+    private static final int OP_GET_SLICE       = 29;
+    private static final int OP_SET_SLICE       = 30;
+    private static final int OP_JMP             = 31;
+    private static final int OP_JMP_FALSE       = 32;
+    private static final int OP_JMP_TRUE        = 33;
+    private static final int OP_JMP_IF_NOT_NONE = 34;
+    private static final int OP_FOR_PREP        = 35;
+    private static final int OP_FOR_LOOP        = 36;
+    private static final int OP_CALL            = 37;
+    private static final int OP_BUILTIN         = 38;
+    private static final int OP_PRINT_Q         = 39;
+    private static final int OP_RETURN          = 40;
+    private static final int OP_HALT            = 41;
+
     private Program prog;
-    private Value[] regs;
+    private Value[] fastConstants;
+    private RoutineProto[] fastRoutines;
+    private VarType[] fastGlobalTypes;
+    private final String[] errBox = new String[1];
+
+    // Unboxed parallel register bank: zero heap boxing for int48 & f64!
+    private byte[]   regKind;
+    private long[]   regInt;
+    private double[] regF64;
+    private Value[]  regSeq;
+
     private Value[] globals;
-    private final ArrayList<CallFrame> frames = new ArrayList<>(64);
+    private final CallFrame[] frameStack = new CallFrame[MAX_CALL_FRAMES];
+    private int frameDepth = 0;
     private String errorMsg = "";
     private String crashMsg = "";
     private final long startTimeNanos;
@@ -321,8 +377,10 @@ public final class VM {
     }
 
     public VM() {
-        this.regs = new Value[REGISTER_STACK_SIZE];
-        Arrays.fill(this.regs, Value.NONE);
+        this.regKind = new byte[REGISTER_STACK_SIZE];
+        this.regInt = new long[REGISTER_STACK_SIZE];
+        this.regF64 = new double[REGISTER_STACK_SIZE];
+        this.regSeq = new Value[REGISTER_STACK_SIZE];
         this.globals = new Value[0];
         this.startTimeNanos = System.nanoTime();
         this.rng = new Random(123456789L);
@@ -366,6 +424,9 @@ public final class VM {
 
     private VM(VM parent, int childResultAbsReg) {
         this.prog = parent.prog;
+        this.fastConstants = parent.fastConstants;
+        this.fastRoutines = parent.fastRoutines;
+        this.fastGlobalTypes = parent.fastGlobalTypes;
         this.startTimeNanos = parent.startTimeNanos;
         this.rng = new Random(123456789L ^ System.nanoTime());
         this.isForkedChild = true;
@@ -379,23 +440,36 @@ public final class VM {
             this.globals[i] = copy;
         }
 
-        this.regs = new Value[REGISTER_STACK_SIZE];
-        Arrays.fill(this.regs, Value.NONE);
+        this.regKind = new byte[REGISTER_STACK_SIZE];
+        this.regInt = new long[REGISTER_STACK_SIZE];
+        this.regF64 = new double[REGISTER_STACK_SIZE];
+        this.regSeq = new Value[REGISTER_STACK_SIZE];
         int maxActiveReg = childResultAbsReg + 1;
-        if (!parent.frames.isEmpty()) {
-            CallFrame top = parent.frames.get(parent.frames.size() - 1);
+        if (parent.frameDepth > 0) {
+            CallFrame top = parent.frameStack[parent.frameDepth - 1];
             maxActiveReg = Math.max(maxActiveReg, top.baseReg + top.routine.maxRegs + 4);
         }
         maxActiveReg = Math.min(maxActiveReg, REGISTER_STACK_SIZE);
         for (int i = 0; i < maxActiveReg; i++) {
-            Value copy = deepCopyValue(parent.regs[i]);
-            copy.retain();
-            this.regs[i] = copy;
+            byte k = parent.regKind[i];
+            if (k == Value.KIND_INT) {
+                this.regKind[i] = Value.KIND_INT;
+                this.regInt[i] = parent.regInt[i];
+            } else if (k == Value.KIND_F64) {
+                this.regKind[i] = Value.KIND_F64;
+                this.regF64[i] = parent.regF64[i];
+            } else if (k == Value.KIND_SEQ) {
+                Value copy = deepCopyValue(parent.regSeq[i]);
+                copy.retain();
+                this.regKind[i] = Value.KIND_SEQ;
+                this.regSeq[i] = copy;
+            }
         }
-        setReg(childResultAbsReg, Value.fromInt(0));
+        setRegInt(childResultAbsReg, 0L);
 
-        for (CallFrame cf : parent.frames) {
-            this.frames.add(cf.copy());
+        for (int i = 0; i < parent.frameDepth; i++) {
+            CallFrame cf = parent.frameStack[i];
+            pushFrame(cf.routine, cf.ip, cf.baseReg, cf.callerRetReg);
         }
 
         // Share I/O and resource tables with parent
@@ -436,6 +510,9 @@ public final class VM {
 
     private VM(VM parent, RoutineProto routine, boolean isolatedGlobals) {
         this.prog = parent.prog;
+        this.fastConstants = parent.fastConstants;
+        this.fastRoutines = parent.fastRoutines;
+        this.fastGlobalTypes = parent.fastGlobalTypes;
         this.startTimeNanos = parent.startTimeNanos;
         this.rng = parent.rng;
         this.isForkedChild = isolatedGlobals;
@@ -453,8 +530,10 @@ public final class VM {
             this.globals = parent.globals;
         }
 
-        this.regs = new Value[REGISTER_STACK_SIZE];
-        Arrays.fill(this.regs, Value.NONE);
+        this.regKind = new byte[REGISTER_STACK_SIZE];
+        this.regInt = new long[REGISTER_STACK_SIZE];
+        this.regF64 = new double[REGISTER_STACK_SIZE];
+        this.regSeq = new Value[REGISTER_STACK_SIZE];
 
         // Share I/O and resource tables with parent
         this.openFiles = parent.openFiles;
@@ -500,12 +579,12 @@ public final class VM {
         for (int i = passCount; i < target.arity; i++) {
             cbVm.setReg(base + i, Value.NONE);
         }
-        cbVm.frames.clear();
-        cbVm.frames.add(new CallFrame(target, 0, base, 0));
+        cbVm.frameDepth = 0;
+        cbVm.pushFrame(target, 0, base, 0);
         try {
             cbVm.runLoop();
             Value ret = cbVm.lastReturnValue;
-            if (ret == null || ret.isNone()) ret = cbVm.regs[0];
+            if (ret == null || ret.isNone()) ret = cbVm.getReg(0);
             return ret != null && !ret.isNone() ? ret : Value.fromInt(0);
         } catch (VmAbortException ab) {
             System.exit(ab.exitCode);
@@ -527,12 +606,12 @@ public final class VM {
         for (int i = passCount; i < target.arity; i++) {
             threadVm.setReg(base + i, Value.NONE);
         }
-        threadVm.frames.clear();
-        threadVm.frames.add(new CallFrame(target, 0, base, 0));
+        threadVm.frameDepth = 0;
+        threadVm.pushFrame(target, 0, base, 0);
         try {
             threadVm.runLoop();
             Value ret = threadVm.lastReturnValue;
-            if (ret == null || ret.isNone()) ret = threadVm.regs[0];
+            if (ret == null || ret.isNone()) ret = threadVm.getReg(0);
             return (ret != null && !ret.isNone()) ? ret : Value.fromInt(0);
         } catch (VmAbortException ab) {
             return Value.fromInt(ab.exitCode);
@@ -562,14 +641,92 @@ public final class VM {
         return errorMsg;
     }
 
-    private void setReg(int absIdx, Value newVal) {
-        if (newVal == null) newVal = Value.NONE;
-        newVal.retain();
-        Value old = regs[absIdx];
-        if (old != null) {
-            old.release();
+    private CallFrame pushFrame(RoutineProto routine, int ip, int baseReg, int callerRetReg) {
+        CallFrame cf = frameStack[frameDepth];
+        if (cf == null) {
+            cf = new CallFrame(routine, ip, baseReg, callerRetReg);
+            frameStack[frameDepth] = cf;
+        } else {
+            cf.routine = routine;
+            cf.code = routine.fastCode();
+            cf.ip = ip;
+            cf.baseReg = baseReg;
+            cf.callerRetReg = callerRetReg;
         }
-        regs[absIdx] = newVal;
+        frameDepth++;
+        return cf;
+    }
+
+    private Value getReg(int absIdx) {
+        return switch (regKind[absIdx]) {
+            case Value.KIND_INT -> Value.fromInt(regInt[absIdx]);
+            case Value.KIND_F64 -> Value.fromF64(regF64[absIdx]);
+            case Value.KIND_SEQ -> regSeq[absIdx];
+            default -> Value.NONE;
+        };
+    }
+
+    private void setRegInt(int absIdx, long v) {
+        if (regKind[absIdx] == Value.KIND_SEQ) {
+            regSeq[absIdx].release();
+            regSeq[absIdx] = null;
+        }
+        if (((v << 16) >> 16) == v) {
+            regKind[absIdx] = Value.KIND_INT;
+            regInt[absIdx] = v;
+        } else {
+            regKind[absIdx] = Value.KIND_F64;
+            regF64[absIdx] = (double) v;
+        }
+    }
+
+    private void setRegF64(int absIdx, double d) {
+        if (regKind[absIdx] == Value.KIND_SEQ) {
+            regSeq[absIdx].release();
+            regSeq[absIdx] = null;
+        }
+        regKind[absIdx] = Value.KIND_F64;
+        regF64[absIdx] = d;
+    }
+
+    private void setReg(int absIdx, Value newVal) {
+        if (newVal == null) {
+            if (regKind[absIdx] == Value.KIND_SEQ) {
+                regSeq[absIdx].release();
+                regSeq[absIdx] = null;
+            }
+            regKind[absIdx] = Value.KIND_NONE;
+            return;
+        }
+        byte nk = newVal.kind;
+        if (nk == Value.KIND_INT) {
+            if (regKind[absIdx] == Value.KIND_SEQ) {
+                regSeq[absIdx].release();
+                regSeq[absIdx] = null;
+            }
+            regKind[absIdx] = Value.KIND_INT;
+            regInt[absIdx] = newVal.intVal;
+        } else if (nk == Value.KIND_F64) {
+            if (regKind[absIdx] == Value.KIND_SEQ) {
+                regSeq[absIdx].release();
+                regSeq[absIdx] = null;
+            }
+            regKind[absIdx] = Value.KIND_F64;
+            regF64[absIdx] = newVal.floatVal;
+        } else if (nk == Value.KIND_SEQ) {
+            newVal.retain();
+            if (regKind[absIdx] == Value.KIND_SEQ) {
+                regSeq[absIdx].release();
+            }
+            regKind[absIdx] = Value.KIND_SEQ;
+            regSeq[absIdx] = newVal;
+        } else {
+            if (regKind[absIdx] == Value.KIND_SEQ) {
+                regSeq[absIdx].release();
+                regSeq[absIdx] = null;
+            }
+            regKind[absIdx] = Value.KIND_NONE;
+        }
     }
 
     private void setGlobal(int gidx, Value newVal) {
@@ -583,8 +740,8 @@ public final class VM {
     }
 
     private Sequence ensureUniqueReg(int absIdx) {
-        Value v = regs[absIdx];
-        Sequence s = v.asSeq();
+        Value v = regSeq[absIdx];
+        Sequence s = v.seqVal;
         if (s.refCount <= 1) {
             return s;
         }
@@ -641,10 +798,10 @@ public final class VM {
 
         // Save current task state if it is still alive
         TaskInfo curTask = tasks.get(currentTaskId);
-        if (curTask != null && curTask.state != TaskState.TERMINATED && !frames.isEmpty()) {
+        if (curTask != null && curTask.state != TaskState.TERMINATED && frameDepth > 0) {
             curTask.frames.clear();
-            for (CallFrame cf : frames) {
-                curTask.frames.add(cf.copy());
+            for (int i = 0; i < frameDepth; i++) {
+                curTask.frames.add(frameStack[i].copy());
             }
             if (curTask.regs != null) {
                 for (int i = 0; i < REGISTER_STACK_SIZE; i++) {
@@ -653,8 +810,9 @@ public final class VM {
             }
             curTask.regs = new Value[REGISTER_STACK_SIZE];
             for (int i = 0; i < REGISTER_STACK_SIZE; i++) {
-                curTask.regs[i] = regs[i];
-                if (regs[i] != null) regs[i].retain();
+                Value rv = getReg(i);
+                curTask.regs[i] = rv;
+                rv.retain();
             }
         }
 
@@ -666,7 +824,7 @@ public final class VM {
                 setReg(i, Value.NONE);
             }
             JavaInterop.setActiveVm(this);
-        frames.clear();
+            frameDepth = 0;
             RoutineProto target = prog.routines.get((int) nextTask.routineId);
             if (nextTask.args.isSeq()) {
                 Sequence s = nextTask.args.asSeq();
@@ -674,12 +832,12 @@ public final class VM {
                     setReg(i, s.get(i));
                 }
             }
-            frames.add(new CallFrame(target, 0, 0, 0));
+            pushFrame(target, 0, 0, 0);
         } else {
             JavaInterop.setActiveVm(this);
-        frames.clear();
+            frameDepth = 0;
             for (CallFrame cf : nextTask.frames) {
-                frames.add(cf.copy());
+                pushFrame(cf.routine, cf.ip, cf.baseReg, cf.callerRetReg);
             }
             for (int i = 0; i < REGISTER_STACK_SIZE; i++) {
                 setReg(i, nextTask.regs[i]);
@@ -692,6 +850,13 @@ public final class VM {
     public boolean execute(Program prog) {
         this.prog = prog;
         this.errorMsg = "";
+        this.fastConstants = prog.constants.toArray(new Value[0]);
+        this.fastRoutines = prog.routines.toArray(new RoutineProto[0]);
+        int numGlobals = prog.globals.size();
+        this.fastGlobalTypes = new VarType[numGlobals];
+        for (int i = 0; i < numGlobals; i++) {
+            this.fastGlobalTypes[i] = prog.globals.get(i).type;
+        }
 
         tasks.clear();
         taskIdsOrder.clear();
@@ -705,7 +870,6 @@ public final class VM {
         tasks.put(0L, mainTask);
         taskIdsOrder.add(0L);
 
-        int numGlobals = prog.globals.size();
         if (this.globals.length < numGlobals) {
             Value[] nextGlobals = new Value[numGlobals];
             Arrays.fill(nextGlobals, Value.NONE);
@@ -717,9 +881,9 @@ public final class VM {
         }
 
         JavaInterop.setActiveVm(this);
-        frames.clear();
+        frameDepth = 0;
         RoutineProto mainProto = prog.routines.get(0);
-        frames.add(new CallFrame(mainProto, 0, 0, 0));
+        pushFrame(mainProto, 0, 0, 0);
 
         try {
             return runLoop();
@@ -738,436 +902,675 @@ public final class VM {
         }
     }
 
+    private void setRegBool(int absIdx, boolean b) {
+        if (regKind[absIdx] == Value.KIND_SEQ) {
+            regSeq[absIdx].release();
+            regSeq[absIdx] = null;
+        }
+        regKind[absIdx] = Value.KIND_INT;
+        regInt[absIdx] = b ? 1L : 0L;
+    }
+
+    private void copyReg(int dst, int src) {
+        final byte sk = regKind[src];
+        if (sk == Value.KIND_INT) {
+            if (regKind[dst] == Value.KIND_SEQ) { regSeq[dst].release(); regSeq[dst] = null; }
+            regKind[dst] = Value.KIND_INT;
+            regInt[dst] = regInt[src];
+        } else if (sk == Value.KIND_F64) {
+            if (regKind[dst] == Value.KIND_SEQ) { regSeq[dst].release(); regSeq[dst] = null; }
+            regKind[dst] = Value.KIND_F64;
+            regF64[dst] = regF64[src];
+        } else if (sk == Value.KIND_SEQ) {
+            final Value sv = regSeq[src];
+            sv.seqVal.refCount++;
+            if (regKind[dst] == Value.KIND_SEQ) { regSeq[dst].release(); }
+            regKind[dst] = Value.KIND_SEQ;
+            regSeq[dst] = sv;
+        } else {
+            if (regKind[dst] == Value.KIND_SEQ) { regSeq[dst].release(); regSeq[dst] = null; }
+            regKind[dst] = Value.KIND_NONE;
+        }
+    }
+
+    private boolean execBinopSlow(int op, int ra, int rb, int rc, CallFrame frame, int ip) {
+        final byte kb = regKind[rb], kc = regKind[rc];
+        if ((kb == Value.KIND_INT || kb == Value.KIND_F64) && (kc == Value.KIND_INT || kc == Value.KIND_F64)) {
+            final double da = (kb == Value.KIND_INT) ? (double) regInt[rb] : regF64[rb];
+            final double db = (kc == Value.KIND_INT) ? (double) regInt[rc] : regF64[rc];
+            switch (op) {
+                case OP_ADD -> { setRegF64(ra, da + db); return true; }
+                case OP_SUB -> { setRegF64(ra, da - db); return true; }
+                case OP_MUL -> { setRegF64(ra, da * db); return true; }
+                case OP_DIV -> {
+                    if (db == 0.0) { frame.ip = ip; runtimeError(frame, "Division durch 0 (attempt to divide by 0)"); return false; }
+                    setRegF64(ra, da / db); return true;
+                }
+                case OP_EQ  -> { setRegBool(ra, da == db); return true; }
+                case OP_NEQ -> { setRegBool(ra, da != db); return true; }
+                case OP_LT  -> { setRegBool(ra, da <  db); return true; }
+                case OP_LE  -> { setRegBool(ra, da <= db); return true; }
+                case OP_GT  -> { setRegBool(ra, da >  db); return true; }
+                case OP_GE  -> { setRegBool(ra, da >= db); return true; }
+                case OP_AND -> { setRegBool(ra, da != 0.0 && db != 0.0); return true; }
+                case OP_OR  -> { setRegBool(ra, da != 0.0 || db != 0.0); return true; }
+                case OP_XOR -> { setRegBool(ra, (da != 0.0) ^ (db != 0.0)); return true; }
+            }
+        }
+        Value.BinOp bop = switch (op) {
+            case OP_ADD -> Value.BinOp.Add;
+            case OP_SUB -> Value.BinOp.Sub;
+            case OP_MUL -> Value.BinOp.Mul;
+            case OP_DIV -> Value.BinOp.Div;
+            case OP_EQ  -> Value.BinOp.Eq;
+            case OP_NEQ -> Value.BinOp.Neq;
+            case OP_LT  -> Value.BinOp.Lt;
+            case OP_LE  -> Value.BinOp.Le;
+            case OP_GT  -> Value.BinOp.Gt;
+            case OP_GE  -> Value.BinOp.Ge;
+            case OP_AND -> Value.BinOp.And;
+            case OP_OR  -> Value.BinOp.Or;
+            case OP_XOR -> Value.BinOp.Xor;
+            default     -> Value.BinOp.Add;
+        };
+        errBox[0] = null;
+        Value res = Value.evalBinop(bop, getReg(rb), getReg(rc), errBox);
+        if (errBox[0] != null) {
+            frame.ip = ip;
+            runtimeError(frame, errBox[0]);
+            return false;
+        }
+        setReg(ra, res);
+        return true;
+    }
+
+    private boolean execUnarySlow(int op, int ra, int rb, CallFrame frame, int ip) {
+        final byte kb = regKind[rb];
+        if (kb == Value.KIND_F64) {
+            if (op == OP_NEG) setRegF64(ra, -regF64[rb]);
+            else setRegBool(ra, regF64[rb] == 0.0);
+            return true;
+        }
+        errBox[0] = null;
+        Value res = Value.evalUnary(op == OP_NEG ? Value.UnaryOp.Neg : Value.UnaryOp.Not, getReg(rb), errBox);
+        if (errBox[0] != null) {
+            frame.ip = ip;
+            runtimeError(frame, errBox[0]);
+            return false;
+        }
+        setReg(ra, res);
+        return true;
+    }
+
+    private boolean execGetSlice(int ra, int rb, int idxReg, CallFrame frame, int ip) {
+        if (regKind[rb] != Value.KIND_SEQ) {
+            frame.ip = ip;
+            runtimeError(frame, "Slicing 's[a..b]' auf ein Atom angewendet");
+            return false;
+        }
+        final Value startVal = getReg(idxReg);
+        final Value endVal = getReg(idxReg + 1);
+        if (!startVal.isAtom() || !endVal.isAtom()) {
+            frame.ip = ip;
+            runtimeError(frame, "Slice-Grenzen müssen Atome sein");
+            return false;
+        }
+        final Sequence s = regSeq[rb].seqVal;
+        final long a = startVal.toIntCoerce();
+        final long b = endVal.toIntCoerce();
+        final int len = s.len;
+        if (a == b + 1 && a >= 1 && a <= len + 1) {
+            setReg(ra, Value.emptySeq());
+            return true;
+        }
+        if (a < 1 || b < a || b > len) {
+            frame.ip = ip;
+            runtimeError(frame, String.format("Slice [%d..%d] außerhalb des Bereichs 1..%d", a, b, len));
+            return false;
+        }
+        final int sliceLen = (int) (b - a + 1);
+        final Sequence out = new Sequence(sliceLen);
+        final int start0 = (int) (a - 1);
+        for (int i = 0; i < sliceLen; i++) {
+            out.add(s.data[start0 + i]);
+        }
+        setReg(ra, Value.fromSeq(out));
+        return true;
+    }
+
+    private boolean execSetSlice(int targetReg, int idxReg, int rc, CallFrame frame, int ip) {
+        if (regKind[targetReg] != Value.KIND_SEQ) {
+            frame.ip = ip;
+            runtimeError(frame, "Slice-Zuweisung 's[a..b] = x' auf ein Atom angewendet");
+            return false;
+        }
+        final Value startVal = getReg(idxReg);
+        final Value endVal = getReg(idxReg + 1);
+        final Value rhs = getReg(rc);
+        final Sequence s = ensureUniqueReg(targetReg);
+        final long a = startVal.toIntCoerce();
+        final long b = endVal.toIntCoerce();
+        final int len = s.len;
+        if (a < 1 || b < a - 1 || b > len) {
+            frame.ip = ip;
+            runtimeError(frame, "Slice-Grenzen bei Zuweisung außerhalb des gültigen Bereichs");
+            return false;
+        }
+        final int sliceLen = (int) (b - a + 1);
+        if (rhs.isAtom()) {
+            for (int i = 0; i < sliceLen; i++) {
+                s.set((int) (a - 1) + i, rhs);
+            }
+        } else if (rhs.isSeq()) {
+            s.replaceRange((int) (a - 1), (int) b, rhs.seqVal);
+        }
+        return true;
+    }
+
+    private boolean execCheckTypeBuiltin(int ra, int bx, CallFrame frame, int ip) {
+        final byte k = regKind[ra];
+        boolean okType;
+        if (bx == 0) {
+            okType = (k != Value.KIND_NONE);
+        } else if (bx == 1) {
+            okType = (k == Value.KIND_INT || k == Value.KIND_F64);
+        } else if (bx == 2) {
+            if (k == Value.KIND_INT) okType = true;
+            else if (k == Value.KIND_F64) {
+                double d = regF64[ra];
+                okType = (Math.floor(d) == d && d >= (double) Value.INT48_MIN && d <= (double) Value.INT48_MAX);
+            } else okType = false;
+        } else {
+            okType = (k == Value.KIND_SEQ);
+        }
+        if (!okType) {
+            frame.ip = ip;
+            VarType vt = VarType.fromCode(bx);
+            runtimeError(frame, "Typfehler (type_check failure): Variable erwartet '" + vt.TypeName() + "'");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean execReturnToEmpty(byte rk, long ri, double rf, Value rs) {
+        Value retVal = (rk == Value.KIND_INT) ? Value.fromInt(ri)
+                     : (rk == Value.KIND_F64) ? Value.fromF64(rf)
+                     : (rk == Value.KIND_SEQ) ? rs : Value.NONE;
+        this.lastReturnValue = deepCopyValue(retVal);
+        setReg(0, retVal);
+        if (rk == Value.KIND_SEQ && rs != null) rs.release();
+        if (currentTaskId != 0) {
+            TaskInfo cur = tasks.get(currentTaskId);
+            if (cur != null) {
+                cur.state = TaskState.TERMINATED;
+                cur.frames.clear();
+                if (cur.regs != null) {
+                    for (int i = 0; i < REGISTER_STACK_SIZE; i++) {
+                        if (cur.regs[i] != null) cur.regs[i].release();
+                    }
+                    cur.regs = null;
+                }
+                if (cur.args != null) cur.args.release();
+            }
+            return switchToNextTask();
+        }
+        return false;
+    }
+
     private boolean runLoop() {
-        CallFrame frame = frames.get(frames.size() - 1);
+        final byte[] rKind = this.regKind;
+        final long[] rInt = this.regInt;
+        final double[] rF64 = this.regF64;
+        final Value[] rSeq = this.regSeq;
+        final Value[] fastK = this.fastConstants;
+        final RoutineProto[] fastR = this.fastRoutines;
+        final VarType[] fastGT = this.fastGlobalTypes;
+        final Value[] globs = this.globals;
+        final CallFrame[] fStack = this.frameStack;
+
+        CallFrame frame = fStack[frameDepth - 1];
         int base = frame.baseReg;
-        int[] code = frame.routine.fastCode();
+        int[] code = frame.code;
+        int ip = frame.ip;
 
         for (;;) {
-            int ins = code[frame.ip++];
-            Op op = Instr.op(ins);
-
-            switch (op) {
-                case LoadK -> {
-                    setReg(base + Instr.a(ins), prog.constants.get(Instr.bx(ins)));
+            final int ins = code[ip++];
+            switch (ins & 0xFF) {
+                case OP_LOAD_K -> {
+                    setReg(base + ((ins >>> 8) & 0xFF), fastK[(ins >>> 16) & 0xFFFF]);
                 }
-                case LoadImm -> {
-                    setReg(base + Instr.a(ins), Value.fromInt(Instr.sbx(ins)));
+                case OP_LOAD_IMM -> {
+                    final int dst = base + ((ins >>> 8) & 0xFF);
+                    if (rKind[dst] == Value.KIND_SEQ) { rSeq[dst].release(); rSeq[dst] = null; }
+                    rKind[dst] = Value.KIND_INT;
+                    rInt[dst] = (short) (ins >>> 16);
                 }
-                case LoadNone -> {
-                    setReg(base + Instr.a(ins), Value.NONE);
+                case OP_LOAD_NONE -> {
+                    final int dst = base + ((ins >>> 8) & 0xFF);
+                    if (rKind[dst] == Value.KIND_SEQ) { rSeq[dst].release(); rSeq[dst] = null; }
+                    rKind[dst] = Value.KIND_NONE;
                 }
-                case Move -> {
-                    setReg(base + Instr.a(ins), regs[base + Instr.b(ins)]);
+                case OP_MOVE -> {
+                    copyReg(base + ((ins >>> 8) & 0xFF), base + ((ins >>> 16) & 0xFF));
                 }
-                case GetGlobal -> {
-                    int gidx = Instr.bx(ins);
-                    Value v = globals[gidx];
-                    if (v.isNone()) {
+                case OP_GET_GLOBAL -> {
+                    final int gidx = (ins >>> 16) & 0xFFFF;
+                    final Value v = globs[gidx];
+                    if (v.kind == Value.KIND_NONE) {
+                        frame.ip = ip;
                         runtimeError(frame, "Globale Variable '" + prog.globals.get(gidx).name + "' hat noch keinen Wert");
                         return false;
                     }
-                    setReg(base + Instr.a(ins), v);
+                    setReg(base + ((ins >>> 8) & 0xFF), v);
                 }
-                case SetGlobal -> {
-                    int gidx = Instr.bx(ins);
-                    Value val = regs[base + Instr.a(ins)];
-                    VarType vt = prog.globals.get(gidx).type;
+                case OP_SET_GLOBAL -> {
+                    final int gidx = (ins >>> 16) & 0xFFFF;
+                    final Value val = getReg(base + ((ins >>> 8) & 0xFF));
+                    final VarType vt = fastGT[gidx];
                     if (!val.checkVarType(vt)) {
+                        frame.ip = ip;
                         runtimeError(frame, "Typfehler (type_check failure): Globale Variable '" +
                             prog.globals.get(gidx).name + "' erwartet '" + vt.TypeName() + "'");
                         return false;
                     }
                     setGlobal(gidx, val);
                 }
-                case TakeGlobal -> {
-                    int gidx = Instr.bx(ins);
-                    Value v = globals[gidx];
-                    // Move ownership from globals[gidx] to regs[base + a] without incrementing refCount!
-                    Value oldReg = regs[base + Instr.a(ins)];
-                    if (oldReg != null) oldReg.release();
-                    regs[base + Instr.a(ins)] = v;
-                    globals[gidx] = Value.NONE;
+                case OP_TAKE_GLOBAL -> {
+                    final int gidx = (ins >>> 16) & 0xFFFF;
+                    final Value v = globs[gidx];
+                    final int dst = base + ((ins >>> 8) & 0xFF);
+                    if (rKind[dst] == Value.KIND_SEQ) { rSeq[dst].release(); rSeq[dst] = null; }
+                    final byte vk = v.kind;
+                    rKind[dst] = vk;
+                    if (vk == Value.KIND_INT) rInt[dst] = v.intVal;
+                    else if (vk == Value.KIND_F64) rF64[dst] = v.floatVal;
+                    else if (vk == Value.KIND_SEQ) rSeq[dst] = v;
+                    globs[gidx] = Value.NONE;
                 }
-                case CheckType -> {
-                    Value val = regs[base + Instr.a(ins)];
-                    int bx = Instr.bx(ins);
+                case OP_CHECK_TYPE -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int bx = (ins >>> 16) & 0xFFFF;
                     if (bx < 4) {
-                        VarType vt = VarType.fromCode(bx);
-                        if (!val.checkVarType(vt)) {
-                            runtimeError(frame, "Typfehler (type_check failure): Variable erwartet '" + vt.TypeName() + "'");
-                            return false;
-                        }
+                        if (!execCheckTypeBuiltin(ra, bx, frame, ip)) return false;
                     } else {
-                        int customRid = bx - 4;
-                        if (customRid > 0 && customRid < prog.routines.size()) {
-                            RoutineProto tr = prog.routines.get(customRid);
-                            int newBase = frame.baseReg + frame.routine.maxRegs + 2;
-                            int scratchRet = newBase - 1;
-                            setReg(newBase, val);
-                            frame = new CallFrame(tr, 0, newBase, scratchRet);
-                            frames.add(frame);
-                            base = frame.baseReg;
-                            code = frame.routine.fastCode();
+                        final int customRid = bx - 4;
+                        if (customRid > 0 && customRid < fastR.length) {
+                            final RoutineProto tr = fastR[customRid];
+                            final int newBase = base + frame.routine.maxRegs + 2;
+                            copyReg(newBase, ra);
+                            frame.ip = ip;
+                            frame = pushFrame(tr, 0, newBase, newBase - 1);
+                            base = newBase;
+                            code = frame.code;
+                            ip = 0;
                         }
                     }
                 }
-                case Add, Sub, Mul, Div, Eq, Neq, Lt, Le, Gt, Ge, And, Or, Xor -> {
-                    Value lhs = regs[base + Instr.b(ins)];
-                    Value rhs = regs[base + Instr.c(ins)];
-
-                    if (lhs.isInt() && rhs.isInt()) {
-                        long a = lhs.asInt();
-                        long b = rhs.asInt();
-                        switch (op) {
-                            case Add -> { setReg(base + Instr.a(ins), Value.fromInt(a + b)); continue; }
-                            case Sub -> { setReg(base + Instr.a(ins), Value.fromInt(a - b)); continue; }
-                            case Lt  -> { setReg(base + Instr.a(ins), Value.fromInt(a <  b ? 1 : 0)); continue; }
-                            case Le  -> { setReg(base + Instr.a(ins), Value.fromInt(a <= b ? 1 : 0)); continue; }
-                            case Gt  -> { setReg(base + Instr.a(ins), Value.fromInt(a >  b ? 1 : 0)); continue; }
-                            case Ge  -> { setReg(base + Instr.a(ins), Value.fromInt(a >= b ? 1 : 0)); continue; }
-                            case Eq  -> { setReg(base + Instr.a(ins), Value.fromInt(a == b ? 1 : 0)); continue; }
-                            case Neq -> { setReg(base + Instr.a(ins), Value.fromInt(a != b ? 1 : 0)); continue; }
-                            default -> {}
+                case OP_ADD -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) {
+                        setRegInt(ra, rInt[rb] + rInt[rc]);
+                    } else if (!execBinopSlow(OP_ADD, ra, rb, rc, frame, ip)) {
+                        return false;
+                    }
+                }
+                case OP_SUB -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) {
+                        setRegInt(ra, rInt[rb] - rInt[rc]);
+                    } else if (!execBinopSlow(OP_SUB, ra, rb, rc, frame, ip)) {
+                        return false;
+                    }
+                }
+                case OP_MUL -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) {
+                        final long a = rInt[rb], b = rInt[rc];
+                        final long lo = a * b;
+                        if (Math.multiplyHigh(a, b) == (lo >> 63) && ((lo << 16) >> 16) == lo) {
+                            if (rKind[ra] == Value.KIND_SEQ) { rSeq[ra].release(); rSeq[ra] = null; }
+                            rKind[ra] = Value.KIND_INT;
+                            rInt[ra] = lo;
+                        } else {
+                            setRegF64(ra, (double) a * (double) b);
                         }
-                    }
-
-                    Value.BinOp bop = switch (op) {
-                        case Add -> Value.BinOp.Add;
-                        case Sub -> Value.BinOp.Sub;
-                        case Mul -> Value.BinOp.Mul;
-                        case Div -> Value.BinOp.Div;
-                        case Eq  -> Value.BinOp.Eq;
-                        case Neq -> Value.BinOp.Neq;
-                        case Lt  -> Value.BinOp.Lt;
-                        case Le  -> Value.BinOp.Le;
-                        case Gt  -> Value.BinOp.Gt;
-                        case Ge  -> Value.BinOp.Ge;
-                        case And -> Value.BinOp.And;
-                        case Or  -> Value.BinOp.Or;
-                        case Xor -> Value.BinOp.Xor;
-                        default  -> Value.BinOp.Add;
-                    };
-                    String[] err = new String[1];
-                    Value res = Value.evalBinop(bop, lhs, rhs, err);
-                    if (err[0] != null) {
-                        runtimeError(frame, err[0]);
+                    } else if (!execBinopSlow(OP_MUL, ra, rb, rc, frame, ip)) {
                         return false;
                     }
-                    setReg(base + Instr.a(ins), res);
                 }
-                case Concat -> {
-                    setReg(base + Instr.a(ins), Value.evalConcat(regs[base + Instr.b(ins)], regs[base + Instr.c(ins)]));
-                }
-                case Neg, Not -> {
-                    String[] err = new String[1];
-                    Value.UnaryOp uop = (op == Op.Neg) ? Value.UnaryOp.Neg : Value.UnaryOp.Not;
-                    Value res = Value.evalUnary(uop, regs[base + Instr.b(ins)], err);
-                    if (err[0] != null) {
-                        runtimeError(frame, err[0]);
+                case OP_DIV -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) {
+                        final long a = rInt[rb], b = rInt[rc];
+                        if (b == 0L) { frame.ip = ip; runtimeError(frame, "Division durch 0 (attempt to divide by 0)"); return false; }
+                        if (a % b == 0L) setRegInt(ra, a / b);
+                        else setRegF64(ra, (double) a / (double) b);
+                    } else if (!execBinopSlow(OP_DIV, ra, rb, rc, frame, ip)) {
                         return false;
                     }
-                    setReg(base + Instr.a(ins), res);
                 }
-                case EqualObj -> {
-                    boolean eq = Value.equal(regs[base + Instr.b(ins)], regs[base + Instr.c(ins)]);
-                    setReg(base + Instr.a(ins), Value.fromInt(eq ? 1 : 0));
+                case OP_CONCAT -> {
+                    setReg(base + ((ins >>> 8) & 0xFF),
+                        Value.evalConcat(getReg(base + ((ins >>> 16) & 0xFF)), getReg(base + ((ins >>> 24) & 0xFF))));
                 }
-                case NewSeq -> {
-                    int start = Instr.b(ins);
-                    int count = Instr.c(ins);
-                    Sequence seq = new Sequence(count);
-                    for (int i = 0; i < count; i++) {
-                        seq.setElement(i, regs[base + start + i]);
+                case OP_EQ -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) setRegBool(ra, rInt[rb] == rInt[rc]);
+                    else if (!execBinopSlow(OP_EQ, ra, rb, rc, frame, ip)) return false;
+                }
+                case OP_NEQ -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) setRegBool(ra, rInt[rb] != rInt[rc]);
+                    else if (!execBinopSlow(OP_NEQ, ra, rb, rc, frame, ip)) return false;
+                }
+                case OP_LT -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) setRegBool(ra, rInt[rb] < rInt[rc]);
+                    else if (!execBinopSlow(OP_LT, ra, rb, rc, frame, ip)) return false;
+                }
+                case OP_LE -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) setRegBool(ra, rInt[rb] <= rInt[rc]);
+                    else if (!execBinopSlow(OP_LE, ra, rb, rc, frame, ip)) return false;
+                }
+                case OP_GT -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) setRegBool(ra, rInt[rb] > rInt[rc]);
+                    else if (!execBinopSlow(OP_GT, ra, rb, rc, frame, ip)) return false;
+                }
+                case OP_GE -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) setRegBool(ra, rInt[rb] >= rInt[rc]);
+                    else if (!execBinopSlow(OP_GE, ra, rb, rc, frame, ip)) return false;
+                }
+                case OP_AND, OP_OR, OP_XOR -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (!execBinopSlow(ins & 0xFF, ra, rb, rc, frame, ip)) return false;
+                }
+                case OP_NEG -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT) setRegInt(ra, -rInt[rb]);
+                    else if (!execUnarySlow(OP_NEG, ra, rb, frame, ip)) return false;
+                }
+                case OP_NOT -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    if (rKind[rb] == Value.KIND_INT) setRegBool(ra, rInt[rb] == 0L);
+                    else if (!execUnarySlow(OP_NOT, ra, rb, frame, ip)) return false;
+                }
+                case OP_EQUAL_OBJ -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    final boolean eq = (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT)
+                        ? (rInt[rb] == rInt[rc]) : Value.equal(getReg(rb), getReg(rc));
+                    setRegBool(ra, eq);
+                }
+                case OP_NEW_SEQ -> {
+                    final int start = (ins >>> 16) & 0xFF;
+                    final int count = (ins >>> 24) & 0xFF;
+                    final Sequence seq = new Sequence(count);
+                    for (int i = 0; i < count; i++) seq.add(getReg(base + start + i));
+                    setReg(base + ((ins >>> 8) & 0xFF), Value.fromSeq(seq));
+                }
+                case OP_LEN -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final byte kb = rKind[rb];
+                    if (kb == Value.KIND_SEQ) setRegInt(ra, rSeq[rb].seqVal.len);
+                    else if (kb == Value.KIND_INT || kb == Value.KIND_F64) setRegInt(ra, 1L);
+                    else { frame.ip = ip; runtimeError(frame, "length() / '$' erfordert eine Sequenz oder ein Atom"); return false; }
+                }
+                case OP_GET_IDX -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[rb] != Value.KIND_SEQ) {
+                        frame.ip = ip; runtimeError(frame, "Indizierung 's[i]' auf ein Atom angewendet (Sequenz erwartet)"); return false;
                     }
-                    setReg(base + Instr.a(ins), Value.fromSeq(seq));
+                    final byte ck = rKind[rc];
+                    long idx;
+                    if (ck == Value.KIND_INT) idx = rInt[rc];
+                    else if (ck == Value.KIND_F64) idx = (long) Math.floor(rF64[rc]);
+                    else { frame.ip = ip; runtimeError(frame, "Sequenz-Index muss ein Atom (Zahl) sein"); return false; }
+                    final Sequence s = rSeq[rb].seqVal;
+                    if (idx < 1 || idx > s.len) {
+                        frame.ip = ip;
+                        runtimeError(frame, String.format("Index %d außerhalb des gültigen Bereichs 1..%d (subscript out of bounds)", idx, s.len));
+                        return false;
+                    }
+                    setReg(ra, s.data[(int) idx - 1]);
                 }
-                case Len -> {
-                    Value v = regs[base + Instr.b(ins)];
-                    if (v.isAtom()) {
-                        setReg(base + Instr.a(ins), Value.fromInt(1));
-                    } else if (v.isSeq()) {
-                        setReg(base + Instr.a(ins), Value.fromInt(v.asSeq().size()));
+                case OP_SET_IDX -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final int rb = base + ((ins >>> 16) & 0xFF);
+                    final int rc = base + ((ins >>> 24) & 0xFF);
+                    if (rKind[ra] != Value.KIND_SEQ) {
+                        frame.ip = ip; runtimeError(frame, "Index-Zuweisung 's[i] = x' auf ein Atom angewendet"); return false;
+                    }
+                    final byte bk = rKind[rb];
+                    long idx;
+                    if (bk == Value.KIND_INT) idx = rInt[rb];
+                    else if (bk == Value.KIND_F64) idx = (long) Math.floor(rF64[rb]);
+                    else { frame.ip = ip; runtimeError(frame, "Sequenz-Index muss ein Atom (Zahl) sein"); return false; }
+                    Sequence s = rSeq[ra].seqVal;
+                    if (s.refCount > 1) s = ensureUniqueReg(ra);
+                    if (idx < 1 || idx > s.len) {
+                        frame.ip = ip;
+                        runtimeError(frame, String.format("Index %d außerhalb des gültigen Bereichs 1..%d bei Zuweisung", idx, s.len));
+                        return false;
+                    }
+                    final int pos = (int) idx - 1;
+                    final Value old = s.data[pos];
+                    final byte ck = rKind[rc];
+                    if (ck == Value.KIND_INT) {
+                        s.data[pos] = Value.fromInt(rInt[rc]);
+                    } else if (ck == Value.KIND_F64) {
+                        s.data[pos] = Value.fromF64(rF64[rc]);
+                    } else if (ck == Value.KIND_SEQ) {
+                        final Value rhs = rSeq[rc];
+                        rhs.seqVal.refCount++;
+                        s.data[pos] = rhs;
                     } else {
-                        runtimeError(frame, "length() / '$' erfordert eine Sequenz oder ein Atom");
+                        s.data[pos] = Value.NONE;
+                    }
+                    if (old != null && old.kind == Value.KIND_SEQ) old.release();
+                }
+                case OP_GET_SLICE -> {
+                    if (!execGetSlice(base + ((ins >>> 8) & 0xFF), base + ((ins >>> 16) & 0xFF), base + ((ins >>> 24) & 0xFF), frame, ip)) {
                         return false;
                     }
                 }
-                case GetIdx -> {
-                    Value seqVal = regs[base + Instr.b(ins)];
-                    Value idxVal = regs[base + Instr.c(ins)];
-                    if (!seqVal.isSeq()) {
-                        runtimeError(frame, "Indizierung 's[i]' auf ein Atom angewendet (Sequenz erwartet)");
+                case OP_SET_SLICE -> {
+                    if (!execSetSlice(base + ((ins >>> 8) & 0xFF), base + ((ins >>> 16) & 0xFF), base + ((ins >>> 24) & 0xFF), frame, ip)) {
                         return false;
-                    }
-                    if (!idxVal.isAtom()) {
-                        runtimeError(frame, "Sequenz-Index muss ein Atom (Zahl) sein");
-                        return false;
-                    }
-                    Sequence s = seqVal.asSeq();
-                    long idx = idxVal.toIntCoerce();
-                    if (idx < 1 || idx > s.size()) {
-                        runtimeError(frame, String.format(
-                            "Index %d außerhalb des gültigen Bereichs 1..%d (subscript out of bounds)", idx, s.size()));
-                        return false;
-                    }
-                    Value elem = s.get((int) (idx - 1));
-                    setReg(base + Instr.a(ins), elem);
-                }
-                case SetIdx -> {
-                    int targetReg = base + Instr.a(ins);
-                    Value seqVal = regs[targetReg];
-                    Value idxVal = regs[base + Instr.b(ins)];
-                    Value rhs = regs[base + Instr.c(ins)];
-                    if (!seqVal.isSeq()) {
-                        runtimeError(frame, "Index-Zuweisung 's[i] = x' auf ein Atom angewendet");
-                        return false;
-                    }
-                    if (!idxVal.isAtom()) {
-                        runtimeError(frame, "Sequenz-Index muss ein Atom (Zahl) sein");
-                        return false;
-                    }
-                    long idx = idxVal.toIntCoerce();
-                    Sequence s = ensureUniqueReg(targetReg);
-                    if (idx < 1 || idx > s.size()) {
-                        runtimeError(frame, String.format(
-                            "Index %d außerhalb des gültigen Bereichs 1..%d bei Zuweisung", idx, s.size()));
-                        return false;
-                    }
-                    s.setElement((int) (idx - 1), rhs);
-                }
-                case GetSlice -> {
-                    Value seqVal = regs[base + Instr.b(ins)];
-                    int idxReg = base + Instr.c(ins);
-                    Value startVal = regs[idxReg];
-                    Value endVal = regs[idxReg + 1];
-                    if (!seqVal.isSeq()) {
-                        runtimeError(frame, "Slicing 's[a..b]' auf ein Atom angewendet");
-                        return false;
-                    }
-                    if (!startVal.isAtom() || !endVal.isAtom()) {
-                        runtimeError(frame, "Slice-Grenzen müssen Atome sein");
-                        return false;
-                    }
-                    Sequence s = seqVal.asSeq();
-                    long a = startVal.toIntCoerce();
-                    long b = endVal.toIntCoerce();
-                    int len = s.size();
-
-                    if (a == b + 1 && a >= 1 && a <= len + 1) {
-                        setReg(base + Instr.a(ins), Value.emptySeq());
-                        break;
-                    }
-                    if (a < 1 || b < a || b > len) {
-                        runtimeError(frame, String.format("Slice [%d..%d] außerhalb des Bereichs 1..%d", a, b, len));
-                        return false;
-                    }
-                    int sliceLen = (int) (b - a + 1);
-                    Sequence out = new Sequence(sliceLen);
-                    for (int i = 0; i < sliceLen; i++) {
-                        out.setElement(i, s.get((int) (a - 1) + i));
-                    }
-                    setReg(base + Instr.a(ins), Value.fromSeq(out));
-                }
-                case SetSlice -> {
-                    int targetReg = base + Instr.a(ins);
-                    Value seqVal = regs[targetReg];
-                    int idxReg = base + Instr.b(ins);
-                    Value startVal = regs[idxReg];
-                    Value endVal = regs[idxReg + 1];
-                    Value rhs = regs[base + Instr.c(ins)];
-                    if (!seqVal.isSeq()) {
-                        runtimeError(frame, "Slice-Zuweisung 's[a..b] = x' auf ein Atom angewendet");
-                        return false;
-                    }
-                    Sequence s = ensureUniqueReg(targetReg);
-                    long a = startVal.toIntCoerce();
-                    long b = endVal.toIntCoerce();
-                    int len = s.size();
-                    if (a < 1 || b < a - 1 || b > len) {
-                        runtimeError(frame, "Slice-Grenzen bei Zuweisung außerhalb des gültigen Bereichs");
-                        return false;
-                    }
-                    int sliceLen = (int) (b - a + 1);
-                    if (rhs.isAtom()) {
-                        for (int i = 0; i < sliceLen; i++) {
-                            s.setElement((int) (a - 1) + i, rhs);
-                        }
-                    } else if (rhs.isSeq()) {
-                        Sequence sr = rhs.asSeq();
-                        s.replaceRange((int) (a - 1), (int) b, sr);
                     }
                 }
-                case Jmp -> {
-                    frame.ip += Instr.sbx(ins);
+                case OP_JMP -> {
+                    ip += (short) (ins >>> 16);
                 }
-                case JmpFalse -> {
-                    boolean[] ok = new boolean[1];
-                    boolean truth = regs[base + Instr.a(ins)].isTruthy(ok);
-                    if (!ok[0]) {
+                case OP_JMP_FALSE -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final byte k = rKind[ra];
+                    if (k == Value.KIND_INT) {
+                        if (rInt[ra] == 0L) ip += (short) (ins >>> 16);
+                    } else if (k == Value.KIND_F64) {
+                        if (rF64[ra] == 0.0) ip += (short) (ins >>> 16);
+                    } else {
+                        frame.ip = ip;
                         runtimeError(frame, "Bedingung in 'if'/'while'/'until' muss ein Atom sein, keine Sequenz!");
                         return false;
                     }
-                    if (!truth) {
-                        frame.ip += Instr.sbx(ins);
-                    }
                 }
-                case JmpTrue -> {
-                    boolean[] ok = new boolean[1];
-                    boolean truth = regs[base + Instr.a(ins)].isTruthy(ok);
-                    if (!ok[0]) {
+                case OP_JMP_TRUE -> {
+                    final int ra = base + ((ins >>> 8) & 0xFF);
+                    final byte k = rKind[ra];
+                    if (k == Value.KIND_INT) {
+                        if (rInt[ra] != 0L) ip += (short) (ins >>> 16);
+                    } else if (k == Value.KIND_F64) {
+                        if (rF64[ra] != 0.0) ip += (short) (ins >>> 16);
+                    } else {
+                        frame.ip = ip;
                         runtimeError(frame, "Bedingung muss ein Atom sein");
                         return false;
                     }
-                    if (truth) {
-                        frame.ip += Instr.sbx(ins);
+                }
+                case OP_JMP_IF_NOT_NONE -> {
+                    if (rKind[base + ((ins >>> 8) & 0xFF)] != Value.KIND_NONE) ip += (short) (ins >>> 16);
+                }
+                case OP_FOR_PREP -> {
+                    final int r = base + ((ins >>> 8) & 0xFF);
+                    final byte k0 = rKind[r], k1 = rKind[r + 1], k2 = rKind[r + 2];
+                    if (k0 == Value.KIND_INT && k1 == Value.KIND_INT && k2 == Value.KIND_INT) {
+                        final long cur = rInt[r], lim = rInt[r + 1], step = rInt[r + 2];
+                        if ((step >= 0L && cur > lim) || (step < 0L && cur < lim)) ip += (short) (ins >>> 16);
+                    } else if ((k0 == Value.KIND_INT || k0 == Value.KIND_F64) &&
+                               (k1 == Value.KIND_INT || k1 == Value.KIND_F64) &&
+                               (k2 == Value.KIND_INT || k2 == Value.KIND_F64)) {
+                        final double cur = (k0 == Value.KIND_INT) ? (double) rInt[r] : rF64[r];
+                        final double lim = (k1 == Value.KIND_INT) ? (double) rInt[r + 1] : rF64[r + 1];
+                        final double step = (k2 == Value.KIND_INT) ? (double) rInt[r + 2] : rF64[r + 2];
+                        if ((step >= 0.0 && cur > lim) || (step < 0.0 && cur < lim)) ip += (short) (ins >>> 16);
+                    } else {
+                        frame.ip = ip; runtimeError(frame, "'for'-Schleifengrenzen und Schrittweite müssen Atome sein"); return false;
                     }
                 }
-                case JmpIfNotNone -> {
-                    if (!regs[base + Instr.a(ins)].isNone()) {
-                        frame.ip += Instr.sbx(ins);
-                    }
-                }
-                case ForPrep -> {
-                    int r = base + Instr.a(ins);
-                    Value vVar = regs[r];
-                    Value vLim = regs[r + 1];
-                    Value vStep = regs[r + 2];
-                    if (!vVar.isAtom() || !vLim.isAtom() || !vStep.isAtom()) {
-                        runtimeError(frame, "'for'-Schleifengrenzen und Schrittweite müssen Atome sein");
-                        return false;
-                    }
-                    double cur = vVar.asF64();
-                    double lim = vLim.asF64();
-                    double step = vStep.asF64();
-                    if ((step >= 0.0 && cur > lim) || (step < 0.0 && cur < lim)) {
-                        frame.ip += Instr.sbx(ins);
-                    }
-                }
-                case ForLoop -> {
-                    int r = base + Instr.a(ins);
-                    Value vVar = regs[r];
-                    Value vLim = regs[r + 1];
-                    Value vStep = regs[r + 2];
-
-                    if (vVar.isInt() && vLim.isInt() && vStep.isInt()) {
-                        long nextVal = vVar.asInt() + vStep.asInt();
-                        long lim = vLim.asInt();
-                        long step = vStep.asInt();
-                        setReg(r, Value.fromInt(nextVal));
-                        if ((step >= 0 && nextVal <= lim) || (step < 0 && nextVal >= lim)) {
-                            frame.ip += Instr.sbx(ins);
+                case OP_FOR_LOOP -> {
+                    final int r = base + ((ins >>> 8) & 0xFF);
+                    if (rKind[r] == Value.KIND_INT && rKind[r + 1] == Value.KIND_INT && rKind[r + 2] == Value.KIND_INT) {
+                        final long step = rInt[r + 2];
+                        final long nextVal = rInt[r] + step;
+                        if (((nextVal << 16) >> 16) == nextVal) rInt[r] = nextVal;
+                        else { rKind[r] = Value.KIND_F64; rF64[r] = (double) nextVal; }
+                        if ((step >= 0L && nextVal <= rInt[r + 1]) || (step < 0L && nextVal >= rInt[r + 1])) {
+                            ip += (short) (ins >>> 16);
                         }
                     } else {
-                        double nextVal = vVar.asF64() + vStep.asF64();
-                        double lim = vLim.asF64();
-                        double step = vStep.asF64();
-                        setReg(r, Value.fromF64(nextVal));
+                        final double cur = (rKind[r] == Value.KIND_INT) ? (double) rInt[r] : rF64[r];
+                        final double lim = (rKind[r + 1] == Value.KIND_INT) ? (double) rInt[r + 1] : rF64[r + 1];
+                        final double step = (rKind[r + 2] == Value.KIND_INT) ? (double) rInt[r + 2] : rF64[r + 2];
+                        final double nextVal = cur + step;
+                        rKind[r] = Value.KIND_F64;
+                        rF64[r] = nextVal;
                         if ((step >= 0.0 && nextVal <= lim) || (step < 0.0 && nextVal >= lim)) {
-                            frame.ip += Instr.sbx(ins);
+                            ip += (short) (ins >>> 16);
                         }
                     }
                 }
-                case Call -> {
-                    int dest = Instr.a(ins);
-                    int rIdx = Instr.bx(ins);
-                    RoutineProto target = prog.routines.get(rIdx);
-                    int newBase = frame.baseReg + frame.routine.maxRegs + 2;
-                    if (newBase + target.maxRegs >= regs.length) {
-                        runtimeError(frame, "Register-Stack-Überlauf (zu tiefe Rekursion)");
+                case OP_CALL -> {
+                    final int dest = (ins >>> 8) & 0xFF;
+                    final RoutineProto target = fastR[(ins >>> 16) & 0xFFFF];
+                    final int newBase = base + frame.routine.maxRegs + 2;
+                    if (newBase + target.maxRegs >= REGISTER_STACK_SIZE || frameDepth >= MAX_CALL_FRAMES) {
+                        frame.ip = ip;
+                        runtimeError(frame, "Stack-Überlauf (zu tiefe Rekursion)");
                         return false;
                     }
-                    if (frames.size() >= MAX_CALL_FRAMES) {
-                        runtimeError(frame, "Call-Stack-Überlauf (maximale Rekursionstiefe erreicht)");
-                        return false;
+                    final int argBase = base + dest + 1;
+                    final int arity = target.arity;
+                    for (int i = 0; i < arity; i++) {
+                        copyReg(newBase + i, argBase + i);
                     }
-                    for (int i = 0; i < target.arity; i++) {
-                        setReg(newBase + i, regs[base + dest + 1 + i]);
-                    }
-                    int retReg = frame.baseReg + dest;
-                    frame = new CallFrame(target, 0, newBase, retReg);
-                    frames.add(frame);
-                    base = frame.baseReg;
-                    code = frame.routine.fastCode();
+                    frame.ip = ip;
+                    frame = pushFrame(target, 0, newBase, base + dest);
+                    base = newBase;
+                    code = frame.code;
+                    ip = 0;
                 }
-                case Builtin -> {
-                    int dest = Instr.a(ins);
-                    BuiltinId bid = BuiltinId.VALUES[Instr.b(ins)];
-                    int argc = Instr.c(ins);
-                    if (!execBuiltin(bid, base, dest, argc, frame)) {
+                case OP_BUILTIN -> {
+                    frame.ip = ip;
+                    if (!execBuiltin(BuiltinId.VALUES[(ins >>> 16) & 0xFF], base, (ins >>> 8) & 0xFF, (ins >>> 24) & 0xFF, frame)) {
                         return false;
                     }
-                    frame = frames.get(frames.size() - 1);
+                    frame = fStack[frameDepth - 1];
                     base = frame.baseReg;
-                    code = frame.routine.fastCode();
+                    code = frame.code;
+                    ip = frame.ip;
                 }
-                case PrintQ -> {
-                    regs[base + Instr.a(ins)].printPretty(System.out);
+                case OP_PRINT_Q -> {
+                    getReg(base + ((ins >>> 8) & 0xFF)).printPretty(System.out);
                     System.out.print('\n');
                     System.out.flush();
                 }
-                case Return -> {
-                    boolean hasVal = (Instr.b(ins) != 0);
-                    boolean wasTypeCheck = frame.routine.isType;
-                    String rname = frame.routine.name;
-                    Value retVal = hasVal ? regs[base + Instr.a(ins)] : Value.fromInt(0);
-                    retVal.retain();
-                    int retReg = frame.callerRetReg;
+                case OP_RETURN -> {
+                    final boolean hasVal = (((ins >>> 16) & 0xFF) != 0);
+                    final boolean wasTypeCheck = frame.routine.isType;
+                    final String rname = frame.routine.name;
+                    final int retReg = frame.callerRetReg;
+                    final int oldBase = base;
+                    final int endClear = oldBase + frame.routine.maxRegs;
 
-                    int oldBase = frame.baseReg;
-                    int maxR = frame.routine.maxRegs;
-                    frames.remove(frames.size() - 1);
-                    for (int i = 0; i < maxR; i++) {
-                        setReg(oldBase + i, Value.NONE);
+                    byte rk = Value.KIND_INT;
+                    long ri = 0L;
+                    double rf = 0.0;
+                    Value rs = null;
+                    if (hasVal) {
+                        final int src = base + ((ins >>> 8) & 0xFF);
+                        rk = rKind[src];
+                        if (rk == Value.KIND_INT) ri = rInt[src];
+                        else if (rk == Value.KIND_F64) rf = rF64[src];
+                        else if (rk == Value.KIND_SEQ) { rs = rSeq[src]; rs.seqVal.refCount++; }
                     }
 
-                    if (frames.isEmpty()) {
-                        this.lastReturnValue = deepCopyValue(retVal);
-                        setReg(0, retVal);
-                        retVal.release();
-                        if (currentTaskId != 0) {
-                            TaskInfo cur = tasks.get(currentTaskId);
-                            if (cur != null) {
-                                cur.state = TaskState.TERMINATED;
-                                cur.frames.clear();
-                                if (cur.regs != null) {
-                                    for (int i = 0; i < REGISTER_STACK_SIZE; i++) {
-                                        if (cur.regs[i] != null) cur.regs[i].release();
-                                    }
-                                    cur.regs = null;
-                                }
-                                if (cur.args != null) {
-                                    cur.args.release();
-                                }
-                            }
-                            if (!switchToNextTask()) {
-                                return true;
-                            }
-                            frame = frames.get(frames.size() - 1);
-                            base = frame.baseReg;
-                            code = frame.routine.fastCode();
-                            break;
-                        }
-                        return true;
+                    frameDepth--;
+                    for (int i = oldBase; i < endClear; i++) {
+                        if (rKind[i] == Value.KIND_SEQ) { rSeq[i].release(); rSeq[i] = null; }
+                        rKind[i] = Value.KIND_NONE;
                     }
-                    frame = frames.get(frames.size() - 1);
+
+                    if (frameDepth == 0) {
+                        if (!execReturnToEmpty(rk, ri, rf, rs)) return true;
+                        frame = fStack[frameDepth - 1];
+                        base = frame.baseReg;
+                        code = frame.code;
+                        ip = frame.ip;
+                        break;
+                    }
+
+                    frame = fStack[frameDepth - 1];
                     base = frame.baseReg;
-                    code = frame.routine.fastCode();
+                    code = frame.code;
+                    ip = frame.ip;
 
                     if (wasTypeCheck && retReg == oldBase - 1) {
-                        boolean[] ok = new boolean[1];
-                        boolean truth = retVal.isTruthy(ok);
-                        retVal.release();
-                        if (!truth || !ok[0]) {
+                        boolean truth = (rk == Value.KIND_INT) ? (ri != 0L) : (rk == Value.KIND_F64 && rf != 0.0);
+                        if (rk == Value.KIND_SEQ && rs != null) rs.release();
+                        if (!truth) {
                             runtimeError(frame, "Benutzerdefinierte Typprüfung fehlgeschlagen (type_check failure): '" + rname + "'");
                             return false;
                         }
                     } else {
-                        setReg(retReg, retVal);
-                        retVal.release();
+                        if (rKind[retReg] == Value.KIND_SEQ) { rSeq[retReg].release(); rSeq[retReg] = null; }
+                        rKind[retReg] = rk;
+                        if (rk == Value.KIND_INT) rInt[retReg] = ri;
+                        else if (rk == Value.KIND_F64) rF64[retReg] = rf;
+                        else if (rk == Value.KIND_SEQ) rSeq[retReg] = rs;
                     }
                 }
-                case Halt -> {
+                case OP_HALT -> {
                     return true;
                 }
             }
@@ -1355,7 +1758,7 @@ public final class VM {
 
         switch (id) {
             case Length -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc != 1 || (!a0.isSeq() && !a0.isAtom())) {
                     runtimeError(frame, "length(s) erwartet genau 1 Sequenz oder Atom");
                     return false;
@@ -1364,12 +1767,12 @@ public final class VM {
                 return true;
             }
             case Append -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc != 2 || !a0.isSeq()) {
                     runtimeError(frame, "append(seq, x) erwartet eine Sequenz als 1. Argument");
                     return false;
                 }
-                Value elem = regs[argsIdx + 1];
+                Value elem = getReg(argsIdx + 1);
                 elem.retain();
                 setReg(base + dest, a0);
                 setReg(argsIdx, Value.NONE);
@@ -1379,12 +1782,12 @@ public final class VM {
                 return true;
             }
             case Prepend -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc != 2 || !a0.isSeq()) {
                     runtimeError(frame, "prepend(seq, x) erwartet eine Sequenz als 1. Argument");
                     return false;
                 }
-                Value elem = regs[argsIdx + 1];
+                Value elem = getReg(argsIdx + 1);
                 elem.retain();
                 setReg(base + dest, a0);
                 setReg(argsIdx, Value.NONE);
@@ -1394,8 +1797,8 @@ public final class VM {
                 return true;
             }
             case Repeat -> {
-                Value a0 = regs[argsIdx];
-                Value a1 = regs[argsIdx + 1];
+                Value a0 = getReg(argsIdx);
+                Value a1 = getReg(argsIdx + 1);
                 if (argc != 2 || !a1.isAtom()) {
                     runtimeError(frame, "repeat(item, count) erwartet Anzahl als 2. Argument");
                     return false;
@@ -1410,14 +1813,14 @@ public final class VM {
                 return true;
             }
             case Head -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc < 1 || argc > 2 || !a0.isSeq()) {
                     runtimeError(frame, "head(seq [, n]) erwartet eine Sequenz");
                     return false;
                 }
                 Sequence s = a0.asSeq();
-                int n = (argc == 2 && !regs[argsIdx + 1].isNone())
-                    ? (int) Math.max(0L, regs[argsIdx + 1].toIntCoerce())
+                int n = (argc == 2 && !getReg(argsIdx + 1).isNone())
+                    ? (int) Math.max(0L, getReg(argsIdx + 1).toIntCoerce())
                     : 1;
                 n = Math.min(n, s.size());
                 Sequence out = new Sequence(n);
@@ -1426,15 +1829,15 @@ public final class VM {
                 return true;
             }
             case Tail -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc < 1 || argc > 2 || !a0.isSeq()) {
                     runtimeError(frame, "tail(seq [, n]) erwartet eine Sequenz");
                     return false;
                 }
                 Sequence s = a0.asSeq();
                 int len = s.size();
-                int n = (argc == 2 && !regs[argsIdx + 1].isNone())
-                    ? (int) Math.max(0L, regs[argsIdx + 1].toIntCoerce())
+                int n = (argc == 2 && !getReg(argsIdx + 1).isNone())
+                    ? (int) Math.max(0L, getReg(argsIdx + 1).toIntCoerce())
                     : (len > 0 ? len - 1 : 0);
                 n = Math.min(n, len);
                 Sequence out = new Sequence(n);
@@ -1443,13 +1846,13 @@ public final class VM {
                 return true;
             }
             case Remove -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc < 2 || argc > 3 || !a0.isSeq()) {
                     runtimeError(frame, "remove(seq, start [, stop]) erwartet eine Sequenz");
                     return false;
                 }
-                long start = regs[argsIdx + 1].toIntCoerce();
-                long stop = (argc == 3 && !regs[argsIdx + 2].isNone()) ? regs[argsIdx + 2].toIntCoerce() : start;
+                long start = getReg(argsIdx + 1).toIntCoerce();
+                long stop = (argc == 3 && !getReg(argsIdx + 2).isNone()) ? getReg(argsIdx + 2).toIntCoerce() : start;
                 setReg(base + dest, a0);
                 setReg(argsIdx, Value.NONE);
                 Sequence s = ensureUniqueReg(base + dest);
@@ -1459,15 +1862,15 @@ public final class VM {
                 return true;
             }
             case Replace -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc < 3 || argc > 4 || !a0.isSeq()) {
                     runtimeError(frame, "replace(target, replacement, start [, stop]) erwartet eine Sequenz");
                     return false;
                 }
-                Value repVal = regs[argsIdx + 1];
+                Value repVal = getReg(argsIdx + 1);
                 repVal.retain();
-                long start = regs[argsIdx + 2].toIntCoerce();
-                long stop = (argc == 4 && !regs[argsIdx + 3].isNone()) ? regs[argsIdx + 3].toIntCoerce() : start;
+                long start = getReg(argsIdx + 2).toIntCoerce();
+                long stop = (argc == 4 && !getReg(argsIdx + 3).isNone()) ? getReg(argsIdx + 3).toIntCoerce() : start;
                 setReg(base + dest, a0);
                 setReg(argsIdx, Value.NONE);
                 Sequence s = ensureUniqueReg(base + dest);
@@ -1483,14 +1886,14 @@ public final class VM {
                 return true;
             }
             case Insert -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc != 3 || !a0.isSeq()) {
                     runtimeError(frame, "insert(seq, what, index) erwartet 3 Argumente");
                     return false;
                 }
-                Value what = regs[argsIdx + 1];
+                Value what = getReg(argsIdx + 1);
                 what.retain();
-                long rawIdx = regs[argsIdx + 2].toIntCoerce();
+                long rawIdx = getReg(argsIdx + 2).toIntCoerce();
                 setReg(base + dest, a0);
                 setReg(argsIdx, Value.NONE);
                 Sequence s = ensureUniqueReg(base + dest);
@@ -1500,14 +1903,14 @@ public final class VM {
                 return true;
             }
             case Splice -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc != 3 || !a0.isSeq()) {
                     runtimeError(frame, "splice(seq, what, index) erwartet 3 Argumente");
                     return false;
                 }
-                Value what = regs[argsIdx + 1];
+                Value what = getReg(argsIdx + 1);
                 what.retain();
-                long rawIdx = regs[argsIdx + 2].toIntCoerce();
+                long rawIdx = getReg(argsIdx + 2).toIntCoerce();
                 setReg(base + dest, a0);
                 setReg(argsIdx, Value.NONE);
                 Sequence s = ensureUniqueReg(base + dest);
@@ -1525,7 +1928,7 @@ public final class VM {
                     runtimeError(frame, "compare(a, b) erwartet 2 Argumente");
                     return false;
                 }
-                setReg(base + dest, Value.fromInt(Value.compare(regs[argsIdx], regs[argsIdx + 1])));
+                setReg(base + dest, Value.fromInt(Value.compare(getReg(argsIdx), getReg(argsIdx + 1))));
                 return true;
             }
             case Equal -> {
@@ -1533,19 +1936,19 @@ public final class VM {
                     runtimeError(frame, "equal(a, b) erwartet 2 Argumente");
                     return false;
                 }
-                setReg(base + dest, Value.fromInt(Value.equal(regs[argsIdx], regs[argsIdx + 1]) ? 1 : 0));
+                setReg(base + dest, Value.fromInt(Value.equal(getReg(argsIdx), getReg(argsIdx + 1)) ? 1 : 0));
                 return true;
             }
             case Find -> {
-                Value needle = regs[argsIdx];
-                Value hayVal = regs[argsIdx + 1];
+                Value needle = getReg(argsIdx);
+                Value hayVal = getReg(argsIdx + 1);
                 if (argc < 2 || argc > 3 || !hayVal.isSeq()) {
                     runtimeError(frame, "find(needle, haystack [, start]) erwartet eine Sequenz als 2. Argument");
                     return false;
                 }
                 Sequence hay = hayVal.asSeq();
-                int start = (argc == 3 && !regs[argsIdx + 2].isNone())
-                    ? (int) Math.max(1L, regs[argsIdx + 2].toIntCoerce())
+                int start = (argc == 3 && !getReg(argsIdx + 2).isNone())
+                    ? (int) Math.max(1L, getReg(argsIdx + 2).toIntCoerce())
                     : 1;
                 long found = 0;
                 for (int i = start; i <= hay.size(); i++) {
@@ -1558,8 +1961,8 @@ public final class VM {
                 return true;
             }
             case Match -> {
-                Value needleVal = regs[argsIdx];
-                Value hayVal = regs[argsIdx + 1];
+                Value needleVal = getReg(argsIdx);
+                Value hayVal = getReg(argsIdx + 1);
                 if (argc < 2 || argc > 3 || !needleVal.isSeq() || !hayVal.isSeq()) {
                     runtimeError(frame, "match(needle, haystack [, start]) erwartet zwei Sequenzen");
                     return false;
@@ -1570,8 +1973,8 @@ public final class VM {
                     setReg(base + dest, Value.fromInt(0));
                     return true;
                 }
-                int start = (argc == 3 && !regs[argsIdx + 2].isNone())
-                    ? (int) Math.max(1L, regs[argsIdx + 2].toIntCoerce())
+                int start = (argc == 3 && !getReg(argsIdx + 2).isNone())
+                    ? (int) Math.max(1L, getReg(argsIdx + 2).toIntCoerce())
                     : 1;
                 long found = 0;
                 int limit = hay.size() - needle.size() + 1;
@@ -1596,24 +1999,24 @@ public final class VM {
                     runtimeError(frame, "hash(source, algo) erwartet 2 Argumente");
                     return false;
                 }
-                long h = computeEuphoriaHash(regs[argsIdx], regs[argsIdx + 1].asF64());
+                long h = computeEuphoriaHash(getReg(argsIdx), getReg(argsIdx + 1).asF64());
                 setReg(base + dest, Value.fromInt(h));
                 return true;
             }
             case Atom -> {
-                setReg(base + dest, Value.fromInt(regs[argsIdx].isAtom() ? 1 : 0));
+                setReg(base + dest, Value.fromInt(getReg(argsIdx).isAtom() ? 1 : 0));
                 return true;
             }
             case Integer -> {
-                setReg(base + dest, Value.fromInt(regs[argsIdx].isEuphoriaInteger() ? 1 : 0));
+                setReg(base + dest, Value.fromInt(getReg(argsIdx).isEuphoriaInteger() ? 1 : 0));
                 return true;
             }
             case Sequence -> {
-                setReg(base + dest, Value.fromInt(regs[argsIdx].isSeq() ? 1 : 0));
+                setReg(base + dest, Value.fromInt(getReg(argsIdx).isSeq() ? 1 : 0));
                 return true;
             }
             case Object -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (a0.isNone()) setReg(base + dest, Value.fromInt(0));
                 else if (a0.isEuphoriaInteger()) setReg(base + dest, Value.fromInt(1));
                 else if (a0.isAtom()) setReg(base + dest, Value.fromInt(2));
@@ -1625,7 +2028,7 @@ public final class VM {
                     runtimeError(frame, "floor(x) erwartet 1 Argument");
                     return false;
                 }
-                setReg(base + dest, applyFloor(regs[argsIdx]));
+                setReg(base + dest, applyFloor(getReg(argsIdx)));
                 return true;
             }
             case Remainder, Power, AndBits, OrBits, XorBits -> {
@@ -1641,7 +2044,7 @@ public final class VM {
                     default      -> Value.BinOp.Remainder;
                 };
                 String[] err = new String[1];
-                Value res = Value.evalBinop(bop, regs[argsIdx], regs[argsIdx + 1], err);
+                Value res = Value.evalBinop(bop, getReg(argsIdx), getReg(argsIdx + 1), err);
                 if (err[0] != null) {
                     runtimeError(frame, err[0]);
                     return false;
@@ -1655,7 +2058,7 @@ public final class VM {
                     return false;
                 }
                 String[] err = new String[1];
-                Value res = Value.evalUnary(Value.UnaryOp.NotBits, regs[argsIdx], err);
+                Value res = Value.evalUnary(Value.UnaryOp.NotBits, getReg(argsIdx), err);
                 if (err[0] != null) {
                     runtimeError(frame, err[0]);
                     return false;
@@ -1668,7 +2071,7 @@ public final class VM {
                     runtimeError(frame, "Mathematische Funktion erwartet 1 Argument");
                     return false;
                 }
-                setReg(base + dest, applyMath(id, regs[argsIdx]));
+                setReg(base + dest, applyMath(id, getReg(argsIdx)));
                 return true;
             }
             case Rand -> {
@@ -1676,7 +2079,7 @@ public final class VM {
                     runtimeError(frame, "rand(max) erwartet 1 Argument");
                     return false;
                 }
-                setReg(base + dest, applyRand(regs[argsIdx]));
+                setReg(base + dest, applyRand(getReg(argsIdx)));
                 return true;
             }
             case Puts -> {
@@ -1684,8 +2087,8 @@ public final class VM {
                     runtimeError(frame, "puts(fn, text) erwartet 2 Argumente");
                     return false;
                 }
-                long handle = regs[argsIdx].toIntCoerce();
-                if (!writeCharsToHandle(handle, regs[argsIdx + 1])) {
+                long handle = getReg(argsIdx).toIntCoerce();
+                if (!writeCharsToHandle(handle, getReg(argsIdx + 1))) {
                     runtimeError(frame, "Ungültiges Datei-Handle in puts()");
                     return false;
                 }
@@ -1697,8 +2100,8 @@ public final class VM {
                     runtimeError(frame, "print(fn, x) erwartet 2 Argumente");
                     return false;
                 }
-                long handle = regs[argsIdx].toIntCoerce();
-                if (!writePrettyToHandle(handle, regs[argsIdx + 1])) {
+                long handle = getReg(argsIdx).toIntCoerce();
+                if (!writePrettyToHandle(handle, getReg(argsIdx + 1))) {
                     runtimeError(frame, "Ungültiges Datei-Handle in print()");
                     return false;
                 }
@@ -1710,9 +2113,9 @@ public final class VM {
                     runtimeError(frame, "printf(fn, fmt, args) erwartet 2 oder 3 Argumente");
                     return false;
                 }
-                long handle = regs[argsIdx].toIntCoerce();
-                String fmt = regs[argsIdx + 1].toUtf8String();
-                Value fmtArgs = (argc == 3) ? regs[argsIdx + 2] : Value.emptySeq();
+                long handle = getReg(argsIdx).toIntCoerce();
+                String fmt = getReg(argsIdx + 1).toUtf8String();
+                Value fmtArgs = (argc == 3) ? getReg(argsIdx + 2) : Value.emptySeq();
                 boolean[] ok = new boolean[1];
                 byte[] formatted = formatEuphoriaPrintf(fmt, fmtArgs, frame, ok);
                 if (!ok[0]) return false;
@@ -1728,9 +2131,9 @@ public final class VM {
                     runtimeError(frame, "sprintf(fmt, args) erwartet 2 Argumente");
                     return false;
                 }
-                String fmt = regs[argsIdx].toUtf8String();
+                String fmt = getReg(argsIdx).toUtf8String();
                 boolean[] ok = new boolean[1];
-                byte[] formatted = formatEuphoriaPrintf(fmt, regs[argsIdx + 1], frame, ok);
+                byte[] formatted = formatEuphoriaPrintf(fmt, getReg(argsIdx + 1), frame, ok);
                 if (!ok[0]) return false;
                 setReg(base + dest, Value.fromRawBytes(formatted));
                 return true;
@@ -1740,8 +2143,8 @@ public final class VM {
                     runtimeError(frame, "open(path, mode [, cleanup]) erwartet 2 oder 3 Argumente");
                     return false;
                 }
-                String path = regs[argsIdx].toUtf8String();
-                String mode = regs[argsIdx + 1].toUtf8String();
+                String path = getReg(argsIdx).toUtf8String();
+                String mode = getReg(argsIdx + 1).toUtf8String();
                 try {
                     File file = resolvePath(path).toFile();
                     String rafMode;
@@ -1787,7 +2190,7 @@ public final class VM {
                     runtimeError(frame, "close(fn) erwartet 1 Argument");
                     return false;
                 }
-                long h = regs[argsIdx].toIntCoerce();
+                long h = getReg(argsIdx).toIntCoerce();
                 java.nio.channels.FileLock fl = fileLocks.remove(h);
                 if (fl != null) {
                     try { fl.release(); } catch (IOException ignored) {}
@@ -1804,7 +2207,7 @@ public final class VM {
                     runtimeError(frame, "getc(fn) erwartet 1 Argument");
                     return false;
                 }
-                long h = regs[argsIdx].toIntCoerce();
+                long h = getReg(argsIdx).toIntCoerce();
                 try {
                     if (h == 0) {
                         int c = System.in.read();
@@ -1828,7 +2231,7 @@ public final class VM {
                     runtimeError(frame, "gets(fn) erwartet 1 Argument");
                     return false;
                 }
-                long h = regs[argsIdx].toIntCoerce();
+                long h = getReg(argsIdx).toIntCoerce();
                 try {
                     ByteArrayOutputStream line = new ByteArrayOutputStream(64);
                     int c = -1;
@@ -1871,7 +2274,7 @@ public final class VM {
             }
             case Position -> {
                 if (argc == 2) {
-                    System.out.printf("\033[%d;%dH", regs[argsIdx].toIntCoerce(), regs[argsIdx + 1].toIntCoerce());
+                    System.out.printf("\033[%d;%dH", getReg(argsIdx).toIntCoerce(), getReg(argsIdx + 1).toIntCoerce());
                     System.out.flush();
                 }
                 setReg(base + dest, Value.fromInt(0));
@@ -1906,7 +2309,7 @@ public final class VM {
                 return true;
             }
             case Getenv -> {
-                String varName = regs[argsIdx].toUtf8String();
+                String varName = getReg(argsIdx).toUtf8String();
                 String val;
                 if (envUnset.contains(varName)) {
                     val = null;
@@ -1942,19 +2345,19 @@ public final class VM {
                 return true;
             }
             case System -> {
-                String cmd = regs[argsIdx].toUtf8String();
+                String cmd = getReg(argsIdx).toUtf8String();
                 runShellCommand(cmd);
                 setReg(base + dest, Value.fromInt(0));
                 return true;
             }
             case SystemExec -> {
-                String cmd = regs[argsIdx].toUtf8String();
+                String cmd = getReg(argsIdx).toUtf8String();
                 int rc = runShellCommand(cmd);
                 setReg(base + dest, Value.fromInt(rc));
                 return true;
             }
             case Abort -> {
-                int code = (argc >= 1) ? (int) regs[argsIdx].toIntCoerce() : 0;
+                int code = (argc >= 1) ? (int) getReg(argsIdx).toIntCoerce() : 0;
                 throw new VmAbortException(code);
             }
             case OptionSwitches, IncludePaths -> {
@@ -1966,7 +2369,7 @@ public final class VM {
                 return true;
             }
             case RoutineId -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc != 1 || !a0.isSeq()) {
                     runtimeError(frame, "routine_id(name) erwartet einen String (Sequenz)");
                     return false;
@@ -1988,12 +2391,12 @@ public final class VM {
                 return true;
             }
             case CallFunc, CallProc -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 if (argc < 1 || argc > 2 || !a0.isAtom()) {
                     runtimeError(frame, "call_func/call_proc(id [, args_seq]) erwartet eine Routine-ID");
                     return false;
                 }
-                Value argSeqVal = (argc == 2 && !regs[argsIdx + 1].isNone()) ? regs[argsIdx + 1] : Value.emptySeq();
+                Value argSeqVal = (argc == 2 && !getReg(argsIdx + 1).isNone()) ? getReg(argsIdx + 1) : Value.emptySeq();
                 if (!argSeqVal.isSeq()) {
                     runtimeError(frame, "call_func/call_proc erwartet eine Sequenz als 2. Argument");
                     return false;
@@ -2011,7 +2414,7 @@ public final class VM {
                     return false;
                 }
                 int newBase = frame.baseReg + frame.routine.maxRegs + 2;
-                if (newBase + target.maxRegs >= regs.length) {
+                if (newBase + target.maxRegs >= REGISTER_STACK_SIZE) {
                     runtimeError(frame, "Register-Stack-Überlauf in call_func/call_proc");
                     return false;
                 }
@@ -2020,12 +2423,12 @@ public final class VM {
                     setReg(newBase + i, aval);
                 }
                 int retReg = frame.baseReg + dest;
-                frames.add(new CallFrame(target, 0, newBase, retReg));
+                pushFrame(target, 0, newBase, retReg);
                 return true;
             }
             case DeleteRoutine -> {
-                Value a0 = regs[argsIdx];
-                Value a1 = regs[argsIdx + 1];
+                Value a0 = getReg(argsIdx);
+                Value a1 = getReg(argsIdx + 1);
                 if (argc != 2 || !a1.isAtom()) {
                     runtimeError(frame, "delete_routine(x, rid) erwartet 2 Argumente");
                     return false;
@@ -2049,7 +2452,7 @@ public final class VM {
                     runtimeError(frame, "delete(x) erwartet 1 Argument");
                     return false;
                 }
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 int rid = -1;
                 if (a0.isSeq()) {
                     List<Integer> rids = a0.asSeq().cleanupRids;
@@ -2070,14 +2473,14 @@ public final class VM {
                     setReg(newBase, a0);
                     for (int i = 1; i < target.arity; i++) setReg(newBase + i, Value.NONE);
                     int retReg = frame.baseReg + dest;
-                    frames.add(new CallFrame(target, 0, newBase, retReg));
+                    pushFrame(target, 0, newBase, retReg);
                 }
                 a0.release();
                 return true;
             }
             case MachineFunc, MachineProc -> {
-                long fid = regs[argsIdx].toIntCoerce();
-                Value argV = (argc >= 2 && !regs[argsIdx + 1].isNone()) ? regs[argsIdx + 1] : Value.emptySeq();
+                long fid = getReg(argsIdx).toIntCoerce();
+                Value argV = (argc >= 2 && !getReg(argsIdx + 1).isNone()) ? getReg(argsIdx + 1) : Value.emptySeq();
                 Value[] res = new Value[]{Value.fromInt(0)};
                 if (!execMachine(fid, argV, res, frame, base + dest)) {
                     return false;
@@ -2086,7 +2489,7 @@ public final class VM {
                 return true;
             }
             case Sizeof -> {
-                long tc = regs[argsIdx].toIntCoerce() & 0xFFFFFFFFL;
+                long tc = getReg(argsIdx).toIntCoerce() & 0xFFFFFFFFL;
                 long sz = 8;
                 if (tc == 0x01000001L || tc == 0x02000001L || tc == 1) sz = 1;
                 else if (tc == 0x01000002L || tc == 0x02000002L || tc == 2) sz = 2;
@@ -2096,9 +2499,9 @@ public final class VM {
             }
             case MemCopy -> {
                 if (argc == 3) {
-                    long dstAddr = regs[argsIdx].toIntCoerce();
-                    long srcAddr = regs[argsIdx + 1].toIntCoerce();
-                    long len = Math.max(0L, regs[argsIdx + 2].toIntCoerce());
+                    long dstAddr = getReg(argsIdx).toIntCoerce();
+                    long srcAddr = getReg(argsIdx + 1).toIntCoerce();
+                    long len = Math.max(0L, getReg(argsIdx + 2).toIntCoerce());
                     if (dstAddr != 0 && srcAddr != 0 && len > 0) {
                         MemorySegment dstSeg = MemorySegment.ofAddress(dstAddr).reinterpret(len);
                         MemorySegment srcSeg = MemorySegment.ofAddress(srcAddr).reinterpret(len);
@@ -2110,9 +2513,9 @@ public final class VM {
             }
             case MemSet -> {
                 if (argc == 3) {
-                    long dstAddr = regs[argsIdx].toIntCoerce();
-                    byte byteV = (byte) (regs[argsIdx + 1].toIntCoerce() & 0xFF);
-                    long len = Math.max(0L, regs[argsIdx + 2].toIntCoerce());
+                    long dstAddr = getReg(argsIdx).toIntCoerce();
+                    byte byteV = (byte) (getReg(argsIdx + 1).toIntCoerce() & 0xFF);
+                    long len = Math.max(0L, getReg(argsIdx + 2).toIntCoerce());
                     if (dstAddr != 0 && len > 0) {
                         MemorySegment.ofAddress(dstAddr).reinterpret(len).fill(byteV);
                     }
@@ -2121,7 +2524,7 @@ public final class VM {
                 return true;
             }
             case Peek, Peeks, Peek2s, Peek2u, Peek4s, Peek4u, Peek8s, Peek8u, PeekPointer -> {
-                Value a0 = regs[argsIdx];
+                Value a0 = getReg(argsIdx);
                 boolean isSeqArg = a0.isSeq();
                 long addr = 0;
                 int count = 1;
@@ -2154,7 +2557,7 @@ public final class VM {
                 return true;
             }
             case PeekString -> {
-                long addr = regs[argsIdx].toIntCoerce();
+                long addr = getReg(argsIdx).toIntCoerce();
                 if (addr == 0) {
                     setReg(base + dest, Value.emptySeq());
                 } else {
@@ -2171,8 +2574,8 @@ public final class VM {
                 return true;
             }
             case Poke, Poke2, Poke4, Poke8, PokePointer -> {
-                long addr = regs[argsIdx].toIntCoerce();
-                Value val = regs[argsIdx + 1];
+                long addr = getReg(argsIdx).toIntCoerce();
+                Value val = getReg(argsIdx + 1);
                 int elemSize = switch (id) {
                     case Poke -> 1;
                     case Poke2 -> 2;
@@ -2193,13 +2596,13 @@ public final class VM {
                 return true;
             }
             case CFunc, CProc -> {
-                long cid = regs[argsIdx].toIntCoerce();
+                long cid = getReg(argsIdx).toIntCoerce();
                 if (cid < 1 || cid > cRoutines.size()) {
                     runtimeError(frame, "Ungültige C-Routine-ID in c_func/c_proc: " + cid);
                     return false;
                 }
                 CFuncDef def = cRoutines.get((int) (cid - 1));
-                Value cArgsVal = (argc >= 2 && !regs[argsIdx + 1].isNone()) ? regs[argsIdx + 1] : Value.emptySeq();
+                Value cArgsVal = (argc >= 2 && !getReg(argsIdx + 1).isNone()) ? getReg(argsIdx + 1) : Value.emptySeq();
                 Sequence s = cArgsVal.isSeq() ? cArgsVal.asSeq() : null;
                 long fnAddr = def.fnPtr == null ? 0 : def.fnPtr.address();
                 if ((fnAddr & 0xFF000000L) == 0xCB000000L) {
@@ -2208,13 +2611,12 @@ public final class VM {
                         RoutineProto target = prog.routines.get(cbRid);
                         int provided = (s != null) ? s.size() : 0;
                         int newBase = frame.baseReg + frame.routine.maxRegs + 2;
-                        if (newBase + target.maxRegs < regs.length) {
+                        if (newBase + target.maxRegs < REGISTER_STACK_SIZE) {
                             for (int i = 0; i < target.arity; ++i) {
                                 setReg(newBase + i, (s != null && i < provided) ? s.get(i) : Value.NONE);
                             }
                             int retReg = frame.baseReg + dest;
-                            frames.add(new CallFrame(target, 0, newBase, retReg));
-                            frame = frames.get(frames.size() - 1);
+                            frame = pushFrame(target, 0, newBase, retReg);
                             return true;
                         }
                     }
@@ -2229,19 +2631,18 @@ public final class VM {
                 }
             }
             case Call -> {
-                long addr = regs[argsIdx].toIntCoerce();
+                long addr = getReg(argsIdx).toIntCoerce();
                 if ((addr & 0xFF000000L) == 0xCB000000L) {
                     int cbRid = (int)(addr & 0x00FFFFFFL);
                     if (cbRid >= 0 && cbRid < prog.routines.size()) {
                         RoutineProto target = prog.routines.get(cbRid);
                         int newBase = frame.baseReg + frame.routine.maxRegs + 2;
-                        if (newBase + target.maxRegs < regs.length) {
+                        if (newBase + target.maxRegs < REGISTER_STACK_SIZE) {
                             for (int i = 0; i < target.arity; ++i) {
                                 setReg(newBase + i, Value.NONE);
                             }
                             int retReg = frame.baseReg + dest;
-                            frames.add(new CallFrame(target, 0, newBase, retReg));
-                            frame = frames.get(frames.size() - 1);
+                            frame = pushFrame(target, 0, newBase, retReg);
                             return true;
                         }
                     }
@@ -2262,8 +2663,8 @@ public final class VM {
                     runtimeError(frame, "task_create(rid, args) erwartet mindestens ein Argument");
                     return false;
                 }
-                long rid = regs[argsIdx].toIntCoerce();
-                Value taskArgs = (argc > 1) ? regs[argsIdx + 1] : Value.EMPTY_SEQ;
+                long rid = getReg(argsIdx).toIntCoerce();
+                Value taskArgs = (argc > 1) ? getReg(argsIdx + 1) : Value.EMPTY_SEQ;
                 long tid = nextTaskId++;
                 TaskInfo t = new TaskInfo();
                 t.id = tid;
@@ -2278,11 +2679,11 @@ public final class VM {
             }
             case TaskSchedule -> {
                 if (argc >= 1) {
-                    long tid = regs[argsIdx].toIntCoerce();
+                    long tid = getReg(argsIdx).toIntCoerce();
                     TaskInfo t = tasks.get(tid);
                     if (t != null && t.state != TaskState.TERMINATED) {
                         t.state = TaskState.READY;
-                        if (argc >= 2) t.schedule = regs[argsIdx + 1];
+                        if (argc >= 2) t.schedule = getReg(argsIdx + 1);
                     }
                 }
                 setReg(base + dest, Value.fromInt(0));
@@ -2300,7 +2701,7 @@ public final class VM {
             }
             case TaskStatus -> {
                 if (argc >= 1) {
-                    long tid = regs[argsIdx].toIntCoerce();
+                    long tid = getReg(argsIdx).toIntCoerce();
                     TaskInfo t = tasks.get(tid);
                     if (t == null || t.state == TaskState.TERMINATED) {
                         setReg(base + dest, Value.fromInt(-1));
@@ -2331,7 +2732,7 @@ public final class VM {
             }
             case TaskSuspend -> {
                 if (argc >= 1) {
-                    long tid = regs[argsIdx].toIntCoerce();
+                    long tid = getReg(argsIdx).toIntCoerce();
                     TaskInfo t = tasks.get(tid);
                     if (t != null && t.state != TaskState.TERMINATED) {
                         t.state = TaskState.SUSPENDED;
@@ -3931,7 +4332,8 @@ public final class VM {
             }
             case 103 -> { // M_CALL_STACK
                 Sequence seq = new Sequence();
-                for (CallFrame cf : frames) {
+                for (int fi = 0; fi < frameDepth; fi++) {
+                    CallFrame cf = frameStack[fi];
                     if (cf.routine != null) {
                         seq.addElement(Value.fromString(cf.routine.name));
                     }

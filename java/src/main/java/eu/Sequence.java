@@ -1,31 +1,45 @@
 package eu;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 /**
  * Reference-Counted, Copy-on-Write Dynamic Array of Values for Euphorix (OpenEuphoria syntax).
+ * Backed directly by a flat Value[] array for zero-overhead VM indexing and fast repeat().
  */
 public final class Sequence {
+    private static final Value[] EMPTY_DATA = new Value[0];
+
     public int refCount = 0;
     public int regexId = -1;
     public List<Integer> cleanupRids = null;
-    private final ArrayList<Value> elements;
+
+    Value[] data;
+    int len;
 
     public Sequence() {
-        this.elements = new ArrayList<>();
+        this.data = EMPTY_DATA;
+        this.len = 0;
     }
 
     public Sequence(int capacity) {
-        this.elements = new ArrayList<>(Math.max(0, capacity));
+        this.data = (capacity > 0) ? new Value[capacity] : EMPTY_DATA;
+        this.len = 0;
     }
 
     public Sequence(int size, Value fill) {
-        this.elements = new ArrayList<>(Math.max(0, size));
-        for (int i = 0; i < size; i++) {
-            fill.retain();
-            this.elements.add(fill);
+        if (size <= 0) {
+            this.data = EMPTY_DATA;
+            this.len = 0;
+            return;
+        }
+        this.data = new Value[size];
+        this.len = size;
+        Arrays.fill(this.data, fill);
+        if (fill.kind == Value.KIND_SEQ && fill.seqVal != null) {
+            fill.seqVal.refCount += size;
         }
     }
 
@@ -34,48 +48,64 @@ public final class Sequence {
      */
     public Sequence(Sequence other) {
         this.regexId = other.regexId;
-        this.elements = new ArrayList<>(other.elements.size());
-        for (int i = 0; i < other.elements.size(); i++) {
-            Value v = other.elements.get(i);
-            v.retain();
-            this.elements.add(v);
+        int n = other.len;
+        this.len = n;
+        if (n == 0) {
+            this.data = EMPTY_DATA;
+            return;
         }
+        Value[] src = other.data;
+        Value[] dst = new Value[n];
+        System.arraycopy(src, 0, dst, 0, n);
+        for (int i = 0; i < n; i++) {
+            Value v = dst[i];
+            if (v.kind == Value.KIND_SEQ && v.seqVal != null) {
+                v.seqVal.refCount++;
+            }
+        }
+        this.data = dst;
     }
 
     public int length() {
-        return elements.size();
+        return len;
     }
 
     public int size() {
-        return elements.size();
+        return len;
     }
 
     public boolean isEmpty() {
-        return elements.isEmpty();
+        return len == 0;
     }
 
     public void ensureCapacity(int minCapacity) {
-        elements.ensureCapacity(minCapacity);
+        if (minCapacity <= data.length) return;
+        int newCap = Math.max(minCapacity, Math.max(8, data.length + (data.length >>> 1)));
+        data = Arrays.copyOf(data, newCap);
     }
 
     public Value get(int index) {
-        return elements.get(index);
+        return data[index];
     }
 
     public void set(int index, Value newVal) {
-        newVal.retain();
-        Value oldVal = elements.set(index, newVal);
-        if (oldVal != null) {
+        if (newVal.kind == Value.KIND_SEQ && newVal.seqVal != null) {
+            newVal.seqVal.refCount++;
+        }
+        Value oldVal = data[index];
+        data[index] = newVal;
+        if (oldVal != null && oldVal.kind == Value.KIND_SEQ && oldVal.seqVal != null) {
             oldVal.release();
         }
     }
 
     public void setElement(int index, Value newVal) {
-        if (index == elements.size()) {
+        if (index == len) {
             add(newVal);
-        } else if (index > elements.size()) {
-            while (elements.size() < index) {
-                elements.add(Value.NONE);
+        } else if (index > len) {
+            ensureCapacity(index + 1);
+            while (len < index) {
+                data[len++] = Value.NONE;
             }
             add(newVal);
         } else {
@@ -84,8 +114,13 @@ public final class Sequence {
     }
 
     public void add(Value val) {
-        val.retain();
-        elements.add(val);
+        if (val.kind == Value.KIND_SEQ && val.seqVal != null) {
+            val.seqVal.refCount++;
+        }
+        if (len == data.length) {
+            ensureCapacity(len + 1);
+        }
+        data[len++] = val;
     }
 
     public void addElement(Value val) {
@@ -93,8 +128,17 @@ public final class Sequence {
     }
 
     public void add(int index, Value val) {
-        val.retain();
-        elements.add(index, val);
+        if (val.kind == Value.KIND_SEQ && val.seqVal != null) {
+            val.seqVal.refCount++;
+        }
+        if (len == data.length) {
+            ensureCapacity(len + 1);
+        }
+        if (index < len) {
+            System.arraycopy(data, index, data, index + 1, len - index);
+        }
+        data[index] = val;
+        len++;
     }
 
     public void insertElement(int index, Value val) {
@@ -102,21 +146,36 @@ public final class Sequence {
     }
 
     public void addAll(Sequence other) {
-        elements.ensureCapacity(elements.size() + other.elements.size());
-        for (int i = 0; i < other.elements.size(); i++) {
-            Value v = other.elements.get(i);
-            v.retain();
-            elements.add(v);
+        int otherLen = other.len;
+        if (otherLen == 0) return;
+        ensureCapacity(len + otherLen);
+        Value[] src = other.data;
+        System.arraycopy(src, 0, data, len, otherLen);
+        for (int i = 0; i < otherLen; i++) {
+            Value v = src[i];
+            if (v.kind == Value.KIND_SEQ && v.seqVal != null) {
+                v.seqVal.refCount++;
+            }
         }
+        len += otherLen;
     }
 
     public void addAll(int index, Sequence other) {
-        elements.ensureCapacity(elements.size() + other.elements.size());
-        for (int i = 0; i < other.elements.size(); i++) {
-            Value v = other.elements.get(i);
-            v.retain();
-            elements.add(index + i, v);
+        int otherLen = other.len;
+        if (otherLen == 0) return;
+        ensureCapacity(len + otherLen);
+        if (index < len) {
+            System.arraycopy(data, index, data, index + otherLen, len - index);
         }
+        Value[] src = other.data;
+        System.arraycopy(src, 0, data, index, otherLen);
+        for (int i = 0; i < otherLen; i++) {
+            Value v = src[i];
+            if (v.kind == Value.KIND_SEQ && v.seqVal != null) {
+                v.seqVal.refCount++;
+            }
+        }
+        len += otherLen;
     }
 
     public void insertAll(int index, Sequence other) {
@@ -132,27 +191,45 @@ public final class Sequence {
     public void removeRange(int fromIndex, int toIndex) {
         if (fromIndex >= toIndex) return;
         for (int i = fromIndex; i < toIndex; i++) {
-            elements.get(i).release();
+            Value old = data[i];
+            if (old != null && old.kind == Value.KIND_SEQ && old.seqVal != null) {
+                old.release();
+            }
         }
-        elements.subList(fromIndex, toIndex).clear();
+        int numMoved = len - toIndex;
+        if (numMoved > 0) {
+            System.arraycopy(data, toIndex, data, fromIndex, numMoved);
+        }
+        int newLen = len - (toIndex - fromIndex);
+        Arrays.fill(data, newLen, len, null);
+        len = newLen;
     }
 
     public void removeAt(int index) {
-        Value old = elements.remove(index);
-        if (old != null) {
+        Value old = data[index];
+        int numMoved = len - index - 1;
+        if (numMoved > 0) {
+            System.arraycopy(data, index + 1, data, index, numMoved);
+        }
+        data[--len] = null;
+        if (old != null && old.kind == Value.KIND_SEQ && old.seqVal != null) {
             old.release();
         }
     }
 
     public void clear() {
-        for (int i = 0; i < elements.size(); i++) {
-            elements.get(i).release();
+        for (int i = 0; i < len; i++) {
+            Value old = data[i];
+            if (old != null && old.kind == Value.KIND_SEQ && old.seqVal != null) {
+                old.release();
+            }
+            data[i] = null;
         }
-        elements.clear();
+        len = 0;
     }
 
     public List<Value> rawList() {
-        return Collections.unmodifiableList(elements);
+        return Collections.unmodifiableList(Arrays.asList(Arrays.copyOf(data, len)));
     }
 
     public void addCleanupRid(int rid) {

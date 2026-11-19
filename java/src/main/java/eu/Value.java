@@ -41,10 +41,10 @@ public final class Value {
     public static final Value ONE  = fromInt(1);
     public static final Value EMPTY_SEQ = new Value(KIND_SEQ, 0L, 0.0, new Sequence(0));
 
-    private final byte kind;
-    private final long intVal;
-    private final double floatVal;
-    private final Sequence seqVal;
+    final byte kind;
+    final long intVal;
+    final double floatVal;
+    final Sequence seqVal;
 
     private Value(byte kind, long intVal, double floatVal, Sequence seqVal) {
         this.kind = kind;
@@ -427,10 +427,10 @@ public final class Value {
                 case Add -> fromInt(a + b);
                 case Sub -> fromInt(a - b);
                 case Mul -> {
-                    BigInteger prod = BigInteger.valueOf(a).multiply(BigInteger.valueOf(b));
-                    if (prod.compareTo(BigInteger.valueOf(INT48_MIN)) >= 0
-                            && prod.compareTo(BigInteger.valueOf(INT48_MAX)) <= 0) {
-                        yield fromInt(prod.longValue());
+                    long lo = a * b;
+                    long hi = Math.multiplyHigh(a, b);
+                    if (hi == (lo >> 63) && ((lo << 16) >> 16) == lo) {
+                        yield fromInt(lo);
                     }
                     yield fromF64((double) a * (double) b);
                 }
