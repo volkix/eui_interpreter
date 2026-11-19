@@ -7,66 +7,8 @@ namespace datetime
 
 integer yydiff = 80
 
-include std/dll.e
 include std/get.e
-include std/machine.e
 include std/types.e
-
-ifdef LINUX then
-	constant gmtime_ = dll:define_c_func(dll:open_dll(""), "gmtime", {dll:C_POINTER}, dll:C_POINTER)
-	constant time_ = dll:define_c_func(dll:open_dll(""), "time", {dll:C_POINTER}, dll:C_POINTER)
-elsifdef OSX then
-	constant gmtime_ = dll:define_c_func(dll:open_dll("libc.dylib"), "gmtime", {dll:C_POINTER}, dll:C_POINTER)
-	constant time_ = dll:define_c_func(dll:open_dll("libc.dylib"), "time", {dll:C_POINTER}, dll:C_INT)
-elsifdef WINDOWS then
-	constant gmtime_ = dll:define_c_func(dll:open_dll("msvcrt.dll"), "+gmtime", {dll:C_POINTER}, dll:C_POINTER)
-	constant time_ = dll:define_c_proc(dll:open_dll("kernel32.dll"), "GetSystemTimeAsFileTime", {dll:C_POINTER})
-elsifdef UNIX then
-	constant gmtime_ = dll:define_c_func(STDLIB, "gmtime", {dll:C_POINTER}, dll:C_POINTER)
-	constant time_ = dll:define_c_func(STDLIB, "time", {dll:C_POINTER}, dll:C_INT)
-end ifdef
-
-enum TM_SEC, TM_MIN, TM_HOUR, TM_MDAY, TM_MON, TM_YEAR --, TM_WDAY, TM_YDAY, TM_ISDST
-
-function time()
-	ifdef WINDOWS then
-		atom ptra, valhi, vallow, deltahi, deltalow
-		deltahi = 27111902
-		deltalow = 3577643008
-		ptra = machine:allocate(8)
-		c_proc(time_, {ptra})
-		vallow = peek4u(ptra)
-		valhi = peek4u(ptra+4)
-		machine:free(ptra)
-		vallow -= deltalow
-		valhi -= deltahi
-		if vallow < 0 then
-			vallow += power(2, 32)
-			valhi -= 1
-		end if
-		return floor(((valhi * power(2,32)) + vallow) / 10000000)
-	elsedef
-		return c_func(time_, {dll:NULL})
-	end ifdef
-end function
-
-function gmtime(atom time)
-	sequence ret
-	atom timep, tm_p
-	integer n
-
-	timep = machine:allocate( sizeof( C_POINTER ) )
-	poke_pointer(timep, time)
-	
-	tm_p = c_func(gmtime_, {timep})
-	
-	machine:free(timep)
-	if tm_p != 0 then
-		return peek4s(tm_p & 9 )
-	else
-		return repeat( 0, 9 )
-	end if
-end function
 
 constant
 	Gregorian_Reformation = 1752,
@@ -615,12 +557,7 @@ end function
 -- [[:now]]
 
 public function now_gmt()
-	sequence t1 = gmtime(time())
-
-	return { 
-		t1[TM_YEAR] + 1900, t1[TM_MON] + 1, t1[TM_MDAY], 
-		t1[TM_HOUR], t1[TM_MIN], t1[TM_SEC]
-	}
+	return machine_func(33, 0)
 end function
 
 --**

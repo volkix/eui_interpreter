@@ -152,49 +152,27 @@ ifdef EU4_0 then
 end ifdef
 
 
-ifdef not WINDOWS then
-
-ifdef FREEBSD then
-	constant MMAP_OFFSET_SIZE = dll:C_LONGLONG
-elsedef
-	constant MMAP_OFFSET_SIZE = dll:C_LONG
-end ifdef
-
 include std/dll.e
 --**
 -- @nodoc@
 export constant
 	--**
 	-- @nodoc@
-	STDLIB   = dll:open_dll({ "libc.so.7", "libc.so", "libc.dylib", "" }),
+	STDLIB   = 0,
 	--**
 	-- @nodoc@
-	MMAP     = dll:define_c_func( STDLIB, "mmap", 
-				{dll:C_POINTER, dll:C_LONG, dll:C_INT, dll:C_INT, dll:C_INT, MMAP_OFFSET_SIZE}, 
-				dll:C_POINTER ),
+	MMAP     = -1,
 	--**
 	-- @nodoc@
-	MUNMAP   = dll:define_c_func( STDLIB, "munmap", {dll:C_POINTER, dll:C_LONG}, dll:C_INT ),
+	MUNMAP   = -1,
 	--**
 	-- @nodoc@
-	MPROTECT = dll:define_c_func( STDLIB, "mprotect", {dll:C_POINTER, dll:C_LONG, dll:C_INT}, dll:C_INT),
+	MPROTECT = -1,
 	--**
 	-- @nodoc@
 	MAP_PRIVATE   = 2,
-	$
-
-    ifdef OSX or BSD then
-        --**
-        -- @nodoc@
-        export constant MAP_ANONYMOUS = 0x1000
-    elsedef
-        export constant MAP_ANONYMOUS = 32
-    end ifdef
-    
-    ifdef LINUX or FREEBSD then
-		export constant MAP_FAILED = power(256,ADDRESS_LENGTH)-1
-    end ifdef
-end ifdef
+	MAP_ANONYMOUS = 32,
+	MAP_FAILED    = -1
 
 --**
 -- === Safe Mode
@@ -1931,58 +1909,7 @@ end function
 -- See Also:
 --              [[:Executable Memory]], [[:allocate_code]], [[:free_code]], [[:c_proc]], [[:define_c_proc]]
 
-integer page_size = 0
-ifdef WINDOWS then
-
-	atom oldprotptr = machine_func(M_ALLOC, ADDRESS_LENGTH)
-	atom kernel_dll, memDLL_id, 
-		VirtualAlloc_rid, 
-		-- VirtualLock_rid, VirtualUnlock_rid,
-		VirtualProtect_rid, GetLastError_rid, GetSystemInfo_rid
-
-	memDLL_id = dll:open_dll( "kernel32.dll" )
-	kernel_dll = memDLL_id
-	VirtualAlloc_rid = dll:define_c_func( memDLL_id, "VirtualAlloc", { dll:C_POINTER, dll:C_SIZE_T, dll:C_DWORD, dll:C_DWORD }, dll:C_POINTER )
-	VirtualProtect_rid = dll:define_c_func( memDLL_id, "VirtualProtect", { dll:C_POINTER, dll:C_SIZE_T, dll:C_DWORD, dll:C_POINTER }, dll:C_BOOL )
-	-- set exported
-	memory:VirtualFree_rid = dll:define_c_func( kernel_dll, "VirtualFree", { dll:C_POINTER, dll:C_SIZE_T, dll:C_DWORD }, dll:C_BOOL )
-	GetLastError_rid = dll:define_c_func( kernel_dll, "GetLastError", {}, dll:C_DWORD )
-	GetSystemInfo_rid = dll:define_c_proc( kernel_dll, "GetSystemInfo", { dll:C_POINTER } )
-	if VirtualAlloc_rid != -1 and VirtualProtect_rid != -1 
-		and GetLastError_rid != -1 and GetSystemInfo_rid != -1
-		then
-		atom vaa = VirtualAlloc( 0, 1, or_bits( MEM_RESERVE, MEM_COMMIT ), PAGE_READ_WRITE_EXECUTE ) != 0 
-		if vaa then
-			DEP_really_works = 1
-			c_func( VirtualFree_rid, { vaa, 1, MEM_RELEASE } )
-			vaa = 0
-		end if
-	end if
-
-	
-	if GetSystemInfo_rid != -1 then
-		bordered_address system_info_ptr = allocate( 9 * ADDRESS_LENGTH )
-		if system_info_ptr != 0 then
-			c_proc( GetSystemInfo_rid, { system_info_ptr } )
-			page_size = peek4u( system_info_ptr + ADDRESS_LENGTH )
-			free( system_info_ptr )
-		end if
-	end if
-
-elsifdef NETBSD then
-
-	constant libc_h = open_dll("libc.so")
-	constant getpagesize_rid = dll:define_c_func(libc_h, "sysconf", { dll:C_INT }, dll:C_LONG )
-	if getpagesize_rid > -1 then
-		page_size = c_func(getpagesize_rid, { 28 })
-	end if
-
-elsifdef UNIX then
-
-	constant getpagesize_rid = dll:define_c_func( -1, "getpagesize", { }, dll:C_UINT )	 
-	page_size = c_func( getpagesize_rid, {} )
-
-end ifdef
+integer page_size = 4096
 
 --**
 -- @nodoc@
@@ -2123,16 +2050,7 @@ public function allocate_string(sequence s, types:boolean cleanup = 0 )
 end function
 
 procedure local_free_protected_memory( atom p, integer s)
-	ifdef WINDOWS then
-		if dep_works() then
-			c_func(VirtualFree_rid, { p, s, MEM_RELEASE })
-		else
-			machine_func(M_FREE, {p})
-		end if
-	elsifdef UNIX then
-		c_func( MPROTECT, { p, s, PAGE_READWRITE } )
-		machine_func( memconst:M_FREE, {p})
-	end ifdef
+	machine_func( memconst:M_FREE, {p})
 end procedure
 
 --**
@@ -2260,45 +2178,12 @@ end function
 
 
 function local_allocate_protected_memory( integer s, integer first_protection )
-	ifdef WINDOWS then     
-		if dep_works() then
-			return eu:c_func(VirtualAlloc_rid, 
-				{ 0, s, or_bits( MEM_RESERVE, MEM_COMMIT ), first_protection })
-		else
-			return machine_func(M_ALLOC, PAGE_SIZE)
-		end if
-	elsifdef UNIX then
-		atom ptr = c_func( MMAP, { 0, s, first_protection, or_bits( MAP_ANONYMOUS, MAP_PRIVATE ), -1, 0 })
-		-- please check the value for MAP_FAILED for other OSes above and here:
-		ifdef LINUX or FREEBSD then
-			if ptr = MAP_FAILED then
-				return 0
-			end if
-		elsedef
-			-- fail silently on other OSes...
-		end ifdef
-		integer fail = local_change_protection_on_protected_memory( ptr, s, first_protection )
-		return ptr
-	end ifdef
+	return machine_func(memconst:M_ALLOC, s)
 end function
 
 -- return -1 for failure. 0 success  
 function local_change_protection_on_protected_memory( atom p, integer s, integer new_protection )
-	ifdef WINDOWS then
-		if dep_works() then
-			if eu:c_func( VirtualProtect_rid, { p, s, new_protection , oldprotptr } ) = 0 then
-				-- 0 indicates failure here
-				return -1
-			end if
-		end if
-		return 0
-	elsifdef UNIX then
-		integer fail = c_func( MPROTECT, { p, s, new_protection } )
-		if fail then
-				error:crash( "Could not change memory protection at 0x%x (%d bytes) to %d", { p, s, new_protection } )
-		end if
-		return fail
-	end ifdef
+	return 0
 end function
 
 --****

@@ -14,7 +14,7 @@ The runtime environment combines the clean, lightweight syntax of OpenEuphoria w
 * **Comprehensive UTF-8 Support**: Consistent handling of non-ASCII characters, German umlauts (`ä`, `ö`, `ü`, `ß`), and worldwide Unicode glyphs across lexer, compiler, bytecode VM, Swing GUI, and I/O.
 * **Built-in Enterprise Modules**: JSON & RFC 9535 JSONPath, JSON-Schema (Draft 2020-12), XML DOM with W3C XPath 1.0 & XSD, SQLite 3 & PostgreSQL (JDBC), HTTP/HTTPS client & server, and dual-stack IPv4/IPv6 sockets.
 * **C-FFI & Native Raw Memory**: Direct binding of native Linux shared libraries (`.so`) using the JDK 25 Foreign Function & Memory (FFM) API (`java.lang.foreign.*`).
-* **Standalone Single-Binary (`./eui-standalone`)**: Fully self-contained 53 MB single executable bundling an optimized minimal Java 25 runtime (via `jlink`), requiring **no installed Java** on target systems.
+* **Standalone Single-Binary (`./euphorix-standalone`)**: Fully self-contained 53 MB single executable bundling an optimized minimal Java 25 runtime (via `jlink`), requiring **no installed Java** on target systems.
 
 ---
 
@@ -26,8 +26,8 @@ The runtime environment combines the clean, lightweight syntax of OpenEuphoria w
    - 1.3 [Native C Binding (.so) via JDK 25 FFM API](#13-native-c-binding-so-via-jdk-25-ffm-api)
    - 1.4 [Prerequisites & Maven Build](#14-prerequisites--maven-build)
    - 1.5 [Managing & Integrating Java Dependencies via `pom.xml`](#15-managing--integrating-java-dependencies-via-pomxml)
-   - 1.6 [Self-Contained Single-Binary with Bundled Minimal JRE (`./eui-standalone`)](#16-self-contained-single-binary-with-bundled-minimal-jre-eui-standalone)
-   - 1.7 [Cross-Platform & Microsoft Windows Support (`eui.cmd` / `eui.bat`)](#17-cross-platform--microsoft-windows-support-euicmd--euibat)
+   - 1.6 [Self-Contained Single-Binary with Bundled Minimal JRE (`./euphorix-standalone`)](#16-self-contained-single-binary-with-bundled-minimal-jre-euphorix-standalone)
+   - 1.7 [Cross-Platform & Microsoft Windows Support (`euphorix.cmd` / `euphorix.bat`)](#17-cross-platform--microsoft-windows-support-euphorixcmd--euphorixbat)
 2. [Complete Language, Syntax & Standard Reference](#2-complete-language-syntax--standard-reference)
    - 2.1 [Data Types & Type System](#21-data-types--type-system)
    - 2.2 [Visibility, Namespaces & Includes](#22-visibility-namespaces--includes)
@@ -73,13 +73,14 @@ The runtime environment combines the clean, lightweight syntax of OpenEuphoria w
 
 ### 1.1 Project Structure & Fat-JAR Architecture
 
-The interpreter builds as a **standalone Fat-JAR (`eui.jar`)**. When built with Maven, all dependencies (JDBC drivers, Jackson JSON, FlatLaf look-and-feel, embedded standard library) are shaded into a single archive:
+The interpreter builds as a **standalone Fat-JAR (`euphorix.jar`)**. When built with Maven, all dependencies (JDBC drivers, Jackson JSON, FlatLaf look-and-feel, embedded standard library) are shaded into a single archive:
 
 ```
 prj/intpret/
-├── eui-java                 <- Shell launcher with optimized JVM parameters
-├── eui-standalone           <- Standalone 53 MB single executable (bundled minimal JRE)
-├── eui.jar                  <- Standalone Java 25 Fat-JAR (19.4 MB shaded)
+├── euphorix (eui-java, eux) <- Shell launcher with optimized JVM parameters
+├── euphorix.jar (eui.jar)   <- Standalone Java 25 Fat-JAR (19.4 MB shaded)
+├── euphorix-standalone      <- Standalone 53 MB single executable (bundled minimal JRE)
+├── euphorix.cmd / .bat      <- Windows command launchers
 ├── pom.xml                  <- Maven project descriptor for JDK 25 & Shade plugin
 ├── eu_include/              <- Standard library (std/*.e, euphoria/*.e)
 │   ├── std/
@@ -108,11 +109,12 @@ prj/intpret/
     └── gui_demo.ex          <- Interactive GTK+ Swing GUI demo application
 ```
 
-#### The `./eui-java` Launcher Script
+#### The `./euphorix` Launcher Script
+The launcher script (`./euphorix` with aliases `./eui-java` and `./eux`) provides optimized Linux 64-bit JVM parameters:
 ```bash
 #!/usr/bin/env bash
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JAR="$DIR/eui.jar"
+JAR="$DIR/euphorix.jar"
 exec /home/volkix/prg/jdk25/bin/java \
     --enable-native-access=ALL-UNNAMED \
     -Dfile.encoding=UTF-8 \
@@ -157,14 +159,14 @@ This enables direct calls into Linux system libraries (e.g. `libc.so.6`, `libm.s
 * **Build Tool**: Apache Maven (`mvn`)
 
 ```bash
-# Build the Fat-JAR (eui.jar)
+# Build the Fat-JAR (euphorix.jar)
 JAVA_HOME=/home/volkix/prg/jdk25 mvn clean package -DskipTests
 
 # Execute an OpenEuphoria script
-./eui-java demo/gui_demo.ex
+./euphorix demo/gui_demo.ex
 
 # Run unit test suites (Java 25 Runner)
-./tools/run_all_tests ./eui-java tests/t_gui.e tests/t_java_interop.e tests/t_concurrency.ex
+./tools/run_all_tests ./euphorix tests/t_gui.e tests/t_java_interop.e tests/t_concurrency.ex
 ```
 
 ---
@@ -175,7 +177,7 @@ Managing dependencies through [`pom.xml`](file:///home/volkix/prj/intpret/pom.xm
 
 #### How Fat-JAR Dependency Management Works:
 1. **Central Declaration**: Libraries declared in `pom.xml` are downloaded automatically from Maven Central, along with all transitive dependencies.
-2. **Automatic Shading**: The `maven-shade-plugin` unpacks all classes and bundles them directly into `eui.jar`.
+2. **Automatic Shading**: The `maven-shade-plugin` unpacks all classes and bundles them directly into `euphorix.jar`.
 3. **Immediate Euphoria Availability**: Every class becomes accessible in Euphoria using `java:new_object()` and `java:call_static()`.
 
 #### Example: Adding a New Java Library (3 Steps)
@@ -214,36 +216,36 @@ To add libraries such as **JFreeChart** (data visualization), **Apache POI** (Ex
 
 ---
 
-### 1.6 Self-Contained Single-Binary with Bundled Minimal JRE (`./eui-standalone`)
+### 1.6 Self-Contained Single-Binary with Bundled Minimal JRE (`./euphorix-standalone`)
 
 The entire interpreter, including a **stripped-down 60 MB Java 25 runtime**, can be packaged into a **single, standalone 53 MB executable**:
 
 ```bash
-# Build ./eui-standalone (approx. 53 MB xz-compressed)
+# Build ./euphorix-standalone (approx. 53 MB xz-compressed)
 make standalone
 # or directly:
-./tools/build_standalone.sh ./eui-standalone
+./tools/build_standalone.sh ./euphorix-standalone
 ```
 
 #### How the Standalone Executable Operates:
 1. **`jlink` (Java Linker)** extracts only required modules (`java.base`, `java.desktop`, `java.sql`, `java.net.http`, `java.xml`, etc.), removing debug symbols, manual pages, and unused modules.
-2. The [`tools/build_standalone.sh`](file:///home/volkix/prj/intpret/tools/build_standalone.sh) script bundles the mini-JRE and `eui.jar` into an archive with an auto-extracting shell header.
+2. The [`tools/build_standalone.sh`](file:///home/volkix/prj/intpret/tools/build_standalone.sh) script bundles the mini-JRE and `euphorix.jar` into an archive with an auto-extracting shell header.
 3. **Execution**:
-   - The file [`eui-standalone`](file:///home/volkix/prj/intpret/eui-standalone) can be copied to any Linux 64-bit machine (e.g. to `/usr/local/bin/eui`).
+   - The file [`euphorix-standalone`](file:///home/volkix/prj/intpret/euphorix-standalone) (with alias `eui-standalone`) can be copied to any Linux 64-bit machine (e.g. to `/usr/local/bin/euphorix`).
    - **No Java runtime or JDK is required on the target machine!**
-   - On initial launch, the runtime extracts to `~/.cache/openeuphoria/java25-runtime/<hash>/`. Subsequent launches execute directly from cache in milliseconds.
+   - On initial launch, the runtime extracts to `~/.cache/euphorix/java25-runtime/<hash>/`. Subsequent launches execute directly from cache in milliseconds.
    - **Advantage over GraalVM**: Full support for runtime JAR loading (`java:load_jar`), Swing & GTK+ desktop GUIs, virtual threads, and HotSpot JIT optimization without closed-world limitations.
 
-### 1.7 Cross-Platform & Microsoft Windows Support (`eui.cmd` / `eui.bat`)
+### 1.7 Cross-Platform & Microsoft Windows Support (`euphorix.cmd` / `euphorix.bat`)
 
-Thanks to the pure Java 25 bytecode engine, `eui.jar` runs out of the box on **Microsoft Windows** (10, 11, Server) and **macOS** with zero code changes:
+Thanks to the pure Java 25 bytecode engine, `euphorix.jar` runs out of the box on **Microsoft Windows** (10, 11, Server) and **macOS** with zero code changes:
 
 * **Dynamic OS Detection**: At compile time, flags such as `WINDOWS`, `WIN32` or `LINUX`, `UNIX` are resolved dynamically via `System.getProperty("os.name")`. The built-in `platform()` returns `2` (`WIN32`) on Windows.
 * **Paths & Environment Variables**: `EUINC` automatically splits paths using `File.pathSeparator` (semicolon `;` on Windows, colon `:` on Linux), fully respecting Windows drive letters (`C:\...`).
 * **Shell & Process Execution**: Shell commands (`system()`, `JavaInterop.pipeExec`) invoke `cmd.exe /c` automatically on Windows and `/bin/sh -c` on Unix.
-* **Windows Launchers**: Convenient command-line wrappers [eui.cmd](file:///home/volkix/prj/intpret/eui.cmd) and [eui.bat](file:///home/volkix/prj/intpret/eui.bat) are provided in the root directory:
+* **Windows Launchers**: Convenient command-line wrappers [euphorix.cmd](file:///home/volkix/prj/intpret/euphorix.cmd) and [euphorix.bat](file:///home/volkix/prj/intpret/euphorix.bat) are provided in the root directory:
   ```cmd
-  eui.cmd my_script.ex
+  euphorix.cmd my_script.ex
   ```
 
 ---
@@ -829,22 +831,20 @@ Example applications reside in `demo/` and `examples/`:
 
 ```bash
 # 1. Run interactive Desktop GUI
-./eui-standalone demo/gui_demo.ex
+./euphorix demo/gui_demo.ex
 
 # 2. REST API Microservice with SQLite & Schema validation
-./eui-standalone examples/05_rest_api_microservice.ex
+./euphorix examples/05_rest_api_microservice.ex
 
 # 3. Database integration tests
-./eui-standalone examples/04_sqlite_datenbank.ex
-./eui-standalone examples/06_postgresql_datenbank.ex
+./euphorix examples/04_sqlite_datenbank.ex
+./euphorix examples/06_postgresql_datenbank.ex
 
 # 4. XML & XPath
-./eui-standalone examples/03_xml_xpath_xsd.ex
+./euphorix examples/03_xml_xpath_xsd.ex
 
 # 5. Run test suites
-./eui-standalone tests/t_gui.e
-./eui-standalone tests/t_java_interop.e
-./eui-standalone tests/t_concurrency.ex
+./tools/run_all_tests ./euphorix tests/t_gui.e tests/t_java_interop.e tests/t_concurrency.ex
 ```
 
 ---

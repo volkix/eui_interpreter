@@ -6,21 +6,9 @@
 
 namespace os
 
-ifdef WINDOWS then
-	include std/dll.e
-end ifdef
-
 include std/machine.e
 
-ifdef UNIX then
-
-	public constant CMD_SWITCHES = "-"
-
-elsifdef WINDOWS then
-
-	public constant CMD_SWITCHES = "-/"
-
-end ifdef
+public constant CMD_SWITCHES = "-"
 
 constant
 	M_SLEEP     = 64,
@@ -87,25 +75,10 @@ end ifdef
 -- </eucode>
 
 public function get_pid()
-	ifdef UNIX then
-		return machine_func(M_INSTANCE, 0)
-	elsifdef WINDOWS then
-		if cur_pid = -1 then
-			cur_pid = dll:define_c_func( dll:open_dll("kernel32.dll"), "GetCurrentProcessId", {}, dll:C_DWORD)
-			if cur_pid >= 0 then
-				cur_pid = c_func(cur_pid, {})
-			end if
-		end if
-		
-		return cur_pid
-	end ifdef
+	return machine_func(M_INSTANCE, 0)
 end function
 
-ifdef WINDOWS then
-	constant M_UNAME = dll:define_c_func( dll:open_dll("kernel32.dll"), "GetVersionExA", { dll:C_POINTER }, dll:C_INT)
-elsifdef UNIX then
-	constant M_UNAME = 76
-end ifdef
+constant M_UNAME = 76
 
 --**
 -- retrieves the name of the host OS.
@@ -125,110 +98,15 @@ end ifdef
 --        Architecture Name (Usually a string of i386 vs x86_64 vs ARM vs etc)
 -- }}}
 --
---    On //Windows// returns the following in order:
--- {{{
---        Windows Platform (out of WinCE, Win9x, WinNT, Win32s, or Unknown Windows)
---        Name of Windows OS (Windows 3.1, Win95, WinXP, etc)
---        Platform Number
---        Build Number
---        Minor OS version number
---        Major OS version number
--- }}}
---
---    On ##UNKNOWN## returns an OS name of ##"UNKNOWN"##. No other information is returned.
---
 --    Returns an empty string of "" if an internal error has occured.
---
--- Comments:
--- On //Unix//  ##M_UNAME## is defined as a ##machine_func## and this is passed to the C
--- backend. If the ##M_UNAME## call fails, the raw ##machine_func## returns -1.
--- On non-//Unix// platforms, calling the ##machine_func## directly returns 0.
 
 public function uname()
-	ifdef WINDOWS then
-		atom buf
-		sequence sbuf
-		integer maj, mine, build, plat
-		buf = machine:allocate(148)
-		poke4(buf, 148)
-		if c_func(M_UNAME, {buf}) then
-			maj = peek4u(buf+4)
-			mine = peek4u(buf+8)
-			build = peek4u(buf+12)
-			plat = peek4u(buf+16)
-			sbuf = {}
-			if plat = 0 then
-				sbuf = append(sbuf, "Win32s")
-				sbuf = append(sbuf, sprintf("Windows %d.%d", {maj,mine}))
-			elsif plat = 1 then
-				sbuf = append(sbuf, "Win9x")
-				if mine = 0 then
-					sbuf = append(sbuf, "Win95")
-				elsif mine = 10 then
-					sbuf = append(sbuf, "Win98")
-				elsif mine = 90 then
-					sbuf = append(sbuf, "WinME")
-				else
-					sbuf = append(sbuf, sprintf("Windows %d.%d", {maj,mine}))
-				end if
-			elsif plat = 2 then
-				sbuf = append(sbuf, "WinNT")
-				if maj = 6 then
-					if mine = 0 then
-						sbuf = append(sbuf, "Vista") -- or Win2008
-					elsif mine = 1 then
-						sbuf = append(sbuf, "Windows7") -- or Win2008 R2
-					elsif mine = 2 then
-						sbuf = append(sbuf, "Windows8") -- or Win2012
-					else
-						sbuf = append(sbuf, sprintf("Windows %d.%d", {maj,mine}))
-					end if
-				elsif maj = 5 then
-					if mine = 0 then
-						sbuf = append(sbuf, "Win2K")
-					elsif mine = 1 then
-						sbuf = append(sbuf, "WinXP")
-					elsif mine = 2 then
-						sbuf = append(sbuf, "Win2003") -- according to http://msdn.microsoft.com/en-us/library/windows/desktop/ms724834%28v=vs.85%29.aspx
-					else
-						sbuf = append(sbuf, sprintf("Windows %d.%d", {maj,mine}))
-					end if
-				elsif maj = 4 and mine = 0 then
-					sbuf = append(sbuf, "WinNT 4.0")
-				elsif maj = 3 and mine = 51 then
-					sbuf = append(sbuf, "WinNT 3.51")
-				elsif maj = 3 and mine = 50 then --is it 50 or 5?
-					sbuf = append(sbuf, "WinNT 3.5")
-				elsif maj = 3 and mine = 1 then
-					sbuf = append(sbuf, "WinNT 3.1")
-				else
-					sbuf = append(sbuf, sprintf("WinNT %d.%d", {maj,mine}))
-				end if
-			elsif plat = 3 then
-				sbuf = append(sbuf, "WinCE")
-				sbuf = append(sbuf, sprintf("WinCE %d.%d", {maj,mine}))
-			else
-				sbuf = append(sbuf, "Unknown Windows")
-				sbuf = append(sbuf, sprintf("Version %d.%d", {maj,mine}))
-			end if
-			sbuf = append(sbuf, peek_string(buf+20))
-			sbuf &= {plat, build, mine, maj}
-			machine:free( buf )
-			return sbuf
-		else
-			machine:free( buf )
-			return {}
-		end if
-	elsifdef UNIX then
-		object o = machine_func(M_UNAME, {})
-		if atom(o) then
-			return {}
-		else
-			return o
-		end if
-	elsedef
-		return {"UNKNOWN"} --TODO
-	end ifdef
+	object o = machine_func(M_UNAME, {})
+	if atom(o) then
+		return {}
+	else
+		return o
+	end if
 end function
 
 --**
@@ -238,13 +116,7 @@ end function
 -- An **integer**, 1 if host system is a newer Windows (NT/2K/XP/Vista), else 0.
 
 public function is_win_nt()
-	ifdef WINDOWS then
-		sequence s
-		s = uname()
-		return equal(s[1], "WinNT")
-	elsedef
-		return -1
-	end ifdef
+	return 0
 end function
 
 --****

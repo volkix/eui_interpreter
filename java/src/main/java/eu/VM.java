@@ -311,6 +311,14 @@ public final class VM {
     private long nextTaskId = 1;
     private long currentTaskId = 0;
     private final Set<Long> allocatedPtrs = ConcurrentHashMap.newKeySet();
+    private volatile Path currentWorkingDir;
+
+    public Path resolvePath(String pStr) {
+        if (pStr == null || pStr.isEmpty()) return currentWorkingDir;
+        Path p = Path.of(pStr);
+        if (p.isAbsolute()) return p.normalize();
+        return currentWorkingDir.resolve(p).normalize();
+    }
 
     public VM() {
         this.regs = new Value[REGISTER_STACK_SIZE];
@@ -353,6 +361,7 @@ public final class VM {
         this.channels = new ConcurrentHashMap<>();
         this.channelClosed = new ConcurrentHashMap<>();
         this.nextChannelId = new AtomicLong(1);
+        this.currentWorkingDir = Path.of(System.getProperty("user.dir", ".")).toAbsolutePath().normalize();
     }
 
     private VM(VM parent, int childResultAbsReg) {
@@ -418,6 +427,7 @@ public final class VM {
         this.channels = parent.channels;
         this.channelClosed = parent.channelClosed;
         this.nextChannelId = parent.nextChannelId;
+        this.currentWorkingDir = parent.currentWorkingDir;
     }
 
     private VM(VM parent, RoutineProto routine) {
@@ -475,6 +485,7 @@ public final class VM {
         this.channels = parent.channels;
         this.channelClosed = parent.channelClosed;
         this.nextChannelId = parent.nextChannelId;
+        this.currentWorkingDir = parent.currentWorkingDir;
     }
 
     public synchronized Value invokeRoutine(int rid, List<Value> args) {
@@ -1732,7 +1743,7 @@ public final class VM {
                 String path = regs[argsIdx].toUtf8String();
                 String mode = regs[argsIdx + 1].toUtf8String();
                 try {
-                    File file = new File(path);
+                    File file = resolvePath(path).toFile();
                     String rafMode;
                     boolean truncate = false;
                     boolean append = false;
@@ -2551,9 +2562,6 @@ public final class VM {
             BasicFileAttributes bfa = Files.readAttributes(p, BasicFileAttributes.class);
             if (bfa.isDirectory()) attrs.append('d');
             if (!Files.isWritable(p)) attrs.append('r');
-            if (!name.isEmpty() && name.charAt(0) == '.' && !name.equals(".") && !name.equals("..")) {
-                attrs.append('h');
-            }
             size = bfa.size();
             mtime = bfa.lastModifiedTime().toInstant().atZone(ZoneId.systemDefault());
         } catch (IOException ignored) {}
@@ -2722,7 +2730,7 @@ public final class VM {
             case 22 -> { // M_DIR: `path`
                 String pathStr = arg.toUtf8String();
                 if (pathStr.isEmpty()) pathStr = ".";
-                Path p = Path.of(pathStr);
+                Path p = resolvePath(pathStr);
                 if (!Files.exists(p)) {
                     outRes[0] = Value.fromInt(-1);
                     return true;
@@ -2749,7 +2757,7 @@ public final class VM {
                 return true;
             }
             case 23 -> { // M_CURRENT_DIR
-                outRes[0] = Value.fromString(Path.of("").toAbsolutePath().toString());
+                outRes[0] = Value.fromString(currentWorkingDir.toString());
                 return true;
             }
             case 25 -> { // M_GET_POSITION
@@ -2765,6 +2773,202 @@ public final class VM {
                     outRes[0] = Value.fromInt(c < 0 ? 27 : c);
                 } catch (IOException e) {
                     outRes[0] = Value.fromInt(27);
+                }
+                return true;
+            }
+            case 27 -> { // M_CREATE_DIRECTORY: path or {path, mode} or {path, mode, mkparent}
+                String pathStr;
+                int mode = -1;
+                boolean mkparent = true;
+                if (arg.isSeq() && arg.asSeq().size() > 0 && arg.asSeq().get(0).isSeq()) {
+                    pathStr = arg.asSeq().get(0).toUtf8String();
+                    if (arg.asSeq().size() >= 2 && arg.asSeq().get(1).isAtom()) {
+                        mode = (int) arg.asSeq().get(1).toIntCoerce();
+                    }
+                    if (arg.asSeq().size() >= 3 && arg.asSeq().get(2).isAtom()) {
+                        mkparent = arg.asSeq().get(2).toIntCoerce() != 0;
+                    }
+                } else {
+                    pathStr = arg.toUtf8String();
+                }
+                if (pathStr.isEmpty() || pathStr.equals(".") || pathStr.equals("..") || pathStr.endsWith("/..") || pathStr.endsWith("/.")) {
+                    outRes[0] = Value.fromInt(0);
+                    return true;
+                }
+                try {
+                    Path p = resolvePath(pathStr);
+                    if (mkparent) {
+                        Files.createDirectories(p);
+                    } else {
+                        Files.createDirectory(p);
+                    }
+                    if (mode != -1) {
+                        try {
+                            Set<PosixFilePermission> perms = new HashSet<>();
+                            if ((mode & 0400) != 0) perms.add(PosixFilePermission.OWNER_READ);
+                            if ((mode & 0200) != 0) perms.add(PosixFilePermission.OWNER_WRITE);
+                            if ((mode & 0100) != 0) perms.add(PosixFilePermission.OWNER_EXECUTE);
+                            if ((mode & 0040) != 0) perms.add(PosixFilePermission.GROUP_READ);
+                            if ((mode & 0020) != 0) perms.add(PosixFilePermission.GROUP_WRITE);
+                            if ((mode & 0010) != 0) perms.add(PosixFilePermission.GROUP_EXECUTE);
+                            if ((mode & 0004) != 0) perms.add(PosixFilePermission.OTHERS_READ);
+                            if ((mode & 0002) != 0) perms.add(PosixFilePermission.OTHERS_WRITE);
+                            if ((mode & 0001) != 0) perms.add(PosixFilePermission.OTHERS_EXECUTE);
+                            Files.setPosixFilePermissions(p, perms);
+                        } catch (UnsupportedOperationException | SecurityException ignored) {}
+                    }
+                    outRes[0] = Value.fromInt(1);
+                } catch (Exception e) {
+                    outRes[0] = Value.fromInt(0);
+                }
+                return true;
+            }
+            case 28 -> { // M_REMOVE_DIRECTORY: path
+                String pathStr = arg.toUtf8String();
+                try {
+                    Path p = resolvePath(pathStr);
+                    if (Files.isDirectory(p)) {
+                        try {
+                            Files.delete(p);
+                            outRes[0] = Value.fromInt(1);
+                            return true;
+                        } catch (java.nio.file.AccessDeniedException e) {
+                            try {
+                                p.toFile().setWritable(true);
+                                Files.delete(p);
+                                outRes[0] = Value.fromInt(1);
+                                return true;
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                } catch (Exception ignored) {}
+                outRes[0] = Value.fromInt(0);
+                return true;
+            }
+            case 29 -> { // M_DELETE_FILE: path
+                String pathStr = arg.toUtf8String();
+                try {
+                    Path p = resolvePath(pathStr);
+                    try {
+                        boolean deleted = Files.deleteIfExists(p);
+                        outRes[0] = Value.fromInt(deleted ? 1 : 0);
+                        return true;
+                    } catch (java.nio.file.AccessDeniedException e) {
+                        try {
+                            p.toFile().setWritable(true);
+                            boolean deleted = Files.deleteIfExists(p);
+                            outRes[0] = Value.fromInt(deleted ? 1 : 0);
+                            return true;
+                        } catch (Exception ignored) {}
+                    }
+                } catch (Exception ignored) {}
+                outRes[0] = Value.fromInt(0);
+                return true;
+            }
+            case 30 -> { // M_MOVE_FILE: {src, dst} or {src, dst, overwrite}
+                if (arg.isSeq() && arg.asSeq().size() >= 2) {
+                    String src = arg.asSeq().get(0).toUtf8String();
+                    String dst = arg.asSeq().get(1).toUtf8String();
+                    boolean overwrite = arg.asSeq().size() > 2 && arg.asSeq().get(2).toIntCoerce() != 0;
+                    try {
+                        Path srcP = resolvePath(src);
+                        Path dstP = resolvePath(dst);
+                        if (!Files.exists(srcP)) {
+                            outRes[0] = Value.fromInt(0);
+                            return true;
+                        }
+                        if (Files.exists(dstP) && !overwrite) {
+                            outRes[0] = Value.fromInt(0);
+                            return true;
+                        }
+                        if (overwrite) {
+                            Files.move(srcP, dstP, StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            Files.move(srcP, dstP);
+                        }
+                        outRes[0] = Value.fromInt(1);
+                        return true;
+                    } catch (Exception e) {
+                        outRes[0] = Value.fromInt(0);
+                        return true;
+                    }
+                }
+                outRes[0] = Value.fromInt(0);
+                return true;
+            }
+            case 31 -> { // M_COPY_FILE: {src, dst} or {src, dst, overwrite}
+                if (arg.isSeq() && arg.asSeq().size() >= 2) {
+                    String src = arg.asSeq().get(0).toUtf8String();
+                    String dst = arg.asSeq().get(1).toUtf8String();
+                    boolean overwrite = arg.asSeq().size() > 2 && arg.asSeq().get(2).toIntCoerce() != 0;
+                    try {
+                        Path srcP = resolvePath(src);
+                        Path dstP = resolvePath(dst);
+                        if (!Files.exists(srcP) || Files.isDirectory(srcP)) {
+                            outRes[0] = Value.fromInt(0);
+                            return true;
+                        }
+                        Path parent = dstP.getParent();
+                        if (parent != null && Files.exists(parent) && !Files.isWritable(parent)) {
+                            outRes[0] = Value.fromInt(0);
+                            return true;
+                        }
+                        if (Files.exists(dstP) && !overwrite) {
+                            outRes[0] = Value.fromInt(0);
+                            return true;
+                        }
+                        if (overwrite) {
+                            Files.copy(srcP, dstP, StandardCopyOption.REPLACE_EXISTING);
+                        } else {
+                            Files.copy(srcP, dstP);
+                        }
+                        outRes[0] = Value.fromInt(1);
+                        return true;
+                    } catch (Exception e) {
+                        outRes[0] = Value.fromInt(0);
+                        return true;
+                    }
+                }
+                outRes[0] = Value.fromInt(0);
+                return true;
+            }
+            case 32 -> { // M_FILE_EXISTS: path
+                String pathStr = arg.toUtf8String();
+                outRes[0] = Value.fromInt(Files.exists(resolvePath(pathStr)) ? 1 : 0);
+                return true;
+            }
+            case 33 -> { // M_NOW_GMT: returns {year, month, day, hour, min, sec}
+                ZonedDateTime utc = Instant.now().atZone(java.time.ZoneOffset.UTC);
+                Sequence s = new Sequence(6);
+                s.setElement(0, Value.fromInt(utc.getYear()));
+                s.setElement(1, Value.fromInt(utc.getMonthValue()));
+                s.setElement(2, Value.fromInt(utc.getDayOfMonth()));
+                s.setElement(3, Value.fromInt(utc.getHour()));
+                s.setElement(4, Value.fromInt(utc.getMinute()));
+                s.setElement(5, Value.fromInt(utc.getSecond()));
+                outRes[0] = Value.fromSeq(s);
+                return true;
+            }
+            case 34 -> { // M_DISK_SIZE: path -> {total_bytes, used_bytes, free_bytes}
+                String pathStr = arg.toUtf8String();
+                if (pathStr.isEmpty()) pathStr = ".";
+                try {
+                    Path p = resolvePath(pathStr);
+                    FileStore fs = Files.getFileStore(p);
+                    long total = fs.getTotalSpace();
+                    long free = fs.getUsableSpace();
+                    long used = Math.max(0L, total - free);
+                    Sequence s = new Sequence(3);
+                    s.setElement(0, Value.fromInt(total));
+                    s.setElement(1, Value.fromInt(used));
+                    s.setElement(2, Value.fromInt(free));
+                    outRes[0] = Value.fromSeq(s);
+                } catch (Exception e) {
+                    Sequence s = new Sequence(3);
+                    s.setElement(0, Value.fromInt(0));
+                    s.setElement(1, Value.fromInt(0));
+                    s.setElement(2, Value.fromInt(0));
+                    outRes[0] = Value.fromSeq(s);
                 }
                 return true;
             }
@@ -2977,8 +3181,13 @@ public final class VM {
                 return true;
             }
             case 63 -> { // M_CHDIR
-                Path p = Path.of(arg.toUtf8String());
-                outRes[0] = Value.fromInt(Files.isDirectory(p) ? 1 : 0);
+                Path p = resolvePath(arg.toUtf8String());
+                if (Files.isDirectory(p)) {
+                    this.currentWorkingDir = p;
+                    outRes[0] = Value.fromInt(1);
+                } else {
+                    outRes[0] = Value.fromInt(0);
+                }
                 return true;
             }
             case 64 -> { // M_SLEEP

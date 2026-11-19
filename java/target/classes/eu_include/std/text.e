@@ -448,99 +448,11 @@ public function get_encoding_properties( )
 	return {encoding_NAME, lower_case_SET, upper_case_SET}
 end function
 
-ifdef WINDOWS then
-	include std/dll.e
-	include std/machine.e
-	include std/types.e
-	atom
-		user32 = open_dll( "user32.dll"),
-		api_CharLowerBuff = define_c_func(user32, "CharLowerBuffA", {C_POINTER, C_INT}, C_INT),
-		api_CharUpperBuff = define_c_func(user32, "CharUpperBuffA", {C_POINTER, C_INT}, C_INT),
-		tm_size = 1024,
-		temp_mem = allocate(1024)
-
-	function change_case(object x, object api)
-		sequence changed_text
-		integer single_char = 0
-		integer len
-	
-		if not string(x) then
-			if atom(x) then
-				if x = 0 then
-					return 0
-				end if
-				x = {x}
-				single_char = 1
-			else
-				for i = 1 to length(x) do
-					x[i] = change_case(x[i], api)
-				end for
-				return x
-			end if
-		end if
-		if length(x) = 0 then
-			return x
-		end if
-		if length(x) >= tm_size then
-			tm_size = length(x) + 1
-			free(temp_mem)
-			temp_mem = allocate(tm_size)
-		end if
-		poke(temp_mem, x)
-		len = c_func(api, {temp_mem, length(x)} )
-		changed_text = peek({temp_mem, len})
-		if single_char then
-			return changed_text[1]
-		else
-			return changed_text
-		end if
-	end function
-end ifdef
-
---**
--- converts an atom or sequence to lower case.
---
--- Parameters:
---   # ##x## : Any Euphoria object.
---
--- Returns:
---   A **sequence**, the lowercase version of ##x##
---
--- Comments:
--- * For //Windows// systems, this uses the current code page for conversion
--- * For //Unix// this only works on ASCII characters. It alters characters in
---   the ##'a'..'z'## range. If you need to do case conversion with other encodings
---   use the [[:set_encoding_properties]] first.
--- * ##x## may be a sequence of any shape, all atoms of which will be acted upon.
---
--- **WARNING**, When using ASCII encoding, this can also affect floating point
--- numbers in the range ##65## to ##90##.
---
--- Example 1:
--- <eucode>
--- s = lower("Euphoria")
--- -- s is "euphoria"
---
--- a = lower('B')
--- -- a is 'b'
---
--- s = lower({"Euphoria", "Programming"})
--- -- s is {"euphoria", "programming"}
--- </eucode>
---
--- See Also:
---   [[:upper]], [[:proper]], [[:set_encoding_properties]], [[:get_encoding_properties]]
-
 public function lower(object x)
 	if length(lower_case_SET) != 0 then
 		return stdseq:mapping(x, upper_case_SET, lower_case_SET)
 	end if
-	
-	ifdef WINDOWS then
-		return change_case(x, api_CharLowerBuff)
-	elsedef	
-		return x + (x >= 'A' and x <= 'Z') * TO_LOWER
-	end ifdef
+	return x + (x >= 'A' and x <= 'Z') * TO_LOWER
 end function
 
 --**
@@ -581,12 +493,7 @@ public function upper(object x)
 	if length(upper_case_SET) != 0 then
 		return stdseq:mapping(x, lower_case_SET, upper_case_SET)
 	end if
-	ifdef WINDOWS then
-		return change_case(x, api_CharUpperBuff)
-	elsedef	
-		return x - (x >= 'a' and x <= 'z') * TO_LOWER
-	end ifdef
-
+	return x - (x >= 'a' and x <= 'z') * TO_LOWER
 end function
 
 --**

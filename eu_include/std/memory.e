@@ -68,17 +68,6 @@ end type
 --**
 -- @nodoc@
 export procedure deallocate(atom addr)
-	ifdef DATA_EXECUTE then
-		ifdef WINDOWS then
-			if dep_works() then
-				c_func( VirtualFree_rid, { addr, 1, MEM_RELEASE } )
-				return
-			end if
-		elsedef
-			c_func( MUNMAP, { addr, 1 } )
-			return
-		end ifdef
-	end ifdef
    	machine_proc( memconst:M_FREE, addr)
 end procedure
 memconst:FREE_RID = routine_id("deallocate")
@@ -181,14 +170,6 @@ export atom VirtualFree_rid
 
 --**
 -- @nodoc@
-public procedure free_code( atom addr, integer size, valid_wordsize wordsize = 1 )	ifdef WINDOWS then
-
-		if dep_works() then
-			c_func(VirtualFree_rid, { addr, size*wordsize, MEM_RELEASE })
-		else
-			machine_proc( memconst:M_FREE, addr)
-		end if
-	elsedef
-		c_func( MUNMAP, { addr, size * wordsize } )
-	end ifdef
+public procedure free_code( atom addr, integer size, valid_wordsize wordsize = 1 )
+	machine_proc( memconst:M_FREE, addr)
 end procedure

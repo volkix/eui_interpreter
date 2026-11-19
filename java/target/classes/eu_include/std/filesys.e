@@ -26,72 +26,16 @@ ifdef UNIX then
 end ifdef
 
 constant
-	M_DIR	      = 22,
-	M_CURRENT_DIR = 23,
-	M_CHDIR       = 63
-
-ifdef WINDOWS then	
-	constant lib = dll:open_dll("kernel32")
-
-elsifdef LINUX then
-	constant lib = dll:open_dll("")
-
-elsifdef OSX then
-	constant lib = dll:open_dll("libc.dylib")
-
-elsifdef UNIX then
-	constant lib = STDLIB
-	
-end ifdef
-
-ifdef LINUX then
-	integer STAT_VER
-	if sizeof( C_POINTER ) = 8 then
-		STAT_VER = 0
-	else
-		STAT_VER = 3
-	end if
-	constant xStatFile = dll:define_c_func(lib, "__xstat", {dll:C_INT, dll:C_POINTER, dll:C_POINTER}, dll:C_INT)
-elsifdef OSX then
-	function define_stat()
-		integer xStatFile = dll:define_c_func(lib, "stat64", {dll:C_POINTER, dll:C_POINTER}, dll:C_INT)
-		if xStatFile = -1 then
-			xStatFile = dll:define_c_func(lib, "stat", {dll:C_POINTER, dll:C_POINTER}, dll:C_INT)
-		end if
-		return xStatFile
-	end function
-	constant xStatFile = define_stat()
-	
-elsifdef UNIX then
-	constant xStatFile = dll:define_c_func(lib, "stat", {dll:C_POINTER, dll:C_POINTER}, dll:C_INT)
-end ifdef
-
-ifdef UNIX then
-	constant xMoveFile        = dll:define_c_func(lib, "rename", {dll:C_POINTER, dll:C_POINTER}, dll:C_INT)
-	--constant xDeleteFile      = define_c_func(lib, "remove", {C_POINTER}, C_LONG)
-	constant xDeleteFile      = dll:define_c_func(lib, "unlink", {dll:C_POINTER}, dll:C_INT)
-	constant xCreateDirectory = dll:define_c_func(lib, "mkdir", {dll:C_POINTER, dll:C_INT}, dll:C_INT)
-	constant xRemoveDirectory = dll:define_c_func(lib, "rmdir", {dll:C_POINTER}, dll:C_INT)
-	constant xGetFileAttributes = dll:define_c_func(lib, "access", {dll:C_POINTER, dll:C_INT}, dll:C_INT)
-elsifdef WINDOWS then
-	constant xCopyFile         = dll:define_c_func(lib, "CopyFileA",   {dll:C_POINTER, dll:C_POINTER, dll:C_BOOL},
-		C_BOOL)
-	constant xMoveFile         = dll:define_c_func(lib, "MoveFileA",   {dll:C_POINTER, dll:C_POINTER}, dll:C_BOOL)
-	constant xDeleteFile       = dll:define_c_func(lib, "DeleteFileA", {dll:C_POINTER}, dll:C_BOOL)
-	constant xCreateDirectory  = dll:define_c_func(lib, "CreateDirectoryA", 
-		{C_POINTER, C_POINTER}, C_BOOL)
-	constant xRemoveDirectory  = dll:define_c_func(lib, "RemoveDirectoryA", {dll:C_POINTER}, dll:C_BOOL)
-	constant xGetFileAttributes= dll:define_c_func(lib, "GetFileAttributesA", {dll:C_POINTER}, dll:C_INT) -- N.B DWORD return fails this.
-	constant xGetDiskFreeSpace = dll:define_c_func(lib, "GetDiskFreeSpaceA", 
-		{dll:C_POINTER, dll:C_POINTER, dll:C_POINTER, dll:C_POINTER, dll:C_POINTER}, dll:C_BOOL)	 
-elsedef
-	constant xCopyFile          = -1
-	constant xMoveFile          = -1
-	constant xDeleteFile        = -1
-	constant xCreateDirectory   = -1
-	constant xRemoveDirectory   = -1
-	constant xGetFileAttributes = -1
-end ifdef
+	M_DIR              = 22,
+	M_CURRENT_DIR      = 23,
+	M_CHDIR            = 63,
+	M_CREATE_DIRECTORY = 27,
+	M_REMOVE_DIRECTORY = 28,
+	M_DELETE_FILE      = 29,
+	M_MOVE_FILE        = 30,
+	M_COPY_FILE        = 31,
+	M_FILE_EXISTS      = 32,
+	M_DISK_SIZE        = 34
 
 
 --****
@@ -181,26 +125,20 @@ end ifdef
 -- Current platform's shared library extension. For instance it can be ##dll##, 
 -- ##so## or ##dylib## depending on the platform.
 
-ifdef UNIX then
-	public constant SLASH='/'
-	public constant SLASHES = "/"
-	public constant EOLSEP = "\n"
-	public constant PATHSEP = ':'
-	public constant NULLDEVICE = "/dev/null"
-	ifdef OSX then
-		public constant SHARED_LIB_EXT = "dylib"
-	elsedef
-		public constant SHARED_LIB_EXT = "so"
-	end ifdef
-
-elsifdef WINDOWS then
-
-	public constant SLASH='\\'
-	public constant SLASHES = "\\/:"
+ifdef WINDOWS then
+	public constant SLASH = '\\'
+	public constant SLASHES = "\\:/"
 	public constant EOLSEP = "\r\n"
 	public constant PATHSEP = ';'
 	public constant NULLDEVICE = "NUL:"
 	public constant SHARED_LIB_EXT = "dll"
+elsedef
+	public constant SLASH = '/'
+	public constant SLASHES = "/"
+	public constant EOLSEP = "\n"
+	public constant PATHSEP = ':'
+	public constant NULLDEVICE = "/dev/null"
+	public constant SHARED_LIB_EXT = "so"
 end ifdef
 
 public constant EOL = '\n'
@@ -725,35 +663,13 @@ end function
 -- 	[[:remove_directory]], [[:chdir]]
 
 public function create_directory(sequence name, integer mode=448, integer mkparent = 1)
-	atom pname, ret
-	integer pos
-
 	if length(name) = 0 then
-		return 0 -- failed
+		return 0
 	end if
-	
-	-- Remove any trailing slash.
 	if name[$] = SLASH then
 		name = name[1 .. $-1]
 	end if
-	
-	if mkparent != 0 then
-		pos = search:rfind(SLASH, name)
-		if pos != 0 then
-			ret = create_directory(name[1.. pos-1], mode, mkparent)
-		end if
-	end if
-	
-	pname = machine:allocate_string(name)
-
-	ifdef UNIX then
-		ret = not c_func(xCreateDirectory, {pname, mode})
-	elsifdef WINDOWS then
-		ret = c_func(xCreateDirectory, {pname, 0})
-		mode = mode -- get rid of not used warning
-	end ifdef
-
-	return ret
+	return machine_func(M_CREATE_DIRECTORY, {name, mode, mkparent})
 end function
 
 --**
@@ -798,17 +714,7 @@ end function
 --     An **integer**, ##0## on failure, ##1## on success.
 
 public function delete_file(sequence name)
-
-	atom pfilename = machine:allocate_string(name)
-	integer success = c_func(xDeleteFile, {pfilename})
-		
-	ifdef UNIX then
-		success = not success
-	end ifdef
-	
-	machine:free(pfilename)
-
-	return success
+	return machine_func(M_DELETE_FILE, name)
 end function
 
 --**
@@ -1098,20 +1004,7 @@ public function remove_directory(sequence dir_name, integer force=0)
 	end ifdef
 	
 	dir_name &= SLASH
-	ifdef WINDOWS then
-		for i = 3 to length(files) do
-			if eu:find('d', files[i][D_ATTRIBUTES]) then
-				ret = remove_directory(dir_name & files[i][D_NAME] & SLASH, force)
-			else
-				
-				ret = delete_file(dir_name & files[i][D_NAME])
-			end if
-			if not ret then
-				return 0
-			end if
-
-		end for
-	elsedef
+	if force then
 		for i = 1 to length(files) do
 			if find( files[i][D_NAME], {".",".."}) then
 				continue
@@ -1125,14 +1018,8 @@ public function remove_directory(sequence dir_name, integer force=0)
 				return 0
 			end if
 		end for
-	end ifdef
-	pname = machine:allocate_string(dir_name)
-	ret = c_func(xRemoveDirectory, {pname})
-	ifdef UNIX then
-			ret = not ret 
-	end ifdef
-	machine:free(pname)
-	return ret
+	end if
+	return machine_func(M_REMOVE_DIRECTORY, dir_name)
 end function
 
 
@@ -2103,25 +1990,7 @@ public function file_exists(object name)
 	if atom(name) then
 		return 0
 	end if
-	
-	ifdef WINDOWS then
-		atom pName = allocate_string(name)
-		atom r = c_func(xGetFileAttributes, {pName})
-		free(pName)
-
-		return r > 0
-
-	elsifdef UNIX then
-		atom pName = machine:allocate_string(name)
-		atom r = c_func(xGetFileAttributes, {pName, 0})
-		machine:free(pName)
-
-		return r = 0
-
-	elsedef
-
-		return sequence(dir(name))
-	end ifdef
+	return machine_func(M_FILE_EXISTS, name)
 end function
 
 --**
@@ -2164,7 +2033,6 @@ end function
 -- [[:move_file]], [[:rename_file]]
 
 public function copy_file(sequence src, sequence dest, integer overwrite = 0)
-	
 	if length(dest) then
 		if file_type( dest ) = FILETYPE_DIRECTORY then
 			if dest[$] != SLASH then
@@ -2174,279 +2042,21 @@ public function copy_file(sequence src, sequence dest, integer overwrite = 0)
 			dest &= info[PATH_FILENAME]
 		end if
 	end if
-	
-	ifdef WINDOWS then
-		atom psrc = allocate_string(src)
-		atom pdest = allocate_string(dest)
-		integer success = c_func(xCopyFile, {psrc, pdest, not overwrite})
-		free({pdest, psrc})
-		
-	elsedef
-		integer success = 0
-		object src_list = dir(src)
-		if sequence(src_list) and length(src_list) = 1 and not find('d',src_list[1][D_ATTRIBUTES]) then
-			object dest_list = dir(dest)
-			if (overwrite and sequence(dest_list) and length(dest_list) = 1 and not find('d',dest_list[1][D_ATTRIBUTES])) 
-				or not file_exists( dest ) then
-				atom
-					in  = open( src, "rb", 1 )
-				if in != -1 then
-					integer out = open( dest, "wb" )
-					if out = -1 then
-						return 0
-					end if
-					integer byte
-					while byte != -1 with entry do
-						puts( out, byte )
-					entry
-						byte = getc( in )
-					end while
-					success = 1
-					close( out )
-				end if
-			end if
-		end if
-		
-	end ifdef
-
-	return success
-
+	return machine_func(M_COPY_FILE, {src, dest, overwrite})
 end function
 
---**
--- rename a file.
--- 
--- Parameters:
--- 		# ##old_name## : a sequence, the name of the file or directory to rename.
--- 		# ##new_name## : a sequence, the new name for the renamed file
---		# ##overwrite## : an integer, ##0## (the default) to prevent renaming if destination file exists,
---                                   ##1## to delete existing destination file first
---
--- Returns:
---     An **integer**, ##0## on failure, ##1## on success.
---
--- Comments:
--- 	*	If ##new_name## contains a path specification, this is equivalent to moving the file, as 
--- 		well as possibly changing its name. However, the path must be on the same drive for 
--- 		this to work.
--- * If ##overwrite## was requested but the rename fails, any existing destination
---  file is preserved.
---
--- See Also:
--- [[:move_file]], [[:copy_file]]
-
-public function rename_file(sequence old_name, sequence new_name, integer overwrite=0)
-	atom psrc, pdest, ret
-	sequence tempfile = ""
-
-	if not overwrite then
-		if file_exists(new_name) then
-			return 0
-		end if
-	else
-		if file_exists(new_name) then
-			tempfile = temp_file(new_name)
-			ret = move_file(new_name, tempfile)
-		end if
-	end if
-	
-	
-	psrc = machine:allocate_string(old_name)
-	pdest = machine:allocate_string(new_name)
-	ret = c_func(xMoveFile, {psrc, pdest})
-		
-	ifdef UNIX then
-		ret = not ret 
-	end ifdef
-		
-	machine:free({pdest, psrc})
-	
-	if overwrite then
-		if not ret then
-			if length(tempfile) > 0 then
-				-- rename was unsuccessful so restore from tempfile
-				ret = move_file(tempfile, new_name)
-			end if
-		end if
-		delete_file(tempfile)
-	end if
-	
-	return ret
-end function
-
-ifdef LINUX then
-			ifdef BITS32 then
-				constant
-					STAT_ST_BLKSIZE = 48,
-					SIZEOF_STAT     = 88,
-					$
-			elsedef
-				constant
-					STAT_ST_BLKSIZE = 88,
-					SIZEOF_STAT     = 144,
-					$
-			end ifdef
-	
-elsifdef UNIX then
-		ifdef OSX then
-			ifdef BITS32 then
-				constant
-					STAT_ST_BLKSIZE = 76,
-					SIZEOF_STAT     = 108,
-					$
-			elsedef
-				constant
-					STAT_ST_BLKSIZE = 112,
-					SIZEOF_STAT     = 144,
-					$
-			end ifdef
-		elsifdef FREEBSD then
-			ifdef BITS32 then
-				constant
-					STAT_ST_BLKSIZE = 64,
-					SIZEOF_STAT     = 96,
-					$
-			elsedef
-				constant
-					STAT_ST_BLKSIZE = 88,
-					SIZEOF_STAT     = 120,
-					$
-			end ifdef
-		elsifdef OPENBSD then
-			constant
-				STAT_ST_BLKSIZE = 72,
-				SIZEOF_STAT     = 112,
-				$
-		elsifdef NETBSD then
-			constant
-				STAT_ST_BLKSIZE = 80,
-				SIZEOF_STAT     = 100,
-				$
-			stat_t_offset = 80
-			stat_buf_size = 100
-		end ifdef
-end ifdef
-
-ifdef UNIX then
-	enum
-		STAT_DEV,
-		STAT_BLKSIZE,
-		STAT_RETURN,
-		$
-	
-	constant
-		STAT_ST_DEV = 0
-	
-	function stat( sequence src )
-		atom psrc = machine:allocate_string( src, 1 )
-		atom psrcbuf = machine:allocate( SIZEOF_STAT, 1 )
-		sequence stat_result = repeat( 0, STAT_RETURN )
-		ifdef LINUX then
-			stat_result[STAT_RETURN] = c_func(xStatFile, {STAT_VER, psrc, psrcbuf})
-		elsedef
-			stat_result[STAT_RETURN] = c_func(xStatFile, {psrc, psrcbuf})
-		end ifdef
-		ifdef OSX or FREEBSD then
-			stat_result[STAT_DEV] = peek4u( psrcbuf + STAT_ST_DEV )
-		elsedef
-			stat_result[STAT_DEV]    = peek8u( psrcbuf + STAT_ST_DEV )
-		end ifdef
-		ifdef FREEBSD then
-			stat_result[STAT_BLKSIZE] = peek4u( psrcbuf + STAT_ST_BLKSIZE )
-		elsedef
-			stat_result[STAT_BLKSIZE] = peek_pointer( psrcbuf + STAT_ST_BLKSIZE )
-		end ifdef
-		return stat_result
-	end function
-end ifdef
-
---**
--- moves a file to another location.
---
--- Parameters:
---   # ##src## : a sequence, the name of the file or directory to move
---   # ##dest## : a sequence, the new location for the file
---   # ##overwrite## : an integer, ##0## (the default) to prevent overwriting an existing destination file,
---                     ##1## to overwrite existing destination file
---
--- Returns:
---   An **integer**, ##0## on failure, ##1## on success.
---
--- Comments:
---  If ##overwrite## was requested but the move fails, any existing destination file is preserved.
---
--- See Also:
---   [[:rename_file]], [[:copy_file]]
-public function move_file(sequence src, sequence dest, integer overwrite=0)
-	atom psrc = 0, pdest = 0, ret
-	sequence tempfile = ""
+public function move_file(sequence src, sequence dest, integer overwrite = 0)
 	if not file_exists(src) then
 		return 0
 	end if
-	
-	if not overwrite then
-		if file_exists( dest ) then
-			return 0
-		end if
+	if not overwrite and file_exists(dest) then
+		return 0
 	end if
+	return machine_func(M_MOVE_FILE, {src, dest, overwrite})
+end function
 
-	ifdef UNIX then
-		sequence src_result, dest_result
-		src_result = stat( src )
-		ret = src_result[STAT_RETURN]
-		if ret then
-			return 0
-		end if
-		
-		dest_result = stat( dest )
-		ret = dest_result[STAT_RETURN]
-		if ret then
-			-- Assume destination doesn't exist
-			atom pdir
-			if length(dirname(dest)) = 0 then
-				dest_result = stat( current_dir() )
-			else
-				dest_result = stat( dirname( dest ) )
-			end if
-			ret = dest_result[STAT_RETURN]
-		end if
-		
-		if not ret and dest_result[STAT_DEV] != src_result[STAT_DEV] then
-			-- on different filesystems, can not use rename
-			-- fall back on copy&delete
-			if copy_file(src, dest, overwrite) then
-				return delete_file(src)
-			else			    
- 			    return 0
- 			end if
-		end if
-		
-	end ifdef
-	
-	psrc  = machine:allocate_string(src, 1)
-	pdest = machine:allocate_string(dest, 1)
-	
-
-	if overwrite then
-		-- return value is ignored, we don't care if it existed or not
-		tempfile = temp_file(dest)
-		move_file(dest, tempfile)
-	end if
-	
-	ret = c_func(xMoveFile, {psrc, pdest})
-	
-	ifdef UNIX then
-		ret = not ret
-	end ifdef
-	
-	if overwrite then
-		if not ret then
-			-- move was unsuccessful so restore tempfile
-			move_file(tempfile, dest)
-		end if
-		delete_file(tempfile)
-	end if
-	return ret
+public function rename_file(sequence old_name, sequence new_name, integer overwrite = 0)
+	return move_file(old_name, new_name, overwrite)
 end function
 
 
@@ -2636,142 +2246,20 @@ end function
 -- min_file_size = res[SECTORS_PER_CLUSTER] * res[BYTES_PER_SECTOR]
 -- </eucode>
 
-public function disk_metrics(object disk_path) 
-	sequence result = {0, 0, 0, 0} 
-	atom path_addr = 0
-	atom metric_addr = 0
-	
-	ifdef WINDOWS then
-		if sequence(disk_path) then 
-			path_addr = allocate_string(disk_path) 
-		else 
-			path_addr = 0 
-		end if 
-	 
-		metric_addr = allocate(16) 
-	 
-		if c_func(xGetDiskFreeSpace, {path_addr, 
-		                               metric_addr + 0,
-		                               metric_addr + 4,
-		                               metric_addr + 8,
-		                               metric_addr + 12
-		                               }) then 
-			result = peek4s({metric_addr, 4}) 
-		end if 
-	 
-		free({path_addr, metric_addr}) 
-	elsifdef UNIX then
-	
-		sequence size_of_disk = {0,0,0}
-
-		atom bytes_per_cluster
-		atom ret
-		integer stat_t_offset, stat_buf_size
-
-		sequence stat_result = stat( disk_path )
-		ret               = stat_result[STAT_RETURN]
-		bytes_per_cluster = stat_result[STAT_BLKSIZE]
-
-		if ret then
-			-- failure
-			return result 
-		end if
-
-		size_of_disk = disk_size(disk_path)
-		
-		-- this is hardcoded for now, but may be x86 specific
-		-- on other Unix platforms that run on non x86 hardware, this
-		-- may need to be changed - there is no portable way to get this
-		result[BYTES_PER_SECTOR] = 512
-
-		result[SECTORS_PER_CLUSTER] = bytes_per_cluster / result[BYTES_PER_SECTOR]
-		result[TOTAL_NUMBER_OF_CLUSTERS] = size_of_disk[TOTAL_BYTES] / bytes_per_cluster
-		result[NUMBER_OF_FREE_CLUSTERS] = size_of_disk[FREE_BYTES] / bytes_per_cluster
-
-	end ifdef 
-	
-	return result 
-end function 
- 
---**
--- returns the amount of space for a disk drive.
---
--- Parameters:
---	# ##disk_path## : A sequence. This is the path that identifies the disk to inquire upon.
---
--- Returns:
---     A **sequence**, containing ##TOTAL_BYTES##, ##USED_BYTES##, ##FREE_BYTES##, and a string which represents the filesystem name
---
--- Example 1:
--- <eucode>
--- res = disk_size("C:\\")
--- printf(1, "Drive %s has %3.2f%% free space\n", { 
---     "C:", res[FREE_BYTES] / res[TOTAL_BYTES]
--- })
--- </eucode>
-
 public function disk_size(object disk_path) 
-	sequence disk_size = {0,0,0, disk_path}
-	
-	ifdef WINDOWS then
-		sequence result 
-		atom bytes_per_cluster
-		
-	
-		result = disk_metrics(disk_path) 
-		
-		bytes_per_cluster = result[BYTES_PER_SECTOR] * result[SECTORS_PER_CLUSTER]
-	
-		disk_size[TOTAL_BYTES] = bytes_per_cluster * result[TOTAL_NUMBER_OF_CLUSTERS] 
-		disk_size[FREE_BYTES]  = bytes_per_cluster * result[NUMBER_OF_FREE_CLUSTERS] 
-		disk_size[USED_BYTES]  = disk_size[TOTAL_BYTES] - disk_size[FREE_BYTES] 
-	elsifdef UNIX then
-		integer temph
-		sequence tempfile
-		object data
-		sequence filesys = ""
+	if atom(disk_path) then
+		disk_path = "."
+	end if
+	sequence s = machine_func(M_DISK_SIZE, disk_path)
+	return {s[1], s[2], s[3], disk_path}
+end function
 
-		tempfile = "/tmp/eudf" & sprintf("%d", rand(1000)) & ".tmp"
-		system("df -k "&disk_path&" > "&tempfile, 2)
-
-		temph = open(tempfile, "r")
-		if temph = -1 then
-			-- failure
-			return disk_size
-		end if
-		-- skip the human readable header
-		data = gets(temph)
-		-- skip the name of the device node
-		while 1 do 
-			data = getc(temph)
-			if find(data," \t\r\n") then
-				exit
-			end if
-			if data = -1 then
-				-- failure
-				close(temph)
-				temph = delete_file(tempfile)
-				disk_size[4] = filesys
-				return disk_size
-			end if
-			filesys &= data
-			
-		end while
-
-		data = stdget:get(temph)
-		disk_size[TOTAL_BYTES] = data[2] * 1024
-		data = stdget:get(temph)
-		disk_size[USED_BYTES] = data[2] * 1024
-		data = stdget:get(temph)
-		disk_size[FREE_BYTES] = data[2] * 1024
-		disk_size[4] = filesys
-
-		close(temph)
-		temph = delete_file(tempfile)
-
-	end ifdef 
-	
-	return disk_size 
+public function disk_metrics(object disk_path) 
+	sequence sz = disk_size(disk_path)
+	atom total = sz[TOTAL_BYTES]
+	atom free_b = sz[FREE_BYTES]
+	atom clus = 4096
+	return {512, 8, floor(total / clus), floor(free_b / clus)}
 end function 
 
 sequence file_counters = {}
