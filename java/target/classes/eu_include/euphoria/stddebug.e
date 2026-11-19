@@ -29,7 +29,7 @@ include std/math.e
 include std/memory.e
 include std/net/common.e
 include std/net/dns.e
-include std/net/http.e
+include std/http.e
 include std/os.e
 include std/pipeio.e
 include std/pretty.e
