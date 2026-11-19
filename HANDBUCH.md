@@ -65,6 +65,17 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 13.1 [Weg 1: Klassische Tasks mit Virtual Threads (`task:create_thread`)](#131-weg-1-klassische-tasks-mit-virtual-threads-taskcreate_thread)
    - 13.2 [Weg 2: Channels / Go-Style Concurrency (`std/channel.e`)](#132-weg-2-channels--go-style-concurrency-stdchannele)
    - 13.3 [Weg 3: Async / Await Futures (`std/thread.e`)](#133-weg-3-async--await-futures-stdthreade)
+14. [Web-Anwendungen mit SAP UI5 Web Components 2.29 (`std/ui5.e`)](#14-web-anwendungen-mit-sap-ui5-web-components-229-stdui5e)
+   - 14.1 [Architektur & Fiori Horizon Design](#141-architektur--fiori-horizon-design)
+   - 14.2 [Komponenten-Übersicht & Web-Standards](#142-komponenten-übersicht--web-standards)
+   - 14.3 [Reaktive Euphorix-Bridge & Live DOM-Updates](#143-reaktive-euphorix-bridge--live-dom-updates)
+   - 14.4 [Vollständiges Anwendungsbeispiel (`examples/07_sapui5_webcomponents_demo.ex`)](#144-vollständiges-anwendungsbeispiel-examples07_sapui5_webcomponents_demoex)
+15. [Alternative Web-UI mit cgibash/html (`std/vsui.e`)](#15-alternative-web-ui-mit-cgibashhtml-stdvsuie)
+   - 15.1 [Architektur & Vorteile der hauseigenen cgibash/html-Bibliothek](#151-architektur--vorteile-der-hauseigenen-cgibashhtml-bibliothek)
+   - 15.2 [Komponenten-Suite (High-Density Controls, vsgrid, Formulare, Dialoge)](#152-komponenten-suite-high-density-controls-vsgrid-formulare-dialoge)
+   - 15.3 [Integrierter Asset-Server (/lib2/*, /css/*, /img/*)](#153-integrierter-asset-server-lib2-css-img)
+   - 15.4 [Reaktive Event-Bridge mit vsevent & DOM-Patches](#154-reaktive-event-bridge-mit-vsevent--dom-patches)
+   - 15.5 [Vollständiges Anwendungsbeispiel (`examples/08_cgibash_html_demo.ex` & `demo/vsui_demo.ex`)](#155-vollständiges-anwendungsbeispiel-examples08_cgibash_html_demoex--demovsui_demoex)
 
 ---
 
@@ -957,4 +968,153 @@ atom res2 = thread:await(job2)
 -- Oder mehrere Jobs auf einmal abholen:
 -- sequence alle_ergebnisse = thread:await_all({job1, job2})
 ```
+
+---
+
+## 14. Web-Anwendungen mit SAP UI5 Web Components 2.29 (`std/ui5.e`)
+
+Das Modul `std/ui5.e` bringt die standardisierten **SAP UI5 Web Components (targeting v2.29)** direkt in das Euphorix-Ökosystem:
+
+### 14.1 Architektur & Fiori Horizon Design
+
+* **Zero Node.js / Zero Build-Step**: Entwickler schreiben reine OpenEuphoria-Syntax. Keine `package.json`, kein Webpack/Vite oder Angular/React nötig.
+* **SAP Fiori Themes**: Vollständige Unterstützung für `THEME_HORIZON` (*Morning Horizon*), `THEME_HORIZON_DARK` (*Evening Horizon*) und `THEME_FIORI_3`.
+* **Standard HTML5 Web Components**: Standard-Elemente wie `<ui5-shellbar>`, `<ui5-card>`, `<ui5-table>`, `<ui5-button>`, `<ui5-input>`, `<ui5-dialog>`, `<ui5-toast>`, `<ui5-badge>`, `<ui5-datepicker>`, `<ui5-switch>` usw.
+* **Offline-Fallback**: Eingebettete CSS-Stile stellen sicher, dass das Fiori-Layout auch ohne aktive Internetverbindung mit sauberer Typografie und Farben dargestellt wird.
+
+### 14.2 Komponenten-Übersicht & Deklaration
+
+```euphoria
+include std/ui5.e as ui5
+
+-- ShellBar (Kopfzeile mit Avatar, Suche, Benachrichtigungen)
+sequence sb = ui5:shellbar("Meine Firma", "Enterprise ERP", {{"profile", "VS"}})
+
+-- Fiori Card
+sequence crd = ui5:card("Offene Tickets", "<p>3 Dringende Aufgaben</p>", {
+    {"subtitle", "Status: Aktiv"},
+    {"icon", "order-status"}
+})
+
+-- Interaktive Tabelle
+sequence tbl = ui5:table(
+    {{"ID", "80px"}, {"Titel", ""}, {"Status", "120px"}},
+    {
+        {"#1", "Server-Wartung", ui5:badge("Erledigt", 8)},
+        {"#2", "DB Backup", ui5:badge("Dringend", 2)}
+    }
+)
+
+-- Eingabeelemente
+sequence inp = ui5:input("task_title", "", {{"placeholder", "Aufgabe..."}, {"icon", "edit"}})
+sequence btn = ui5:button("btn_add", "Hinzufügen", {{"design", ui5:DESIGN_EMPHASIZED}, {"icon", "add"}, {"action", "add_item"}})
+```
+
+### 14.3 Reaktive Euphorix-Bridge & Live DOM-Updates
+
+Klicks und Formulareingaben werden vom integrierten Bridge-Skript automatisch an serverseitige `routine_id`-Handler übergeben. Die Antwort aktualisiert gezielt den DOM ohne Seiten-Reload:
+
+```euphoria
+function on_add_item(sequence ctx)
+    sequence title = ui5:val(ctx, "task_title")
+    if length(title) = 0 then
+        return ui5:updates({
+            ui5:set_value_state("task_title", ui5:STATE_ERROR, "Titel erforderlich!"),
+            ui5:toast_show("app_toast", "Fehler!")
+        })
+    end if
+
+    -- In SQLite / PostgreSQL speichern
+    sqlite:exec(db, "INSERT INTO items (name) VALUES (?);", {title})
+
+    -- Reaktive Updates zurück an den Browser
+    return ui5:updates({
+        ui5:patch("table_container", render_table()),
+        ui5:set_val("task_title", ""),
+        ui5:toast_show("app_toast", "Gespeichert!")
+    })
+end function
+```
+
+### 14.4 Vollständiges Anwendungsbeispiel (`examples/07_sapui5_webcomponents_demo.ex`)
+
+Das vollständige, lauffähige Anwendungsbeispiel eines Fiori Horizon Enterprise Cockpits mit SQLite-Anbindung befindet sich in [examples/07_sapui5_webcomponents_demo.ex](file:///home/volkix/prj/intpret/examples/07_sapui5_webcomponents_demo.ex). Es kann direkt über `./euphorix examples/07_sapui5_webcomponents_demo.ex` ausgeführt werden.
+
+---
+
+## 15. Alternative Web-UI mit cgibash/html (`std/vsui.e`)
+
+Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert Euphorix mit `std/vsui.e` Volker Schultes hauseigenes Web-Framework aus `/home/volkix/prj/cgibash/html`.
+
+### 15.1 Architektur & Vorteile der hauseigenen cgibash/html-Bibliothek
+
+* **100% Autark & Offline-fähig**: Keine externen CDNs, kein Internetzugriff erforderlich. Alle JavaScript-Module (`ldom.js`, `vsevent.js`, `vsgrid.js`) und Stylesheets (`globalblauklein.css`, `vs.css`) werden direkt aus dem lokalen Verzeichnis ausgeliefert.
+* **High-Density Enterprise Design**: Die Farbpalette (`--vs-blau: #41518b`, `--vs-gruen: #3e8548`) und kompakte Zeilenhöhen sind speziell auf datenintensive kaufmännische Anwendungen (ERP, CRM, Lager, Disposition) optimiert.
+* **Reine ES6-Module**: Basiert auf modernem nativem JavaScript und Hyperscript (`ldom.js` mit `e()`, `_()`, `n()`) sowie dem flexiblen Event-Bus `vsevent.js`.
+
+### 15.2 Komponenten-Suite (High-Density Controls, vsgrid, Formulare, Dialoge)
+
+`std/vsui.e` stellt fertige Euphorix-Konstruktoren bereit:
+
+| Komponente | Euphorix-Funktion | Beschreibung / Feature |
+| :--- | :--- | :--- |
+| **Button** | `vsui:button(id, text, opts)` | Native `.vs-button` mit Klick-Event-Forwarding und `data-param-*` Attributen |
+| **Textfeld** | `vsui:input(id, val, opts)` | Standard-Eingabefeld `.vs-input` |
+| **Zahlenfeld** | `vsui:numinput(id, val, opts)` | Numerisches Eingabefeld (`type="number"`) |
+| **Datumsfeld** | `vsui:dateinput(id, val, opts)` | HTML5 Datumsselektor (`type="date"`) |
+| **Zeitfeld** | `vsui:timeinput(id, val, opts)` | Zeitauswahl (`type="time"`) |
+| **Checkbox** | `vsui:check(id, label, checked, opts)` | Checkbox mit Textlabel `.vs-check` |
+| **Textarea** | `vsui:textarea(id, val, rows, opts)` | Mehrzeiliges Eingabefeld `.vs-input` |
+| **Dropdown** | `vsui:combo(id, items, selected, opts)` | Select-Box `.vs-combo` |
+| **Label** | `vsui:ui_label(text, for_id, opts)` | Beschriftung `.vs-label` |
+| **Fieldset** | `vsui:group(legend, content, opts)` | Gruppierungsrahmen `.vs-group` mit Titel |
+| **Panel** | `vsui:panel(id, title, content, opts)` | Karte/Container `.vs-panel` mit blauem Header |
+| **Collapse** | `vsui:collapse(id, sections, open_first, opts)` | Klappbare Abschnitte (`<details>` / `<summary>`) |
+| **DataGrid** | `vsui:grid(id, cols, rows, opts)` | Tabellenkomponente mit **Sticky-Header** und **Client-Live-Suche** |
+| **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Reiter-Navigation mit dynamischer Umschaltung |
+| **Modal** | `vsui:modal(id, title, content, footer, opts)` | Zentrierter Popup-Dialog mit Abdunklungs-Overlay |
+| **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-Spalten-Container mit anpassbarer Breitenaufteilung |
+
+### 15.3 Integrierter Asset-Server (`/lib2/*`, `/css/*`, `/img/*`)
+
+Der integrierte Server in `std/vsui.e` bedient Anfragen für statische Dateien automatisch direkt aus `/home/volkix/prj/cgibash/html`:
+* `/css/globalblauklein.css` und `/css/vs.css`
+* `/lib2/ldom.js`, `/lib2/vsevent.js`, `/lib2/ui.js`, `/lib2/vsgrid.js`
+* `/img/*` (Logos, Icons) und `/app/*`
+
+Die MIME-Types werden anhand der Dateiendung automatisch ermittelt (`application/javascript`, `text/css`, `image/png`, `font/woff2`, etc.).
+
+### 15.4 Reaktive Event-Bridge mit `vsevent` & DOM-Patches
+
+Das Frontend sammelt bei Nutzerinteraktionen (`button_click`, `changevalue`) alle Formularwerte ein und sendet sie per POST an `/__vs_event`. Der Euphorix-Server antwortet mit einer Liste von DOM-Patches:
+
+```euphoria
+function on_save_kunde(sequence ctx)
+    sequence name = vsui:val(ctx, "txt_name")
+    sequence kdnr = vsui:val(ctx, "txt_kdnr")
+    
+    -- In SQLite speichern...
+    sqlite:exec(db, "INSERT INTO kunden (kdnr, name) VALUES (?, ?);", {kdnr, name})
+    
+    return vsui:updates({
+        vsui:patch("grid_container", render_kunden_grid()),
+        vsui:set_val("txt_name", ""),
+        vsui:toast_show("Kunde erfolgreich angelegt!", vsui:TOAST_SUCCESS)
+    })
+end function
+```
+
+### 15.5 Vollständiges Anwendungsbeispiel (`examples/08_cgibash_html_demo.ex` & `demo/vsui_demo.ex`)
+
+* **Automatisierter Test & Demo**: [examples/08_cgibash_html_demo.ex](file:///home/volkix/prj/intpret/examples/08_cgibash_html_demo.ex) führt einen kompletten End-to-End-Test inklusive HTTP-GET auf statische Assets, DataGrid-Generierung, Event-Patching und SQLite-Prüfung durch:
+  ```bash
+  ./euphorix examples/08_cgibash_html_demo.ex
+  ```
+* **Interaktiver Live-Server**: [demo/vsui_demo.ex](file:///home/volkix/prj/intpret/demo/vsui_demo.ex) stellt ein interaktives CRM/ERP-Cockpit bereit:
+  ```bash
+  ./euphorix demo/vsui_demo.ex
+  # Im Browser öffnen: http://127.0.0.1:8089/
+  ```
+
+
 

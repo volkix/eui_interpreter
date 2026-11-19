@@ -129,9 +129,26 @@ end function
 
 --**
 -- Register a route handler function `function handler(sequence req)` for `(srv_id, method, path)`.
--- Setting `method = "*"` matches any HTTP method.
+-- Setting `method = "*"` matches any HTTP method. Setting `path = "*"` or `path = "/prefix/*"`
+-- supports wildcard and prefix routing.
 public procedure route(integer srv_id, sequence method, sequence path, integer handler_rid)
     server_routes = append(server_routes, {srv_id, method, path, handler_rid})
+end procedure
+
+--**
+-- Remove all registered routes for `srv_id` (or all servers if `srv_id = 0`).
+public procedure clear_routes(integer srv_id = 0)
+    if srv_id = 0 then
+        server_routes = {}
+    else
+        sequence kept = {}
+        for i = 1 to length(server_routes) do
+            if server_routes[i][1] != srv_id then
+                kept = append(kept, server_routes[i])
+            end if
+        end for
+        server_routes = kept
+    end if
 end procedure
 
 --**
@@ -194,9 +211,17 @@ public function handle_one(integer srv_id, integer timeout_ms = 5000)
     for i = 1 to length(server_routes) do
         sequence r = server_routes[i]
         if r[1] = srv_id then
-            if (equal(r[2], "*") or equal(r[2], method)) and equal(r[3], path) then
-                matched_rid = r[4]
-                exit
+            if (equal(r[2], "*") or equal(r[2], method)) then
+                if equal(r[3], "*") or equal(r[3], path) then
+                    matched_rid = r[4]
+                    exit
+                elsif length(r[3]) > 2 and equal(r[3][$-1..$], "/*") then
+                    sequence prefix = r[3][1..$-2]
+                    if length(path) >= length(prefix) and equal(path[1..length(prefix)], prefix) then
+                        matched_rid = r[4]
+                        exit
+                    end if
+                end if
             end if
         end if
     end for

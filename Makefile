@@ -51,7 +51,11 @@ test-java: $(JAVA_BIN)
 	./$(JAVA_BIN) examples/04_sqlite_datenbank.ex
 	./$(JAVA_BIN) examples/05_rest_api_microservice.ex
 	./$(JAVA_BIN) examples/06_postgresql_datenbank.ex
+	./$(JAVA_BIN) examples/07_sapui5_webcomponents_demo.ex
+	./$(JAVA_BIN) examples/08_cgibash_html_demo.ex
 	./$(JAVA_BIN) tests/t_gui.e
+	./$(JAVA_BIN) tests/t_ui5.e
+	./$(JAVA_BIN) tests/t_vsui.e
 	./$(JAVA_BIN) tests/t_java_interop.e
 	./$(JAVA_BIN) tests/t_concurrency.ex
 
@@ -68,7 +72,11 @@ test-standalone: $(STANDALONE_BIN)
 	./$(STANDALONE_BIN) examples/04_sqlite_datenbank.ex
 	./$(STANDALONE_BIN) examples/05_rest_api_microservice.ex
 	./$(STANDALONE_BIN) examples/06_postgresql_datenbank.ex
+	./$(STANDALONE_BIN) examples/07_sapui5_webcomponents_demo.ex
+	./$(STANDALONE_BIN) examples/08_cgibash_html_demo.ex
 	./$(STANDALONE_BIN) tests/t_gui.e
+	./$(STANDALONE_BIN) tests/t_ui5.e
+	./$(STANDALONE_BIN) tests/t_vsui.e
 	./$(STANDALONE_BIN) tests/t_java_interop.e
 	./$(STANDALONE_BIN) tests/t_concurrency.ex
 

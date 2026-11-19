@@ -895,10 +895,17 @@ public final class VM {
 
     private void resumeExecution() {
         try {
-            runLoop();
+            if (!runLoop() && !errorMsg.isEmpty()) {
+                System.err.println(errorMsg);
+            }
         } catch (VmAbortException ignored) {
             // Normal exit for forked background worker thread via abort(code)
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            if (!errorMsg.isEmpty()) {
+                System.err.println(errorMsg);
+            } else {
+                System.err.println("Worker thread error: " + t.getMessage());
+            }
         }
     }
 
@@ -1211,7 +1218,16 @@ public final class VM {
                     final int rb = base + ((ins >>> 16) & 0xFF);
                     final int rc = base + ((ins >>> 24) & 0xFF);
                     if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) {
-                        setRegInt(ra, rInt[rb] + rInt[rc]);
+                        final long sum = rInt[rb] + rInt[rc];
+                        if (((sum << 16) >> 16) == sum) {
+                            if (rKind[ra] == Value.KIND_SEQ) { rSeq[ra].release(); rSeq[ra] = null; }
+                            rKind[ra] = Value.KIND_INT;
+                            rInt[ra] = sum;
+                        } else {
+                            if (rKind[ra] == Value.KIND_SEQ) { rSeq[ra].release(); rSeq[ra] = null; }
+                            rKind[ra] = Value.KIND_F64;
+                            rF64[ra] = (double) sum;
+                        }
                     } else if (!execBinopSlow(OP_ADD, ra, rb, rc, frame, ip)) {
                         return false;
                     }
@@ -1221,7 +1237,16 @@ public final class VM {
                     final int rb = base + ((ins >>> 16) & 0xFF);
                     final int rc = base + ((ins >>> 24) & 0xFF);
                     if (rKind[rb] == Value.KIND_INT && rKind[rc] == Value.KIND_INT) {
-                        setRegInt(ra, rInt[rb] - rInt[rc]);
+                        final long diff = rInt[rb] - rInt[rc];
+                        if (((diff << 16) >> 16) == diff) {
+                            if (rKind[ra] == Value.KIND_SEQ) { rSeq[ra].release(); rSeq[ra] = null; }
+                            rKind[ra] = Value.KIND_INT;
+                            rInt[ra] = diff;
+                        } else {
+                            if (rKind[ra] == Value.KIND_SEQ) { rSeq[ra].release(); rSeq[ra] = null; }
+                            rKind[ra] = Value.KIND_F64;
+                            rF64[ra] = (double) diff;
+                        }
                     } else if (!execBinopSlow(OP_SUB, ra, rb, rc, frame, ip)) {
                         return false;
                     }
@@ -1362,7 +1387,18 @@ public final class VM {
                         runtimeError(frame, String.format("Index %d außerhalb des gültigen Bereichs 1..%d (subscript out of bounds)", idx, s.len));
                         return false;
                     }
-                    setReg(ra, s.data[(int) idx - 1]);
+                    final Value elem = s.data[(int) idx - 1];
+                    if (rKind[ra] == Value.KIND_SEQ) { rSeq[ra].release(); rSeq[ra] = null; }
+                    final byte ek = elem.kind;
+                    rKind[ra] = ek;
+                    if (ek == Value.KIND_INT) {
+                        rInt[ra] = elem.intVal;
+                    } else if (ek == Value.KIND_F64) {
+                        rF64[ra] = elem.floatVal;
+                    } else if (ek == Value.KIND_SEQ) {
+                        elem.seqVal.refCount++;
+                        rSeq[ra] = elem;
+                    }
                 }
                 case OP_SET_IDX -> {
                     final int ra = base + ((ins >>> 8) & 0xFF);
@@ -1387,7 +1423,8 @@ public final class VM {
                     final Value old = s.data[pos];
                     final byte ck = rKind[rc];
                     if (ck == Value.KIND_INT) {
-                        s.data[pos] = Value.fromInt(rInt[rc]);
+                        final long val = rInt[rc];
+                        s.data[pos] = (val == 0) ? Value.ZERO : (val == 1) ? Value.ONE : Value.fromInt(val);
                     } else if (ck == Value.KIND_F64) {
                         s.data[pos] = Value.fromF64(rF64[rc]);
                     } else if (ck == Value.KIND_SEQ) {
@@ -5116,7 +5153,8 @@ public final class VM {
         } catch (Exception e) {
             Sequence res = new Sequence(3);
             res.setElement(0, Value.fromInt(-7));
-            res.setElement(1, Value.fromString(e.getMessage() != null ? e.getMessage() : "HTTP Request Error"));
+            String msg = e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "HTTP Request Error");
+            res.setElement(1, Value.fromString(msg));
             res.setElement(2, Value.emptySeq());
             return Value.fromSeq(res);
         }

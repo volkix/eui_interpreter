@@ -65,15 +65,24 @@ public function is_null(object v)
 end function
 
 public function is_bool(object v)
-    return sequence(v) and length(v) = 2 and equal(v[1], JSON_BOOL)
+    if sequence(v) and length(v) = 2 then
+        return equal(v[1], JSON_BOOL)
+    end if
+    return 0
 end function
 
 public function is_object(object v)
-    return sequence(v) and length(v) = 2 and equal(v[1], JSON_OBJECT)
+    if sequence(v) and length(v) = 2 then
+        return equal(v[1], JSON_OBJECT)
+    end if
+    return 0
 end function
 
 public function is_array(object v)
-    return sequence(v) and length(v) = 2 and equal(v[1], JSON_ARRAY)
+    if sequence(v) and length(v) = 2 then
+        return equal(v[1], JSON_ARRAY)
+    end if
+    return 0
 end function
 
 public function unwrap(object v)
