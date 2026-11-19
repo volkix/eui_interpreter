@@ -18,10 +18,7 @@ include std/net/dns.e
 include std/net/url.e as url
 include std/get.e
 include euphoria/info.e
-
-ifdef not EUC_DLL then
 include std/task.e
-end ifdef
 
 constant USER_AGENT_HEADER = 
 	sprintf("User-Agent: Euphoria-HTTP/%d.%d\r\n", {
@@ -275,10 +272,7 @@ function execute_request(sequence host, integer port, sequence request, integer 
 			end if
 
 			content &= data
-			ifdef not EUC_DLL then
-				-- tasking doesn't work currently with EU dlls
-				task_yield()
-			end ifdef
+			task_yield()
 
 			if not got_header then
 				integer header_end_pos = match("\r\n\r\n", content)

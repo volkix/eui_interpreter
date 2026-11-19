@@ -1,7 +1,7 @@
 --****
--- == PostgreSQL Client Engine via libpq.so.5 (std/pgsql.e)
+-- == PostgreSQL Client Engine (std/pgsql.e)
 --
--- Dynamically loads `libpq.so.5` on demand (`dlopen`), providing a uniform API
+-- Powered by the Java PostgreSQL engine & JDBC driver, providing a uniform API
 -- with `std/sqlite.e`:
 -- * Supports both PostgreSQL `$1, $2` and SQLite-style `?` placeholders in `params`.
 -- * Supports URI (`postgresql://user:pass@host:5432/db`) and key-value connection strings.
@@ -28,7 +28,7 @@ public constant
     ROWS      = 3
 
 --**
--- Return `1` if `libpq.so.5` is available on the host system, `0` otherwise.
+-- Return `1` if PostgreSQL support is available in the runtime, `0` otherwise.
 public function is_available()
     return machine_func(M_PGSQL_INFO, {0, 4})
 end function

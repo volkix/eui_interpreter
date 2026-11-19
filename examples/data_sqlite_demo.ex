@@ -12,10 +12,10 @@ procedure assert_eq(sequence name, object actual, object expected)
     end if
 end procedure
 
-puts(1, "=== JSON/JSONPath & JSON-Schema 2020-12 (jsoncons), XML/XPath/XSD (libxml2) & SQLite3 Test ===\n")
+puts(1, "=== JSON/JSONPath & JSON-Schema 2020-12, XML/XPath/XSD & SQLite3 Test ===\n")
 
 -- =============================================================================
--- 1. JSON & JSONPath Verarbeitung (jsoncons 1.5)
+-- 1. JSON & JSONPath Verarbeitung
 -- =============================================================================
 sequence raw_json = `{
     "company": "Euphorix GmbH",
@@ -94,7 +94,7 @@ assert_eq("json_schema 2020-12 Fehleranzahl >= 3", length(val_res[json_schema:ER
 puts(1, "  [OK] JSON-Schema Draft 2020-12 (prefixItems, dependentRequired, unevaluatedProperties via jsoncons)\n")
 
 -- =============================================================================
--- 3. XML, W3C XPath 1.0 & W3C XSD XML-Schema (libxml2 2.15)
+-- 3. XML, W3C XPath 1.0 & W3C XSD XML-Schema (std/xml.e)
 -- =============================================================================
 sequence raw_xml = `<?xml version="1.0" encoding="UTF-8"?>
 <catalog library="Zentralbibliothek">
@@ -116,12 +116,12 @@ sequence first_title = xml:find_first(xml_root, "catalog/book/title")
 assert_eq("xml:find_first Text & Entity-Decode", xml:text(first_title), "Moderne Euphoria Programmierung & C++20")
 assert_eq("xml:find_first Attribut", xml:attr(first_title, "lang"), "de")
 
--- W3C XPath 1.0 Abfrage über libxml2
+-- W3C XPath 1.0 Abfrage
 sequence xpath_hits = xml:xpath(xml_root, "//book[@category='linux']/title")
 assert_eq("xml:xpath Trefferanzahl", length(xpath_hits), 1)
 assert_eq("xml:xpath Titel", xml:text(xpath_hits[1]), "Linux System Internals")
 
--- W3C XML Schema (XSD 1.0) Validierung über libxml2
+-- W3C XML Schema (XSD 1.0) Validierung
 sequence catalog_xsd = `<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:element name="catalog">
@@ -155,10 +155,10 @@ assert_eq("xml:is_valid_xsd (gültiges XML)", xml:is_valid_xsd(raw_xml, catalog_
 sequence broken_xml = `<catalog library="Test"><book id="b1" category="coding"><title lang="de">Buch</title><price>KEINE_ZAHL</price></book></catalog>`
 assert_eq("xml:is_valid_xsd (ungültiger xs:decimal Preis)", xml:is_valid_xsd(broken_xml, catalog_xsd), 0)
 
-puts(1, "  [OK] XML DOM, W3C XPath 1.0 & W3C XSD Schema-Validierung (libxml2 2.15)\n")
+puts(1, "  [OK] XML DOM, W3C XPath 1.0 & W3C XSD Schema-Validierung (std/xml.e)\n")
 
 -- =============================================================================
--- 4. SQLite 3.46 Datenbank-Anbindung (statisch gelinktes libsqlite3.a)
+-- 4. SQLite 3.46 Datenbank-Anbindung (std/sqlite.e)
 -- =============================================================================
 integer db = sqlite:open(":memory:")
 assert_eq("sqlite:open", db > 0, 1)
@@ -200,7 +200,7 @@ assert_eq("sqlite:close", sqlite:close(db), 1)
 puts(1, "  [OK] SQLite 3.46 (:memory:, Prepared Statements, Transaktionen & JSON-Export)\n")
 
 -- =============================================================================
--- 5. UTF-8 String-Verarbeitung (std/utf8.e via libxml2 + C.UTF-8)
+-- 5. UTF-8 String-Verarbeitung (std/utf8.e)
 -- =============================================================================
 sequence u_str = "Größe €"
 assert_eq("Byte-Länge length()", length(u_str), 11)

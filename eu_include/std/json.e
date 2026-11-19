@@ -1,7 +1,7 @@
 --****
--- == Native JSON Parser, Builder & Serializer (std/json.e)
+-- == JSON Parser, Builder & Serializer (std/json.e)
 --
--- Zero-dependency native C++20 JSON engine with tagged AST representation,
+-- Powered by the Java JSON engine with tagged AST representation,
 -- dot/bracket path queries (`"user.items[1].name"`), and pretty printing.
 --
 

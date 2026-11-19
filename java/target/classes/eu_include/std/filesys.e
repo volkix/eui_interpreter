@@ -8,7 +8,6 @@
 namespace filesys
 
 include std/datetime.e
-include std/dll.e
 include std/io.e
 include std/machine.e
 include std/hash.e

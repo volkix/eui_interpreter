@@ -1,6 +1,6 @@
 -- =============================================================================
--- Beispiel 03: XML DOM, W3C XPath 1.0, XSD & RelaxNG (libxml2 2.15)
--- Aufruf: ./eui examples/03_xml_xpath_xsd.ex
+-- Beispiel 03: XML DOM, W3C XPath 1.0, XSD & RelaxNG (std/xml.e)
+-- Aufruf: ./euphorix examples/03_xml_xpath_xsd.ex
 -- =============================================================================
 include std/xml.e
 include std/text.e
@@ -12,7 +12,7 @@ procedure assert_eq(sequence name, object actual, object expected)
     end if
 end procedure
 
-puts(1, "=== Beispiel 03: XML DOM, XPath 1.0, XSD & RelaxNG (libxml2) ===\n")
+puts(1, "=== Beispiel 03: XML DOM, XPath 1.0, XSD & RelaxNG ===\n")
 
 sequence rechnung_xml = `<?xml version="1.0" encoding="UTF-8"?>
 <rechnung nr="RE-2026-042" datum="2026-11-07">

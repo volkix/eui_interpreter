@@ -193,8 +193,7 @@ end type
 
 --**
 -- Description:
--- Initializes an external debugger.  It can also be called
--- from a debugger compiled into a DLL / SO.
+-- Initializes an external debugger.
 -- 
 -- Parameters:
 -- # ##init_ptr## : The result of ##[[:machine_func]]( M_INIT_DEBUGGER, {} )##.

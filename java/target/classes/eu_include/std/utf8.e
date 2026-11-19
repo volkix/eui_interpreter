@@ -1,8 +1,7 @@
 --****
--- == Native UTF-8 String Engine (std/utf8.e)
+-- == UTF-8 String Engine (std/utf8.e)
 --
--- Powered by `libxml2` (`xmlUTF8Strlen`, `xmlUTF8Strsub`, `xmlGetUTF8Char`, `xmlCheckUTF8`)
--- and POSIX `C.UTF-8` Unicode case conversion.
+-- Powered by Java 25 Unicode and UTF-8 string manipulation engine.
 --
 -- In Euphoria, string literals (`"Größe €"`) are stored as UTF-8 byte sequences:
 -- * `length("Größe €")` returns `11` (byte count).

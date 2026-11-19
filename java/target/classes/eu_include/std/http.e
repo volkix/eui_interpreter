@@ -1,9 +1,9 @@
 --****
 -- == Modern HTTP & HTTPS Client + Server API (std/http.e)
 --
--- * **HTTP/HTTPS Client**: Powered natively by `libcurl.so.4` (TLS 1.2/1.3, HTTP/2,
+-- * **HTTP/HTTPS Client**: Powered by Java 25 HttpClient (TLS 1.2/1.3, HTTP/2,
 --   automatic redirects, gzip/deflate/br decompression, custom headers, JSON helpers).
--- * **HTTP/HTTPS Server**: Powered by POSIX `poll()` + `libssl.so.3` with declarative
+-- * **HTTP/HTTPS Server**: Powered by Java HttpServer with Virtual Threads and declarative
 --   routing (`http:route`) and response helpers (`http:response_json`, `http:response_html`).
 --
 
@@ -50,11 +50,11 @@ function to_lower_ascii(sequence s)
 end function
 
 -- =============================================================================
--- 1. HTTP / HTTPS Client API (backed by libcurl.so.4)
+-- 1. HTTP / HTTPS Client API (backed by Java HttpClient)
 -- =============================================================================
 
 --**
--- Execute a general HTTP/HTTPS request via `libcurl`.
+-- Execute a general HTTP/HTTPS request via Java HttpClient.
 -- Returns `{status_code, body_string, headers_list}`.
 public function request(sequence method, sequence url, sequence body = "",
                         sequence headers = {}, integer timeout_ms = 10000,
@@ -110,7 +110,7 @@ public function header_get(sequence headers, sequence name, sequence default_val
 end function
 
 -- =============================================================================
--- 2. HTTP / HTTPS Server API (backed by poll() + libssl.so.3)
+-- 2. HTTP / HTTPS Server API (backed by Java HttpServer & Virtual Threads)
 -- =============================================================================
 
 --**

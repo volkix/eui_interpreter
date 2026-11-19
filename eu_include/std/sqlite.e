@@ -1,7 +1,7 @@
 --****
--- == Statically Linked SQLite 3.46 Database Engine (std/sqlite.e)
+-- == SQLite Database Engine (std/sqlite.e)
 --
--- Powered by `libsqlite3.a` compiled directly into the `eui` binary (zero external `.so` dependencies).
+-- Powered by embedded SQLite JDBC within the runtime (zero external dependencies).
 -- Supports `:memory:` and file databases, parameterized queries (`?`), transactions,
 -- and direct JSON-compatible associative row objects (`query_assoc`).
 --

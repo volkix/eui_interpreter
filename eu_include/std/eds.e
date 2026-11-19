@@ -553,9 +553,6 @@ end function
 
 public procedure db_dump(object file_id, integer low_level_too = 0)
 -- print an open database in readable form to file fn
--- (Note: If you turn database.e into a .dll or .so, you will
--- have to use a file name, rather than an open file number.
--- All other database.e routines are ok as they are.)
 	integer magic, minor, major
 	integer fn
 	atom tables, ntables, tname, trecords, t_header, tnrecs,

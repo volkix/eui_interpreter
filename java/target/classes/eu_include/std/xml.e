@@ -1,7 +1,7 @@
 --****
--- == Native XML Parser, DOM Builder, Query & Serializer (std/xml.e)
+-- == XML Parser, DOM Builder, Query & Serializer (std/xml.e)
 --
--- Zero-dependency native C++20 XML engine supporting XML declarations, comments,
+-- Powered by the Java XML engine supporting XML declarations, comments,
 -- CDATA, entity decoding/encoding, DOM tree construction, and path/tag queries.
 --
 
@@ -217,15 +217,15 @@ public function find_first(sequence node, sequence tag_or_path, object default_v
 end function
 
 --**
--- Execute a full W3C XPath 1.0 query (via `libxml2`, e.g. `"//book[@category='coding']/title"`)
+-- Execute a full W3C XPath 1.0 query (e.g. `"//book[@category='coding']/title"`)
 -- on a parsed XML node or raw XML string, returning all matching nodes/attribute values.
 public function xpath(object node_or_xml, sequence xpath_expr)
     return machine_func(M_XML_XPATH, {node_or_xml, xpath_expr})
 end function
 
 --**
--- Validate an XML document (parsed node or XML string) against a W3C XML Schema (XSD 1.0)
--- via `libxml2`. Returns `{is_valid (1 or 0), errors_list}`.
+-- Validate an XML document (parsed node or XML string) against a W3C XML Schema (XSD 1.0).
+-- Returns `{is_valid (1 or 0), errors_list}`.
 public function validate_xsd(object node_or_xml, sequence xsd_str)
     return machine_func(M_XML_VALIDATE_XSD, {node_or_xml, xsd_str})
 end function
@@ -236,8 +236,8 @@ public function is_valid_xsd(object node_or_xml, sequence xsd_str)
 end function
 
 --**
--- Validate an XML document (parsed node or XML string) against a RelaxNG schema
--- via `libxml2`. Returns `{is_valid (1 or 0), errors_list}`.
+-- Validate an XML document (parsed node or XML string) against a RelaxNG schema.
+-- Returns `{is_valid (1 or 0), errors_list}`.
 public function validate_relaxng(object node_or_xml, sequence rng_str)
     return machine_func(M_XML_VALIDATE_RNG, {node_or_xml, rng_str})
 end function

@@ -1,12 +1,36 @@
 [
   {
-    "file": "tests/t_datetime.e",
-    "filename": "t_datetime.e",
+    "file": "tests/t_gui.e",
+    "filename": "t_gui.e",
     "directory": "tests",
     "returncode": 0,
     "stdout": "",
+    "stderr": "  passed: window creation\n  passed: text_label creation\n  passed: get_text label\n  passed: set_text label\n  passed: set_text label UTF-8 umlauts\n  passed: text_field creation\n  passed: get_text text_field\n  passed: set_text text_field\n  passed: text_area creation\n  passed: scroll_pane creation\n  passed: check_box creation\n  passed: check_box initial unselected\n  passed: check_box selected\n  passed: radio_button creation\n  passed: radio_button selected\n  passed: combo_box creation\n  passed: combo_box getItemCount\n  passed: panel creation\n  passed: progress_bar creation\n  passed: progress_bar value\n  passed: slider creation\n  passed: slider initial value\n  passed: slider updated value\n  passed: button creation\n  passed: callback invoked once\n  passed: callback sender match\n  passed: callback invoked twice\n  passed: GUI clean teardown\n  28 tests run, 28 passed, 0 failed, 100% success\n",
+    "duration": 1.270,
+    "timeout": false,
+    "crash": false,
+    "unittest_stats": {"total": 28, "passed": 28, "failed": 0}
+  },
+  {
+    "file": "tests/t_java_interop.e",
+    "filename": "t_java_interop.e",
+    "directory": "tests",
+    "returncode": 0,
+    "stdout": "",
+    "stderr": "  passed: Math:max\n  passed: Math:min\n  passed: Math:sqrt\n  passed: String:valueOf\n  passed: System:currentTimeMillis\n  passed: Math:PI\n  passed: Integer:MAX_VALUE\n  passed: new StringBuilder\n  passed: StringBuilder:toString\n  passed: java:to_string(sb)\n  passed: new ArrayList\n  passed: ArrayList:size\n  passed: ArrayList:get(0)\n  passed: ArrayList:get(1)\n  passed: java:load_jar\n  passed: find_class Calculator\n  passed: Calculator:add\n  passed: Calculator:greet\n  passed: new Calculator\n  passed: Calculator:multiply #1\n  passed: Calculator:get_field multiplier\n  passed: Calculator:set_field multiplier\n  passed: Calculator:multiply #2\n  23 tests run, 23 passed, 0 failed, 100% success\n",
+    "duration": 0.553,
+    "timeout": false,
+    "crash": false,
+    "unittest_stats": {"total": 23, "passed": 23, "failed": 0}
+  },
+  {
+    "file": "tests/t_concurrency.ex",
+    "filename": "t_concurrency.ex",
+    "directory": "tests",
+    "returncode": 0,
+    "stdout": "PASS: thread:async / await 7^2\nPASS: thread:async / await 12^2\nPASS: thread:await_all {2,3,4}\nPASS: channel:size after 4 sends\nPASS: channel:receive 1 status\nPASS: channel:receive 1 data\nPASS: channel:read 2\nPASS: channel:is_closed\nPASS: channel:read 3\nPASS: channel:read 4\nPASS: channel:receive on closed empty\nPASS: task:create_thread execution\n--- Alle Nebenl\u00e4ufigkeits-Tests (Async/Await, Channels, Virtual Tasks) erfolgreich bestanden! ---\n",
     "stderr": "",
-    "duration": 0.617,
+    "duration": 0.357,
     "timeout": false,
     "crash": false,
     "unittest_stats": null
