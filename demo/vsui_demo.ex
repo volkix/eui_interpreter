@@ -200,10 +200,10 @@ function render_cockpit_page(sequence req)
     -- Collapsible Informations- & Architekturleiste
     sequence collapse_section = vsui:collapse("col_info", {
         {"Über cgibash/html & Euphorix Integration",
-         "<p>Diese Benutzeroberfläche nutzt Volker Schultes hauseigenes Web-UI-Framework unter <code>/home/volkix/prj/cgibash/html</code>.</p>" &
+         "<p>Diese Benutzeroberfläche nutzt Volker Schultes hauseigenes Web-UI-Framework (integriert im Projekt unter <code>html/</code> bzw. <code>/home/volkix/prj/intpret/html</code>).</p>" &
          "<ul>" &
          "  <li><b>Keine externen Abhängigkeiten:</b> Läuft komplett autark ohne Internet/Cloud-Zugriff.</li>" &
-         "  <li><b>High-Density UI:</b> Optimiert für datenintensive Fachanwendungen mit <code>globalblauklein.css</code>.</li>" &
+         "  <li><b>High-Density UI:</b> Optimiert für datenintensive Fachanwendungen mit <code>globalblauklein.css</code> und <code>vs-mobile.css</code>.</li>" &
          "  <li><b>Echtes Two-Way Eventing:</b> UI-Ereignisse (Klicks, Änderungen) werden direkt an OpenEuphoria-Handler weitergeleitet.</li>" &
          "  <li><b>Virtueller Threading-Server:</b> Skaliert über Java 25 Virtual Threads mit minimalem Ressourcenbedarf.</li>" &
          "</ul>"},
@@ -215,7 +215,7 @@ function render_cockpit_page(sequence req)
     sequence modal_dlg = vsui:modal("modal_sysinfo", "Systeminformationen: Euphorix & cgibash/html", {
         "<p><b>Version:</b> Euphorix 1.0.0 (Java 25 VM)</p>\n",
         "<p><b>UI-Framework:</b> Volker Schultes <code>cgibash/html</code></p>\n",
-        "<p><b>Assets:</b> <code>/home/volkix/prj/cgibash/html</code> (ldom.js, vsevent.js, vsgrid.js, globalblauklein.css)</p>\n",
+        "<p><b>Assets:</b> Integriert unter <code>html/</code> (ldom.js, vsevent.js, vsgrid.js, globalblauklein.css, vs-mobile.css)</p>\n",
         "<p><b>Datenbank:</b> SQLite 3 In-Memory Engine</p>\n"
     }, vsui:button("btn_close_info", "Schließen", {{"data-vs-close", "modal_sysinfo"}}))
 

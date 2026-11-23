@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Euphorix – Next-Gen Virtual Machine für die prozedurale Programmiersprache OpenEuphoria</title>
+  <meta name="description" content="Euphorix interpretiert OpenEuphoria (openeuphoria.org) – eine prozedurale Programmiersprache mit bemerkenswert einfacher, intuitiver Syntax und mächtigen Sequences. Kombiniert mit einer 65.536-Register-VM, Java 25 Loom Virtual Threads, CSP Channels, nativen Enterprise-Datenbanken und autarkem High-Density Web-Framework.">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <a href="index.html" class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Euphorix
+        <span class="brand-badge">v1.0.0</span>
+      </a>
+      <button class="mobile-toggle" aria-label="Menü öffnen">☰</button>
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="tutorial.html">Tutorial &amp; Bibliotheken</a></li>
+        <li><a href="#code">Code-Vorschau</a></li>
+        <li><a href="#downloads">Downloads</a></li>
+        <li><a href="https://openeuphoria.org" target="_blank" rel="noopener">OpenEuphoria.org</a></li>
+        <li><a href="https://github.com/volkix/eui_interpreter" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="impressum.html">Impressum</a></li>
+        <li><a href="#downloads" class="nav-btn">Download</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="hero-container">
+      <div class="hero-badges">
+        <span class="pill pill-primary">⚡ Java 25 Virtual Machine</span>
+        <span class="pill pill-accent">📌 Prozedurale Sprache mit einfacher Syntax</span>
+        <span class="pill">🌐 <a href="https://openeuphoria.org" target="_blank" rel="noopener" style="text-decoration:none; color:inherit;">openeuphoria.org</a></span>
+        <span class="pill">🚀 65.536 Register VM</span>
+        <span class="pill">📱 Responsive VS-UI Framework</span>
+      </div>
+      <h1>Elegante prozedurale Syntax. Modernste Java 25 Power.</h1>
+      <p class="lead">Euphorix interpretiert OpenEuphoria (openeuphoria.org) – eine prozedurale Programmiersprache mit bemerkenswert einfacher, intuitiver Syntax und mächtigen Sequences. Kombiniert mit einer 65.536-Register-VM, Java 25 Loom Virtual Threads, CSP Channels, nativen Enterprise-Datenbanken und autarkem High-Density Web-Framework.</p>
+      <div class="hero-cta">
+        <a href="#downloads" class="btn btn-primary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Standalone herunterladen (53 MB)
+        </a>
+        <a href="https://github.com/volkix/eui_interpreter" target="_blank" rel="noopener" class="btn btn-secondary">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub Repository
+        </a>
+      </div>
+
+      <!-- Interactive Code Showcase -->
+      <div id="code" class="showcase-wrapper">
+        <div class="terminal-header">
+          <div class="terminal-dots">
+            <span class="dot dot-red"></span>
+            <span class="dot dot-yellow"></span>
+            <span class="dot dot-green"></span>
+          </div>
+          <div class="terminal-tabs">
+            <button class="terminal-tab active" data-target="tab-vsui">vsui_server.ex</button>
+            <button class="terminal-tab" data-target="tab-threads">threads.ex</button>
+            <button class="terminal-tab" data-target="tab-sqlite">sqlite_json.ex</button>
+          </div>
+        </div>
+        <div class="terminal-body">
+          <div id="tab-vsui" class="code-tab-content active">
+<pre><span class="token-cmt">-- Autarker High-Density Webserver mit reaktiven Patches & Mobile Grid</span>
+<span class="token-kw">include</span> std/vsui.e <span class="token-kw">as</span> vsui
+
+<span class="token-kw">integer</span> app = vsui:app(<span class="token-str">"ERP Cockpit"</span>, <span class="token-num">8089</span>)
+
+<span class="token-kw">function</span> on_speichern(<span class="token-kw">sequence</span> ctx)
+    <span class="token-kw">sequence</span> kdnr = vsui:val(ctx, <span class="token-str">"txt_kdnr"</span>)
+    <span class="token-kw">sequence</span> name = vsui:val(ctx, <span class="token-str">"txt_name"</span>)
+    
+    <span class="token-cmt">-- Schneller Daten-Patch (flackerfreies Client-Rendering ohne Reload)</span>
+    <span class="token-kw">return</span> vsui:updates({
+        vsui:grid_set_data(<span class="token-str">"grid_kunden"</span>, {{kdnr, name, <span class="token-str">"Aktiv"</span>}}),
+        vsui:clear_form(<span class="token-str">"form_kunden"</span>),
+        vsui:set_focus(<span class="token-str">"txt_kdnr"</span>),
+        vsui:toast_show(<span class="token-str">"Kunde erfolgreich gespeichert!"</span>, vsui:TOAST_SUCCESS)
+    })
+<span class="token-kw">end function</span>
+
+vsui:on_click(app, <span class="token-str">"btn_save"</span>, <span class="token-fn">routine_id</span>(<span class="token-str">"on_speichern"</span>))
+vsui:run(app)</pre>
+          </div>
+          <div id="tab-threads" class="code-tab-content">
+<pre><span class="token-cmt">-- Concurrency mit Java 25 Loom Virtual Threads & CSP Channels</span>
+<span class="token-kw">include</span> std/thread.e <span class="token-kw">as</span> thread
+<span class="token-kw">include</span> std/channel.e <span class="token-kw">as</span> chan
+
+<span class="token-kw">integer</span> ch = chan:new(<span class="token-num">10</span>)
+
+<span class="token-kw">procedure</span> worker(<span class="token-kw">integer</span> id)
+    <span class="token-kw">for</span> i = <span class="token-num">1</span> <span class="token-kw">to</span> <span class="token-num">1000</span> <span class="token-kw">do</span>
+        chan:send(ch, {id, i, i * <span class="token-num">2</span>})
+    <span class="token-kw">end for</span>
+<span class="token-kw">end procedure</span>
+
+<span class="token-cmt">-- Starte 50 parallele Virtual Threads (extrem leichtgewichtig)</span>
+<span class="token-kw">for</span> w = <span class="token-num">1</span> <span class="token-kw">to</span> <span class="token-num">50</span> <span class="token-kw">do</span>
+    thread:spawn(<span class="token-fn">routine_id</span>(<span class="token-str">"worker"</span>), {w})
+<span class="token-kw">end for</span></pre>
+          </div>
+          <div id="tab-sqlite" class="code-tab-content">
+<pre><span class="token-cmt">-- SQLite 3.47 Transaktionen & JSONPath Validierung</span>
+<span class="token-kw">include</span> std/sqlite.e <span class="token-kw">as</span> sqlite
+<span class="token-kw">include</span> std/json.e <span class="token-kw">as</span> json
+
+<span class="token-kw">atom</span> db = sqlite:open(<span class="token-str">":memory:"</span>)
+sqlite:exec(db, <span class="token-str">"CREATE TABLE artikel (artnr TEXT, bezeichnung TEXT, preis REAL);"</span>)
+sqlite:exec(db, <span class="token-str">"INSERT INTO artikel VALUES (?, ?, ?);"</span>, {<span class="token-str">"A100"</span>, <span class="token-str">"Kugelschreiber"</span>, <span class="token-num">1.95</span>})
+
+<span class="token-kw">sequence</span> rows = sqlite:query_all(db, <span class="token-str">"SELECT * FROM artikel;"</span>)
+<span class="token-kw">sequence</span> json_str = json:encode(rows, <span class="token-num">2</span>)
+puts(<span class="token-num">1</span>, json_str)</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Features Section -->
+  <section id="features" class="section section-alt">
+    <div class="container">
+      <div class="section-header">
+        <h2>Architektur & Highlights</h2>
+        <p>Euphorix vereint bewährte prozedurale Sprachkonzepte mit modernster Compiler- & VM-Technologie für datenintensive Geschäftsanwendungen.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <h3>Prozedural &amp; Klare Syntax</h3>
+          <p>OpenEuphoria ist eine moderne, rein prozedurale Programmiersprache ohne schwerfällige Objekt-Boilerplate. Universelle, dynamische <em>Sequences</em> als primäre Datenstruktur ermöglichen intuitive, robuste und blitzschnelle Programme. Sprachspezifikation auf <a href="https://openeuphoria.org" target="_blank" rel="noopener" style="color:var(--primary); font-weight:600;">openeuphoria.org</a>.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+          </div>
+          <h3>65.536-Register-VM</h3>
+          <p>Clean-Room Register-Interpreter mit Copy-on-Write-Speicherverwaltung, 48-Bit Fast-Integers und hochoptimiertem Bytecode-Dispatch.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          </div>
+          <h3>Loom Virtual Threads</h3>
+          <p>Mühelos skalierbare Nebenläufigkeit ohne Callback-Hölle: Millionen leichtgewichtiger Java 25 Threads, Async/Await und CSP Channels.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>High-Density Web-UI (VS-UI)</h3>
+          <p>Autarkes, reaktives Webframework aus Volker Schultes cgibash/html. Sticky-Header DataGrid, flackerfreie JSON-Patches und automatischer Mobile-Card-View.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          </div>
+          <h3>SQLite 3.47 & PostgreSQL</h3>
+          <p>Integrierte Enterprise-Treiber für relationale Datenbanken, Transaktionen, Prepared Statements und direkten JSON/CSV-Export.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          </div>
+          <h3>861 Standard-Routinen</h3>
+          <p>74 vollständige Standard-Include-Dateien mit nativer Unterstützung für UTF-8 Unicode, RFC 9535 JSONPath, XML/XPath und HTTP/REST.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Center -->
+  <section id="downloads" class="section">
+    <div class="container">
+      <div class="section-header">
+        <h2>Download Center</h2>
+        <p>Laden Sie die autarke Linux-Binary, das plattformunabhängige JAR-Paket oder die vollständigen Handbücher als PDF und Markdown herunter.</p>
+      </div>
+      <div class="download-grid">
+
+        <!-- Standalone Card -->
+        <div class="download-card featured">
+          <span class="download-card-badge">Empfohlen</span>
+          <div>
+            <h3>Euphorix Standalone (Linux 64-Bit)</h3>
+            <div class="download-meta">
+              <span>Linux 64-Bit</span> • <span>53 MB</span>
+            </div>
+            <p>Vollständig autarke Single-Binary für 64-Bit Linux. Enthält die komplette Java 25 VM und Standardbibliothek – kein vorinstalliertes Java erforderlich!</p>
+          </div>
+          <div>
+            <a href="downloads/euphorix-standalone" download class="btn btn-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Datei herunterladen
+            </a>
+            <div class="download-cmd">
+              <code>chmod +x euphorix-standalone && ./euphorix-standalone</code>
+              <button class="btn-copy" onclick="copyCommand('chmod +x euphorix-standalone && ./euphorix-standalone', this)">Kopieren</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- JAR Card -->
+        <div class="download-card">
+          <span class="download-card-badge badge-accent">Plattformunabhängig</span>
+          <div>
+            <h3>Euphorix JAR-Paket</h3>
+            <div class="download-meta">
+              <span>Java 25+</span> • <span>19 MB</span>
+            </div>
+            <p>Portables Bytecode-Paket für Linux, Windows und macOS. Benötigt eine installierte Java 25+ Laufzeitumgebung.</p>
+          </div>
+          <div>
+            <a href="downloads/euphorix.jar" download class="btn btn-secondary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              JAR herunterladen
+            </a>
+            <div class="download-cmd">
+              <code>java -jar euphorix.jar</code>
+              <button class="btn-copy" onclick="copyCommand('java -jar euphorix.jar', this)">Kopieren</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Handbuch DE Card -->
+        <div class="download-card">
+          <span class="download-card-badge">PDF &amp; Markdown</span>
+          <div>
+            <h3>Deutsches Handbuch</h3>
+            <div class="download-meta">
+              <span>15 Kapitel</span> • <span>861 Routinen</span>
+            </div>
+            <p>Vollständige Referenzdokumentation (15 Kapitel, 861 Standard-Bibliotheksfunktionen, Tutorials).</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="downloads/HANDBUCH.pdf" download class="btn btn-primary" style="justify-content: center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              PDF Handbuch (2.4 MB)
+            </a>
+            <a href="downloads/HANDBUCH.md" download class="btn btn-secondary" style="justify-content: center; font-size: 0.85rem; padding: 8px 12px;">
+              Markdown Quelle (199 KB)
+            </a>
+          </div>
+        </div>
+
+        <!-- Manual EN Card -->
+        <div class="download-card">
+          <span class="download-card-badge">PDF &amp; Markdown</span>
+          <div>
+            <h3>English Developer Manual</h3>
+            <div class="download-meta">
+              <span>15 Chapters</span> • <span>Full Reference</span>
+            </div>
+            <p>Developer manual, syntax guide, architecture details, and standard library documentation.</p>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <a href="downloads/MANUAL.pdf" download class="btn btn-primary" style="justify-content: center;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              PDF Manual (2.5 MB)
+            </a>
+            <a href="downloads/MANUAL.md" download class="btn btn-secondary" style="justify-content: center; font-size: 0.85rem; padding: 8px 12px;">
+              Markdown Source (188 KB)
+            </a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- GitHub Banner Section -->
+  <section class="section section-alt">
+    <div class="container">
+      <div class="github-banner">
+        <div>
+          <h3>Open Source auf GitHub</h3>
+          <p>Der Quellcode von Euphorix, der virtuelle Maschinenkern und die Standardbibliotheken sind quelloffen unter der GPLv3 lizenziert. Kompatibel mit der OpenEuphoria Sprachspezifikation.</p>
+        </div>
+        <div class="github-clone-box">
+          <code>git clone https://github.com/volkix/eui_interpreter.git</code>
+          <button class="btn-copy" onclick="copyCommand('git clone https://github.com/volkix/eui_interpreter.git', this)">Kopieren</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-container">
+      <div>
+        <p><strong>Euphorix v1.0.0</strong> – Next-Gen Virtual Machine für die prozedurale Programmiersprache OpenEuphoria</p>
+        <p style="font-size: 0.85rem; color: #94a3b8; margin-top: 4px;">&copy; 2026 Volker Schulte. Lizenziert unter der GPLv3. Basierend auf der <a href="https://openeuphoria.org" target="_blank" rel="noopener" style="color:#64748b; text-decoration:underline;">OpenEuphoria</a> Sprachspezifikation.</p>
+      </div>
+      <ul class="footer-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="tutorial.html">Tutorial &amp; Bibliotheken</a></li>
+        <li><a href="#downloads">Downloads</a></li>
+        <li><a href="https://openeuphoria.org" target="_blank" rel="noopener">OpenEuphoria.org</a></li>
+        <li><a href="https://github.com/volkix/eui_interpreter" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="impressum.html">Impressum &amp; Datenschutz</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

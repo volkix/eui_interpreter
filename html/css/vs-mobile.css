@@ -1,0 +1,245 @@
+/* =============================================================================
+ * vs-mobile.css - Mobile Responsiveness & Touch Ergonomics for vsui / cgibash
+ * 
+ * Provides responsive breakpoints, touch-friendly tap targets, horizontal tab
+ * swiping, mobile modal views, and responsive table card transformations.
+ * Only activates on screens <= 768px, leaving desktop view unchanged.
+ * ============================================================================= */
+
+@media (max-width: 768px) {
+  /* --- 1. Viewport & Fluid Layout Container --- */
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  #cont {
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    width: 100% !important;
+    min-height: 100vh !important;
+    padding: 8px !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  /* --- 2. Touch-Friendly Form Controls & Safari Zoom Fix --- */
+  /* iOS Safari zooms in when font-size < 16px on focused inputs */
+  .vs-input,
+  .vs-combo,
+  .vs-textarea,
+  .vs-spreadsheet-search {
+    font-size: 16px !important;
+    min-height: 42px !important;
+    padding: 8px 10px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 4px !important;
+  }
+
+  .vs-textarea {
+    min-height: 80px !important;
+  }
+
+  /* Touch-friendly buttons (Apple HIG / Material 44px tap targets) */
+  .vs-button {
+    min-height: 42px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    touch-action: manipulation;
+    border-radius: 4px !important;
+    cursor: pointer;
+  }
+
+  .vs-check {
+    transform: scale(1.3);
+    margin: 6px 8px 6px 2px !important;
+    cursor: pointer;
+  }
+
+  .vs-label {
+    display: block !important;
+    margin-bottom: 4px !important;
+    font-size: 13px !important;
+  }
+
+  /* --- 3. Splitter: Collapse to Single-Column on Mobile --- */
+  .vs-splitter-container {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: auto !important;
+    border: none !important;
+  }
+
+  .vs-splitter-pane {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    padding: 8px 0 !important;
+    overflow: visible !important;
+  }
+
+  .vs-splitter-bar {
+    display: none !important;
+  }
+
+  /* --- 4. Tabs: Smooth Horizontal Swipe Navigation --- */
+  .vs-tab-headers {
+    display: flex !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none; /* Firefox */
+    padding-bottom: 2px;
+  }
+
+  .vs-tab-headers::-webkit-scrollbar {
+    display: none; /* Chrome, Safari */
+  }
+
+  .vs-tab-btn {
+    flex: 0 0 auto !important;
+    min-height: 42px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    border-bottom: 2px solid transparent !important;
+  }
+
+  .vs-tab-btn.active {
+    border-bottom: 2px solid var(--vs-blau, #41518b) !important;
+  }
+
+  .vs-tab-contents {
+    padding: 10px 8px !important;
+  }
+
+  /* --- 5. Modals: Fullscreen / Bottom-Sheet Dialogs --- */
+  .blocker {
+    padding: 0 !important;
+  }
+
+  .blocker .vs-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border: none !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .blocker .vs-panel-content {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 12px !important;
+  }
+
+  dialog.vsmodal {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  dialog.vsmodal .vs-modal-content {
+    height: calc(100% - 40px) !important;
+    padding: 16px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* --- 6. DataGrid (vsgrid): Card-View Responsive Transformation --- */
+  .vsgrid-container {
+    max-height: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Hide the sticky desktop table header on mobile card-view */
+  .vs-table-sticky {
+    display: none !important;
+  }
+
+  /* Transform table rows into discrete cards */
+  .vs-table-responsive,
+  .vs-table-responsive tbody,
+  .vs-table-responsive tr,
+  .vs-table-responsive td {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .vs-table-responsive thead {
+    display: none !important;
+  }
+
+  .vs-table-responsive tbody tr {
+    margin-bottom: 12px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    padding: 10px 12px !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  .vs-table-responsive tbody tr.even {
+    background: #fafbfc !important;
+  }
+
+  .vs-table-responsive td {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 6px 0 !important;
+    border: none !important;
+    border-bottom: 1px solid #f0f0f0 !important;
+    font-size: 14px !important;
+    text-align: right !important;
+  }
+
+  .vs-table-responsive td:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Label shown before the cell value on mobile card */
+  .vs-table-responsive td[data-label]::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--vs-blau, #41518b);
+    text-align: left !important;
+    margin-right: 12px !important;
+    flex: 1 0 auto !important;
+  }
+
+  /* --- 7. Panels, Fieldsets and Cards --- */
+  .vs-panel {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    margin-bottom: 12px !important;
+  }
+
+  fieldset.vs-group {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 10px !important;
+    margin-bottom: 12px !important;
+  }
+}

@@ -1394,9 +1394,9 @@ This section documents every single include file in the Euphorix standard librar
 
 #### `std/vsui.e` (Namespace: `vsui`)
 
-* **Purpose:** Self-contained high-density ERP web framework powered by `/home/volkix/prj/cgibash/html`: sticky-header DataGrid, vsevent bridge, and compact controls.
-* **Public Functions & Procedures (32):**
-  * `public function page(sequence title, object content, sequence options = {})`: Generates high-density HTML container with cgibash/html CSS and ES6 modules.
+* **Purpose:** Self-contained high-density ERP web framework powered by `/home/volkix/prj/cgibash/html`: sticky-header DataGrid, vsevent bridge, reactive DOM patches, and mobile responsiveness.
+* **Public Functions & Procedures (39):**
+  * `public function page(sequence title, object content, sequence options = {})`: Generates high-density HTML container with cgibash/html CSS, vs-mobile.css, and ES6 modules.
   * `public function button(sequence id, sequence text, sequence options = {})`: Creates a high-density button (`.vs-button`) with event forwarding.
   * `public function input(sequence id, sequence value = "", sequence options = {})`: Creates a compact text input (`.vs-input`).
   * `public function numinput(sequence id, atom value = 0, sequence options = {})`: Creates a numeric input field (`type="number"`).
@@ -1409,19 +1409,26 @@ This section documents every single include file in the Euphorix standard librar
   * `public function group(sequence legend_text, object content, sequence options = {})`: Creates a fieldset grouping frame (`.vs-group`).
   * `public function panel(sequence id, sequence title, object content, sequence options = {})`: Creates a high-density panel container (`.vs-panel`).
   * `public function collapse(sequence id, sequence sections, integer open_first = 1, sequence options = {})`: Creates collapsible sections (`<details>` / `<summary>`).
-  * `public function grid(sequence id, sequence columns, sequence rows, sequence options = {})`: Creates the high-density DataGrid with sticky header and live search.
-  * `public function tabs(sequence id, sequence tabs_list, sequence options = {})`: Creates tab navigation with dynamic panel switching.
-  * `public function modal(sequence id, sequence title, object content, object footer_buttons = {}, sequence options = {})`: Creates a modal dialog popup with dark backdrop.
-  * `public function splitter(sequence id, object left_content, object right_content, integer split_pct = 50, sequence options = {})`: Creates a 2-column layout container with adjustable ratio.
+  * `public function grid(sequence id, sequence columns, sequence rows, sequence options = {})`: Creates the high-density DataGrid with sticky header, live search, and automatic mobile card-view.
+  * `public function tabs(sequence id, sequence tabs_list, sequence options = {})`: Creates tab navigation with dynamic panel switching and horizontal mobile swipe.
+  * `public function modal(sequence id, sequence title, object content, object footer_buttons = {}, sequence options = {})`: Creates a modal dialog popup with dark backdrop (fullscreen on mobile).
+  * `public function splitter(sequence id, object left_content, object right_content, integer split_pct = 50, sequence options = {})`: Creates a 2-column layout container with adjustable ratio (collapses to column on mobile).
   * `public function patch(sequence id, sequence html)`: Creates a DOM patch instruction replacing content of element.
   * `public function append_html(sequence id, sequence html)`: Creates a DOM patch instruction appending HTML to target element.
-  * `public function set_val(sequence id, sequence value)`: Creates a patch instruction updating an input field value on the client.
+  * `public function set_val(sequence id, sequence value)`: Creates a patch instruction updating an input field value on the client (invoking `.setValue()`).
+  * `public function grid_set_data(sequence id, sequence data)`: Updates grid or table data rows via JSON patch without page or HTML re-rendering.
+  * `public function set_focus(sequence id)`: Sets keyboard focus to the target element.
+  * `public function set_enabled(sequence id, integer is_enabled)`: Enables or disables an input or button element reactively.
+  * `public function set_visible(sequence id, integer is_visible)`: Toggles element visibility (`display: none` vs `''`).
+  * `public function set_css(sequence id, sequence prop, sequence val)`: Sets inline CSS property directly on target element.
+  * `public function set_class(sequence id, sequence class_name, sequence action = "add")`: Adds, removes, or toggles a CSS class on an element.
+  * `public function clear_form(sequence container_id = "")`: Clears all form fields within a container element.
   * `public function toast_show(sequence text, sequence toast_type = TOAST_INFO, integer duration = 3000)`: Displays a high-density toast message on the client.
   * `public function modal_open(sequence id)`: Opens a modal popup dialog.
   * `public function modal_close(sequence id)`: Closes an open modal popup dialog.
   * `public function redirect(sequence url)`: Instructs the browser to redirect to another URL.
   * `public function updates(sequence patches_list)`: Serializes patch instructions for the `vsevent` reactive bridge.
-  * `public function val(sequence ctx, sequence key, sequence default_val = "")`: Extracts submitted form value from request context.
+  * `public function val(sequence ctx, sequence key, sequence default_val = "")`: Extracts submitted form value from request context (invoking `.getValue()`).
   * `public function app(sequence title, integer port = DEFAULT_PORT, sequence static_dir = DEFAULT_STATIC_DIR)`: Creates a complete high-density ERP application layout.
   * `public procedure page_route(integer app_id, sequence path, integer handler_rid)`: Maps an HTTP route path to a page generator function.
   * `public procedure on_event(integer app_id, sequence event_name, integer handler_rid)`: Binds a custom event name to an event handler routine.
@@ -2317,11 +2324,11 @@ A complete runnable example of an Enterprise Cockpit with SQLite integration is 
 
 ## 15. Alternative Web-UI with cgibash/html (`std/vsui.e`)
 
-As a lightweight, self-contained alternative to SAP UI5 Web Components, Euphorix integrates Volker Schulte's in-house web framework from `/home/volkix/prj/cgibash/html` via `std/vsui.e`.
+As a lightweight, self-contained alternative to SAP UI5 Web Components, Euphorix integrates Volker Schulte's in-house web framework directly inside the project repository under `html/` (based on `/home/volkix/prj/cgibash/html`).
 
 ### 15.1 Architecture & Features of In-House cgibash/html Library
 
-* **100% Self-Contained & Offline-Ready**: No external CDNs, no internet access required. All ES6 modules (`ldom.js`, `vsevent.js`, `vsgrid.js`) and stylesheets (`globalblauklein.css`, `vs.css`) are served directly from the local directory.
+* **100% Self-Contained & Offline-Ready**: No external CDNs, no internet access required. All ES6 modules (`ldom.js`, `vsevent.js`, `vsgrid.js`) and stylesheets (`globalblauklein.css`, `vs.css`, `vs-mobile.css`) are bundled and version-controlled right inside `html/`.
 * **High-Density Enterprise Design**: Blue color palette (`--vs-blau: #41518b`, `--vs-gruen: #3e8548`) and compact line heights optimized for data-dense business applications (ERP, CRM, warehousing, billing).
 * **Pure ES6 Modules**: Built upon native browser JavaScript and Hyperscript (`ldom.js` with `e()`, `_()`, `n()`) and event bus `vsevent.js`.
 
@@ -2343,21 +2350,39 @@ As a lightweight, self-contained alternative to SAP UI5 Web Components, Euphorix
 | **Fieldset** | `vsui:group(legend, content, opts)` | Grouping frame `.vs-group` with title |
 | **Panel** | `vsui:panel(id, title, content, opts)` | Card/container `.vs-panel` with blue header |
 | **Collapse** | `vsui:collapse(id, sections, open_first, opts)` | Collapsible sections (`<details>` / `<summary>`) |
-| **DataGrid** | `vsui:grid(id, cols, rows, opts)` | Table component with **sticky header** and **client-side live search** |
-| **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Tab navigation with dynamic switching |
-| **Modal** | `vsui:modal(id, title, content, footer, opts)` | Centered popup dialog with backdrop |
-| **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-column container with customizable split ratio |
+| **DataGrid** | `vsui:grid(id, cols, rows, opts)` | Table component with **sticky header**, **client-side live search**, and **automatic mobile card-view** |
+| **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Tab navigation with dynamic switching and horizontal mobile swipe |
+| **Modal** | `vsui:modal(id, title, content, footer, opts)` | Centered popup dialog with backdrop (fullscreen on mobile) |
+| **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-column container with customizable split ratio (vertical stack on mobile) |
 
 ### 15.3 Integrated Asset Server (`/lib2/*`, `/css/*`, `/img/*`)
 
-The integrated server in `std/vsui.e` automatically serves static assets directly from `/home/volkix/prj/cgibash/html`:
-* `/css/globalblauklein.css` and `/css/vs.css`
+The integrated server in `std/vsui.e` automatically serves static assets directly from the repository's `html/` directory (or `/home/volkix/prj/intpret/html` with fallback to `/home/volkix/prj/cgibash/html`):
+* `/css/globalblauklein.css`, `/css/vs.css`, and `/css/vs-mobile.css`
 * `/lib2/ldom.js`, `/lib2/vsevent.js`, `/lib2/ui.js`, `/lib2/vsgrid.js`
 * `/img/*` (logos, icons) and `/app/*`
 
 ### 15.4 Reactive Event Bridge with `vsevent` & DOM Patches
 
-Frontend interactions (`button_click`, `changevalue`) collect form values and send them via POST to `/__vs_event`. The Euphorix server returns DOM patches:
+Frontend interactions (`button_click`, `changevalue`) collect form values and send them via POST to `/__vs_event`. The bridge intelligently invokes component-native `.getValue()` functions, guaranteeing properly typed numbers and standardized dates.
+
+The Euphorix server returns a list of reactive DOM patches (`vsui:updates({...})`):
+
+| Patch Function | Parameters | Browser Effect |
+| :--- | :--- | :--- |
+| `vsui:patch(id, html)` | `id, html` | Replaces `innerHTML` of target element |
+| `vsui:append_html(id, html)` | `id, html` | Appends HTML to target element (`beforeend`) |
+| `vsui:set_val(id, val)` | `id, val` | Sets input value and invokes `.setValue(val)` |
+| `vsui:grid_set_data(id, data)` | `id, data` | **New:** Smoothly updates DataGrid rows via JSON without HTML rebuild |
+| `vsui:set_focus(id)` | `id` | **New:** Sets keyboard focus directly into field |
+| `vsui:set_enabled(id, bool)` | `id, 0/1` | **New:** Enables or disables inputs and buttons reactively |
+| `vsui:set_visible(id, bool)` | `id, 0/1` | **New:** Toggles element visibility (`display: none` / `''`) |
+| `vsui:set_css(id, prop, val)` | `id, prop, val` | **New:** Dynamic inline styling (e.g. red border on error) |
+| `vsui:set_class(id, cls, act)` | `id, cls, act` | **New:** Adds, removes, or toggles CSS classes |
+| `vsui:clear_form(container_id)`| `container_id` | **New:** Clears all form fields within target container |
+| `vsui:toast_show(txt, type, ms)`| `txt, type, ms`| Displays floating toast notification |
+| `vsui:modal_open(id)` / `close`| `id` | Opens or closes modal dialog popup |
+| `vsui:redirect(url)` | `url` | Redirects browser to specified URL |
 
 ```euphoria
 function on_save_customer(sequence ctx)
@@ -2367,9 +2392,13 @@ function on_save_customer(sequence ctx)
     -- Store in SQLite...
     sqlite:exec(db, "INSERT INTO customers (cust_id, name) VALUES (?, ?);", {cust_id, name})
 
+    -- Query updated records
+    sequence fresh_customers = sqlite:query_all(db, "SELECT cust_id, name FROM customers ORDER BY cust_id DESC;")
+
     return vsui:updates({
-        vsui:patch("grid_container", render_customer_grid()),
-        vsui:set_val("txt_name", ""),
+        vsui:grid_set_data("grid_customers", fresh_customers),
+        vsui:clear_form("form_customer"),
+        vsui:set_focus("txt_cust_id"),
         vsui:toast_show("Customer created successfully!", vsui:TOAST_SUCCESS)
     })
 end function
@@ -2386,3 +2415,13 @@ end function
   ./euphorix demo/vsui_demo.ex
   # Open in browser: http://127.0.0.1:8089/
   ```
+
+### 15.6 Mobile Responsiveness & Touch Ergonomics (`vs-mobile.css`)
+
+Via the automatically included stylesheet `/css/vs-mobile.css`, the entire `vsui` UI suite seamlessly adapts to mobile viewports (`<= 768px`) without affecting the desktop experience:
+
+* **iOS Safari Auto-Zoom Prevention**: All input fields (`.vs-input`, `.vs-combo`, `.vs-spreadsheet-search`) enforce `font-size: 16px;` on mobile devices, preventing iOS Safari from automatically zooming into the page on focus.
+* **Fitts's Law Touch Targets**: Buttons and inputs provide a minimum height of 42px with generous touch padding for reliable thumb navigation.
+* **DataGrid Mobile Card-View**: On screen widths `<= 768px`, CSS transforms the tabular `vsgrid` into a sleek list of individual record cards, displaying column names via `data-label` attributes.
+* **Horizontal Tab Swiping**: `.vs-tabs` enables smooth momentum horizontal swiping without vertical stacking or breaking tabs.
+* **Splitters & Modals**: `.vs-splitter-container` collapses to vertical layout, while modals adapt as full-screen views with fluid touch scrolling.

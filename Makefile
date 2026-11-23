@@ -11,7 +11,7 @@ JAVA_BIN       := euphorix
 STANDALONE_BIN := euphorix-standalone
 EU_STDLIB      := $(wildcard eu_include/std/*.e eu_include/std/*/*.e eu_include/euphoria/*.e)
 
-.PHONY: all java fatjar standalone test test-java test-standalone clean
+.PHONY: all java fatjar standalone test test-java test-standalone website clean
 
 all: java standalone
 
@@ -79,6 +79,9 @@ test-standalone: $(STANDALONE_BIN)
 	./$(STANDALONE_BIN) tests/t_vsui.e
 	./$(STANDALONE_BIN) tests/t_java_interop.e
 	./$(STANDALONE_BIN) tests/t_concurrency.ex
+
+website: $(JAVA_BIN)
+	./$(JAVA_BIN) tools/build_website.ex
 
 clean:
 	rm -rf java/target $(JAVA_JAR) eui.jar $(JAVA_BIN) eui-java eux $(STANDALONE_BIN) eui-standalone eux-standalone

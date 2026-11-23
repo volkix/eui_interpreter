@@ -1,47 +1,55 @@
-# Euphorix 1.0 (Java 25 VM for OpenEuphoria Syntax)
+# Euphorix 1.0 – Next-Gen VM for OpenEuphoria
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Java 25](https://img.shields.io/badge/Java-25%20(Loom%20%7C%20FFM)-orange.svg)](https://openjdk.org/)
+[![Language: OpenEuphoria](https://img.shields.io/badge/Language-OpenEuphoria%20(Procedural)-indigo.svg)](https://openeuphoria.org)
 [![Platform](https://img.shields.io/badge/Platform-Linux%2064--bit%20%7C%20Windows-green.svg)]()
 [![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen.svg)]()
 
-> **Note on Syntax Compatibility:** **Euphorix** is an independent, clean-room high-performance Virtual Machine written in Java 25. It natively interprets and executes the **OpenEuphoria 4.x syntax** and standard library while bringing modern Java 25 capabilities (Virtual Threads, Go-style Channels, Async/Await, Swing Desktop GUI, JDBC SQL, UTF-8, JSON/XML).
+> **About the Language:** [OpenEuphoria](https://openeuphoria.org) is an elegant, purely **procedural programming language with a remarkably simple, intuitive syntax** and powerful dynamic *sequences* as its core data structure. Without the cognitive overhead and boilerplate of complex object-oriented hierarchies, programs remain readable, predictable, and exceptionally fast to write.
+>
+> **About Euphorix:** **Euphorix** is an independent, clean-room high-performance Virtual Machine written in Java 25. It natively interprets the OpenEuphoria 4.x language and standard libraries, while seamlessly incorporating modern enterprise capabilities: millions of **Java 25 Loom Virtual Threads**, lock-free **Go-style CSP Channels**, an integrated **High-Density Web-UI framework (VS-UI)**, native **SQLite 3 & PostgreSQL** database drivers, **RFC 9535 JSONPath**, **W3C XPath 1.0**, and zero-overhead Java interop.
 
-Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`) and a **completely self-contained 53 MB single-binary** (`euphorix-standalone`) requiring no pre-installed Java.
+Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`) and a **completely self-contained 53 MB single-binary** (`euphorix-standalone`) requiring no pre-installed Java or external runtime.
 
 ---
 
-## 📖 Documentation
+## 📖 Documentation & Tutorials
 
-* 🇩🇪 **[HANDBUCH.md](HANDBUCH.md)** – Vollständiges deutschsprachiges Handbuch (13 Kapitel, vollständige API- und Sprachreferenz).
-* 🇬🇧 **[MANUAL.md](MANUAL.md)** – Comprehensive English User & Developer Manual.
+* 🇩🇪 **[HANDBUCH.md](HANDBUCH.md)** & **[HANDBUCH.pdf](website/downloads/HANDBUCH.pdf)** – Vollständiges deutschsprachiges Handbuch (15 Kapitel, 861 Standardroutinen, Architektur & Tutorials).
+* 🇬🇧 **[MANUAL.md](MANUAL.md)** & **[MANUAL.pdf](website/downloads/MANUAL.pdf)** – Comprehensive English User & Developer Manual (15 chapters, complete standard library reference).
+* 📚 **[tutorial/](tutorial/)** & **[website/tutorial.html](website/tutorial.html)** – **12 praxisnahe Kapitel** mit ausführlich erklärten, 100% lauffähigen Codebeispielen für alle Standard-Include-Dateien (`std/*.e`).
+* 🌐 **[website/](website/)** – Statische, produktionsfertige Präsentations- und Dokumentations-Webseite für Webserver (z. B. **lighttpd**), inklusive konfigurierbarem Impressum & DSGVO-Datenschutz (`make website`).
 
 ---
 
 ## 🚀 Key Highlights & Architecture
 
-* **Clean-Room Register-Based VM**: 65,536 registers with Copy-on-Write (CoW) memory semantics, fast opcode dispatch, and high-precision 48-bit integers & 64-bit IEEE-754 floats.
-* **Modern Multi-Core Concurrency**:
-  * **Virtual Threads**: Non-blocking I/O across CPU cores via Java 25 (`task:create_thread`, `thread:spawn`).
-  * **Async / Await**: Effortless asynchronous computation with Futures (`thread:async`, `thread:await`, `thread:await_all`).
-  * **Go-Style Channels**: Communicating Sequential Processes (CSP) for lock-free, deadlock-safe message passing (`std/channel.e`).
-* **Direct Java Interoperability (`std/java.e`)**:
-  * Call any Java method or load arbitrary JARs directly from Euphoria (`java:call_static`, `java:new_instance`).
-  * Seamless bidirectional data type conversion and dynamic Proxy Event Listeners (`java:create_listener`).
-* **Native Desktop GUI (`std/gui.e`)**:
-  * Rich Swing/AWT desktop widgets with Subpixel Font Antialiasing.
-  * Modern theme support: **FlatLaf** (Dark & Light), **GTK+**, and **Nimbus**.
+* **Procedural Programming & Clear Syntax**:
+  * Purely procedural language specification based on [openeuphoria.org](https://openeuphoria.org).
+  * First-class, dynamically sized, 1-based **Sequences** (`s[2..$-1]`) replace convoluted object boilerplate.
+* **Clean-Room Register-Based VM**:
+  * 65,536 virtual registers with Copy-on-Write (CoW) memory semantics.
+  * Tagged values with 48-bit fast integers and 64-bit IEEE-754 floating point numbers.
+* **High-Density Web-UI Framework (`std/vsui.e`)**:
+  * Integrated, self-contained business web framework derived from Volker Schulte's `cgibash/html`.
+  * Sticky table headers, responsive mobile card view, interactive modals, tabs, splitters, and flicker-free reactive JSON patches (`vsui:updates()`) without full page reloads.
+  * Enterprise alternative: SAP UI5 Web Components 2.29 (`std/ui5.e`).
+* **Java 25 Loom Concurrency**:
+  * **Virtual Threads**: Non-blocking concurrency across CPU cores via Java 25 (`thread:spawn`, `thread:async`, `thread:await`).
+  * **Go-Style CSP Channels**: Thread-safe, lock-free message passing queues between parallel threads (`std/channel.e`).
 * **Enterprise Database Engines**:
-  * **SQLite 3.47**: Statically linked via JDBC (`std/sqlite.e`), transactions, and JSON export.
-  * **PostgreSQL 42.7**: High-performance pure-Java driver (`std/pgsql.e`).
-* **Enterprise Data Formats & Protocols**:
-  * **UTF-8**: Full Unicode-aware string slicing, search, and casing (`std/utf8.e`).
-  * **JSON & JSONPath**: RFC 9535 JSONPath and Draft 2020-12 Schema validation (`std/json.e`, `std/json_schema.e`).
-  * **XML**: W3C XPath 1.0 DOM and XSD Schema validation (`std/xml.e`).
-  * **HTTP/HTTPS**: Asynchronous HTTP client & multi-threaded server (`std/http.e`).
-* **Dual-Platform Ready**:
-  * **Linux 64-bit**: `./euphorix` (or `./eux`), `./euphorix-standalone`, plus `eui-java` alias.
-  * **Microsoft Windows**: `euphorix.cmd` and `euphorix.bat` launchers with dynamic platform adaptation.
+  * **SQLite 3.47**: Statically linked via JDBC (`std/sqlite.e`) with in-memory (`:memory:`) support, parameterized queries, and transactions.
+  * **PostgreSQL 42.7**: High-performance enterprise database driver (`std/pgsql.e`).
+  * **EDS (Euphoria Database System)**: Ultra-fast native NoSQL key-value & record database (`std/eds.e`).
+* **Structured Data & Protocols**:
+  * **UTF-8 Engine**: Native multibyte Unicode string casing, slicing, and codepoint analysis (`std/utf8.e`).
+  * **JSON & JSONPath**: Fast JSON decoding, RFC 9535 JSONPath querying, and JSON Schema Draft 2020-12 validation (`std/json.e`, `std/json_schema.e`).
+  * **XML**: DOM parser, W3C XPath 1.0 evaluations, and XSD schema validation (`std/xml.e`).
+  * **HTTP Client & Microservice Server**: Built-in REST client and microservice HTTP server (`std/http.e`, `std/socket.e`, `std/net/url.e`).
+* **Java Interoperability & Desktop GUI**:
+  * Seamless reflection-free JDK 25 interop (`std/java.e`).
+  * Desktop GUI with Swing/AWT and FlatLaf dark/light themes (`std/gui.e`).
 
 ---
 
@@ -53,99 +61,124 @@ Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`)
 ./euphorix
 ```
 
-### 2. Run a Script
+### 2. Run Scripts
 ```bash
 # Linux (with Java 25 installed)
 ./euphorix my_script.ex
 # or short:
 ./eux my_script.ex
 
-# Linux (Standalone, zero dependencies)
+# Linux (Standalone single-binary, zero dependencies)
 ./euphorix-standalone my_script.ex
 
 # Windows
 euphorix.cmd my_script.ex
 ```
 
-### 3. Run the Desktop GUI Demo
+### 3. Run the Complete Tutorial Suite (12 Chapters)
 ```bash
-./euphorix demo/gui_demo.ex
+./euphorix tutorial/alle_beispiele_ausfuehren.ex
+```
+
+### 4. Run the High-Density Web-UI Demo
+```bash
+./euphorix demo/vsui_demo.ex
+# Open in browser: http://localhost:8089/
+```
+
+### 5. Build the Documentation Website & PDFs
+```bash
+make website
+# Generates website/ ready to be copied to lighttpd:
+# scp -r website/* user@server:/var/www/html/
 ```
 
 ---
 
 ## 💡 Code Examples
 
-### Concurrency: Async / Await & Go-Style Channels
+### 1. High-Density Web-UI with Reactive Patches (`std/vsui.e`)
 ```euphoria
-include std/thread.e
-include std/channel.e
+include std/vsui.e as vsui
 
--- 1. Async / Await Future:
-function heavy_calc(atom n)
-    thread:sleep(0.1)
-    return n * n
+integer app = vsui:app("ERP Cockpit", 8089)
+
+function on_speichern(sequence ctx)
+    sequence kdnr = vsui:val(ctx, "txt_kdnr")
+    sequence firma = vsui:val(ctx, "txt_firma")
+
+    -- Reactive patch: updates UI without full page reload
+    return vsui:updates({
+        vsui:grid_set_data("grid_kunden", {{kdnr, firma, "Aktiv"}}),
+        vsui:clear_form("form_kunden"),
+        vsui:toast_show("Kunde erfolgreich angelegt!", vsui:TOAST_SUCCESS)
+    })
 end function
 
-atom job = thread:async(routine_id("heavy_calc"), {42})
--- Main thread continues execution freely...
-atom result = thread:await(job) -- 1764
+vsui:on_click(app, "btn_save", routine_id("on_speichern"))
+vsui:run(app)
+```
 
--- 2. Go-Style Channel Communication:
-atom box = channel:new(5)
+### 2. Concurrency: Loom Virtual Threads & CSP Channels
+```euphoria
+include std/thread.e as thread
+include std/channel.e as chan
 
-procedure producer(atom ch)
-    for i = 1 to 3 do
-        channel:send(ch, sprintf("Item #%d", {i}))
+integer postfach = chan:new(10)
+
+procedure worker(integer id)
+    for i = 1 to 5 do
+        chan:send(postfach, sprintf("Auftrag #%d von Worker %d", {i, id}))
     end for
 end procedure
 
-thread:spawn(routine_id("producer"), {box})
-for i = 1 to 3 do
-    puts(1, channel:read(box) & "\n")
+-- Spawn 50 lightweight virtual threads
+for w = 1 to 50 do
+    thread:spawn(routine_id("worker"), {w})
 end for
+
+-- Read messages from channel
+for m = 1 to 250 do
+    printf(1, "Empfangen: %s\n", {chan:read(postfach)})
+end for
+chan:close(postfach)
 ```
 
-### Java Interop & Swing GUI
+### 3. SQLite Database & RFC 9535 JSONPath
 ```euphoria
-include std/gui.e
-include std/java.e
+include std/sqlite.e as sqlite
+include std/json.e as json
 
-gui:set_theme("flatlaf-dark")
+integer db = sqlite:open(":memory:")
+sqlite:exec(db, "CREATE TABLE artikel (sku TEXT, titel TEXT, preis REAL, lager INT);")
+sqlite:exec(db, "INSERT INTO artikel VALUES (?, ?, ?, ?);", {"SSD-2TB", "NVMe SSD", 129.90, 15})
+sqlite:exec(db, "INSERT INTO artikel VALUES (?, ?, ?, ?);", {"RAM-32G", "DDR5 RAM", 89.50, 0})
 
-atom win = gui:window("Euphorix Desktop", 450, 300)
-atom lbl = gui:text_label("Welcome to Euphorix (Java 25 VM)!")
-atom btn = gui:button("Click Me")
+sequence rows = sqlite:query_assoc(db, "SELECT * FROM artikel;")
+object doc = json:decode(json:encode(rows))
 
-procedure on_click(atom sender)
-    java:call_static("javax.swing.JOptionPane", "showMessageDialog", {0, "Hello from Euphorix!"})
-end procedure
-
-gui:on_click(btn, routine_id("on_click"))
-gui:add(win, lbl)
-gui:add(win, btn)
-gui:show(win)
-gui:wait_window(win)
+-- JSONPath query: select titles of items in stock
+sequence auf_lager = json:jsonpath(doc, "$[?(@.lager > 0)].titel")
+printf(1, "Auf Lager: %s\n", {auf_lager[1]})
+sqlite:close(db)
 ```
 
 ---
 
 ## 🛠️ Build & Verification
 
-The project is built using **GNU Make** and **Apache Maven** with Java 25:
-
 ```bash
-# Build euphorix.jar and euphorix executable
+# 1. Build Fat-JAR (euphorix.jar) and Linux launcher wrapper
 make
 
-# Build self-contained single-binary (bundles minimal JRE via jlink)
+# 2. Build completely self-contained single-binary with bundled minimal JRE (53 MB)
 make standalone
 
-# Run the complete test suite (examples, GUI, Java interop, Concurrency)
+# 3. Run the complete automated test suite (100% passing)
 make test
 
-# Run tests against the self-contained standalone binary
-make test-standalone
+# 4. Generate documentation website, interactive tutorial & publication PDFs
+make website
 ```
 
 ---
@@ -153,37 +186,71 @@ make test-standalone
 ## 📁 Repository Structure
 
 ```
-├── HANDBUCH.md               # Comprehensive German manual (13 chapters)
-├── MANUAL.md                 # Comprehensive English manual (13 chapters)
-├── README.md                 # Project overview & quick start
-├── LICENSE                   # GNU General Public License v3.0
-├── Makefile                  # Build & test automation
-├── pom.xml                   # Maven project definition (FlatLaf, SQLite, PostgreSQL, Jackson)
-├── euphorix (eui-java, eux)  # Linux executable shell launcher & aliases
-├── euphorix.cmd / .bat       # Windows executable batch launchers
-├── euphorix.jar (eui.jar)    # Shaded executable Fat-JAR (19 MB)
-├── euphorix-standalone       # Self-extracting single binary with minimal JRE (53 MB)
-├── eu_include/               # OpenEuphoria-compatible standard library
-│   └── std/
-│       ├── thread.e          # Virtual Threads & Async/Await
-│       ├── channel.e         # Go-Style CSP Channels
-│       ├── task.e            # Cooperative & Preemptive Tasks
-│       ├── gui.e             # Swing Desktop GUI & Themes
-│       ├── java.e            # Dynamic Java Reflection Interop
-│       ├── sqlite.e          # SQLite 3 Database Engine
-│       ├── pgsql.e           # PostgreSQL Database Engine
-│       ├── utf8.e            # UTF-8 Unicode String Engine
-│       └── ...
-├── java/src/main/java/eu/    # Java 25 Clean-Room Register VM Implementation
-│   ├── VM.java               # Bytecode execution loop & machine functions
-│   ├── Compiler.java         # Lexical analyzer & AST compiler
-│   ├── JavaInterop.java      # Dynamic reflection & proxy bridge
-│   ├── Sequence.java         # Copy-on-Write Euphoria sequence
-│   └── Value.java            # Tagged union values & NaN-boxing
-├── demo/                     # Interactive GUI demonstrations
-├── examples/                 # REST microservices, database, XML, and stdlib examples
-├── tests/                    # Unit & regression tests (100% passing)
-└── tools/                    # Test runner (`RunAllTests.java`) & packager (`build_standalone.sh`)
+├── HANDBUCH.md                  # Vollständiges deutsches Handbuch (15 Kapitel, 861 Routinen)
+├── MANUAL.md                    # Comprehensive English Developer Manual (15 chapters)
+├── README.md                    # Project overview & architectural guide
+├── Makefile                     # Build, test, standalone & website automation
+├── pom.xml                      # Maven build descriptor (Java 25, SQLite, PostgreSQL, FlatLaf)
+├── euphorix (eui-java, eux)     # Linux executable launcher & aliases
+├── euphorix.cmd / .bat          # Windows batch launchers
+├── euphorix.jar (eui.jar)       # Executable Fat-JAR (19 MB)
+├── euphorix-standalone          # Self-extracting single-binary with minimal JRE (53 MB)
+│
+├── html/                        # Integrated static UI assets (CSS, JS, icons from cgibash/html)
+├── eu_include/                  # Standard library include files (OpenEuphoria compatible)
+│   ├── std/
+│   │   ├── vsui.e               # High-Density Web-UI framework (cgibash/html)
+│   │   ├── ui5.e                # SAP UI5 Web Components 2.29
+│   │   ├── thread.e             # Java 25 Loom Virtual Threads & Async/Await
+│   │   ├── channel.e            # Communicating Sequential Processes (CSP Channels)
+│   │   ├── sqlite.e             # Embedded SQLite 3 database engine
+│   │   ├── pgsql.e              # Native PostgreSQL driver
+│   │   ├── eds.e                # Euphoria Database System (native NoSQL engine)
+│   │   ├── json.e / json_schema.e # JSON & RFC 9535 JSONPath, Draft 2020-12 Validator
+│   │   ├── xml.e                # XML DOM, W3C XPath 1.0 & XSD Validator
+│   │   ├── http.e / socket.e    # HTTP/REST Client & Microservice Server
+│   │   ├── sequence.e / map.e   # Sequences, Collections, Hash-Maps & Stacks
+│   │   ├── text.e / regex.e     # String formatting & PCRE regular expressions
+│   │   ├── datetime.e           # Date, time & calendar calculations
+│   │   ├── java.e / gui.e       # JDK 25 interop & Swing/FlatLaf Desktop GUI
+│   │   └── ...                  # All 74 standard include files
+│   └── euphoria/                # Tokenizer, keywords, debug & compiler modules
+│
+├── tutorial/                    # 12 runnable tutorial chapters with German explanations
+│   ├── 01_datenstrukturen.ex    # Sequenzen, Slicing, Maps, Stacks, Sort, Search, Serialize
+│   ├── 02_text_und_regex.ex     # Strings, Formatierung, Regex, UTF-8, Wildcards, Pretty
+│   ├── 03_dateisystem_und_io.ex # Datei-IO, Filesystem-Checks, Pipes
+│   ├── 04_mathematik_und_statistik.ex # Mathe, Potenzen, Statistik, Primzahlen, Scinot, Fenv
+│   ├── 05_datum_und_uhrzeit.ex  # Timestamps, ISO-Formatierung, Fristen, Differenzen
+│   ├── 06_json_und_xml.ex       # JSON, JSONPath, Schema-Validierung, XML/XPath
+│   ├── 07_datenbanken.ex        # SQLite Transaktionen, PostgreSQL, EDS NoSQL DB
+│   ├── 08_netzwerk_und_web.ex   # URLs, HTTP-REST Client/Server, Sockets, DNS
+│   ├── 09_nebenlaeufigkeit.ex   # Loom Virtual Threads, CSP Channels, Tasks
+│   ├── 10_web_und_gui.ex        # VS-UI Web-Anwendung, SAP UI5, Swing GUI
+│   ├── 11_system_und_cli.ex     # OS-Umgebung, ANSI-Konsole, CLI-Options-Parser
+│   ├── 12_interop_und_testing.ex# Java JDK 25, Hex, Base64, Hashes, Memory & Testing
+│   └── alle_beispiele_ausfuehren.ex # Master test runner executing all 12 chapters
+│
+├── website/                     # Production-ready static website (lighttpd ready)
+│   ├── index.html               # Main website with feature matrix, code tabs & downloads
+│   ├── tutorial.html            # Interactive library cookbook with live search & filter
+│   ├── impressum.html           # Centralized legal notice & GDPR privacy policy
+│   ├── css/style.css            # Responsive, dark/navy themed stylesheet
+│   ├── js/main.js               # Search filter, code copy & tab controller
+│   ├── downloads/               # Self-contained binaries, JAR, PDFs & tutorial code
+│   └── lighttpd_sample.conf     # Server configuration template for lighttpd
+│
+├── website_config.json          # Central configuration for site metadata, downloads & legal info
+├── tools/                       # Build tools & generators
+│   ├── build_website.ex         # Native Euphoria website builder (`make website`)
+│   ├── generate_tutorial.py     # Tutorial HTML generator
+│   ├── generate_pdf.py          # Headless Chrome PDF manual generator
+│   └── build_standalone.sh      # Minimal JRE bundler via jlink
+│
+├── java/src/main/java/eu/       # Java 25 Register VM implementation
+├── demo/                        # GUI & Web-UI interactive demonstrations
+├── examples/                    # REST microservices, database, XML, and stdlib examples
+└── tests/                       # Automated regression & unit test suite (100% passing)
 ```
 
 ---

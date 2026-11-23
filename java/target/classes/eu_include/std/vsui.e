@@ -31,7 +31,7 @@ include std/text.e as text
 -- =============================================================================
 
 public constant
-    DEFAULT_STATIC_DIR = "/home/volkix/prj/cgibash/html",
+    DEFAULT_STATIC_DIR = "/home/volkix/prj/intpret/html",
     DEFAULT_PORT       = 8089
 
 public constant
@@ -174,10 +174,12 @@ window._vs_vsevent = vsevent;
 window.sendVsEvent = function(eventName, eventData) {
   var data = Object.assign({}, eventData || {});
   
-  // Collect input values
+  // Collect input values (utilizing getValue() if component supports it)
   document.querySelectorAll('input.vs-input, input.vs-check, select.vs-combo, textarea.vs-textarea').forEach(function(el) {
     if (el.id) {
-      if (el.type === 'checkbox' || el.type === 'radio') {
+      if (typeof el.getValue === 'function') {
+        data[el.id] = el.getValue();
+      } else if (el.type === 'checkbox' || el.type === 'radio') {
         data[el.id] = el.checked ? '1' : '0';
       } else {
         data[el.id] = el.value;
@@ -206,6 +208,79 @@ window.sendVsEvent = function(eventName, eventData) {
         if (target) {
           target.value = p.val;
           if (typeof target.setValue === 'function') target.setValue(p.val);
+        }
+      } else if (p.type === 'setFocus') {
+        var target = document.getElementById(p.id);
+        if (target && typeof target.focus === 'function') target.focus();
+      } else if (p.type === 'setEnabled') {
+        var target = document.getElementById(p.id);
+        if (target) {
+          target.disabled = !p.enabled;
+          if (p.enabled) target.removeAttribute('disabled');
+          else target.setAttribute('disabled', 'disabled');
+        }
+      } else if (p.type === 'setVisible') {
+        var target = document.getElementById(p.id);
+        if (target) {
+          target.style.display = p.visible ? '' : 'none';
+        }
+      } else if (p.type === 'setCss') {
+        var target = document.getElementById(p.id);
+        if (target && target.style) {
+          target.style[p.prop] = p.val;
+        }
+      } else if (p.type === 'setClass') {
+        var target = document.getElementById(p.id);
+        if (target && target.classList) {
+          if (p.action === 'remove') target.classList.remove(p.cls);
+          else if (p.action === 'toggle') target.classList.toggle(p.cls);
+          else target.classList.add(p.cls);
+        }
+      } else if (p.type === 'clearForm') {
+        var container = (p.id && p.id.length > 0) ? document.getElementById(p.id) : document;
+        if (container) {
+          container.querySelectorAll('input.vs-input, input.vs-check, select.vs-combo, textarea.vs-textarea').forEach(function(el) {
+            if (typeof el.setValue === 'function') {
+              el.setValue('');
+            } else if (el.type === 'checkbox' || el.type === 'radio') {
+              el.checked = false;
+            } else {
+              el.value = '';
+            }
+          });
+        }
+      } else if (p.type === 'gridSetData') {
+        var grid = document.getElementById(p.id);
+        if (grid && typeof grid.setData === 'function') {
+          grid.setData(p.data);
+        } else {
+          var targetTable = document.getElementById(p.id + '_data') || (grid && grid.querySelector('table.vs-table')) || grid;
+          if (targetTable) {
+            var tbody = targetTable.querySelector('tbody') || targetTable;
+            var html = '';
+            var rows = Array.isArray(p.data) ? p.data : [];
+            for (var r = 0; r < rows.length; r++) {
+              var row = rows[r];
+              var trCls = (r % 2 === 0) ? 'vs-tbody-tr even' : 'vs-tbody-tr odd';
+              html += '<tr class="' + trCls + '">';
+              if (Array.isArray(row)) {
+                for (var c = 0; c < row.length; c++) {
+                  var cellVal = (row[c] !== null && row[c] !== undefined) ? row[c] : '';
+                  var th = document.querySelector('#' + p.id + '_head th:nth-child(' + (c + 1) + ')');
+                  var lbl = th ? th.textContent.trim() : '';
+                  html += '<td class="vs-tbody-td"' + (lbl ? ' data-label="' + lbl + '"' : '') + '>' + cellVal + '</td>';
+                }
+              } else if (typeof row === 'object' && row !== null) {
+                var keys = Object.keys(row);
+                for (var c = 0; c < keys.length; c++) {
+                  var cellVal = (row[keys[c]] !== null && row[keys[c]] !== undefined) ? row[keys[c]] : '';
+                  html += '<td class="vs-tbody-td" data-label="' + keys[c] + '">' + cellVal + '</td>';
+                }
+              }
+              html += '</tr>';
+            }
+            tbody.innerHTML = html;
+          }
         }
       } else if (p.type === 'toast') {
         if (typeof ui.vstoast === 'function') {
@@ -284,6 +359,7 @@ public function page(sequence title, object content, sequence options = {})
   <title>` & escape_html(title) & `</title>
   <link rel="stylesheet" href="/css/vs.css">
   <link rel="stylesheet" href="/css/globalblauklein.css">
+  <link rel="stylesheet" href="/css/vs-mobile.css">
   ` & extra_head & `
 </head>
 <body>
@@ -463,7 +539,7 @@ end function
 
 --**
 -- Construct a vsgrid (DataGrid matching `vsgrid.js`).
--- Features sticky header, live search, and alternating row styling.
+-- Features sticky header, live search, alternating row styling, and mobile responsive card-views.
 public function grid(sequence id, sequence columns, sequence rows, sequence options = {})
     sequence style = get_opt(options, "style", "width: 100%; border-collapse: collapse;")
     sequence filter_fn_name = "filterVsGrid_" & id
@@ -479,6 +555,7 @@ public function grid(sequence id, sequence columns, sequence rows, sequence opti
     html &= sprintf("  <table id=\"%s_head\" class=\"vs-table-sticky\" style=\"%s position:sticky; top:28px; z-index:9; background:var(--vs-blau,#41518b); color:white;\">\n",
                     {id, style})
     html &= "    <thead>\n      <tr class=\"vs-thead-tr\">\n"
+    sequence col_titles = {}
     for i = 1 to length(columns) do
         sequence col_name = ""
         sequence col_width = ""
@@ -488,20 +565,26 @@ public function grid(sequence id, sequence columns, sequence rows, sequence opti
         else
             col_name = to_content_string(columns[i])
         end if
+        col_titles = append(col_titles, col_name)
         html &= "        <th class=\"vs-thead-th\""
         if length(col_width) > 0 then html &= sprintf(" style=\"width: %s;\"", {col_width}) end if
         html &= sprintf(">%s</th>\n", {escape_html(col_name)})
     end for
     html &= "      </tr>\n    </thead>\n  </table>\n"
 
-    -- Data table
-    html &= sprintf("  <table id=\"%s_data\" class=\"vs-table\" style=\"%s\">\n    <tbody>\n", {id, style})
+    -- Data table (with responsive card styling on mobile)
+    html &= sprintf("  <table id=\"%s_data\" class=\"vs-table vs-table-responsive\" style=\"%s\">\n    <tbody>\n", {id, style})
     for r = 1 to length(rows) do
         sequence row = rows[r]
         sequence tr_cls = iff(remainder(r, 2) = 0, "vs-tbody-tr even", "vs-tbody-tr odd")
         html &= sprintf("      <tr class=\"%s\">\n", {tr_cls})
         for c = 1 to length(row) do
-            html &= sprintf("        <td class=\"vs-tbody-td\">%s</td>\n", {to_content_string(row[c])})
+            sequence col_title = ""
+            if c <= length(col_titles) then
+                col_title = col_titles[c]
+            end if
+            html &= sprintf("        <td class=\"vs-tbody-td\" data-label=\"%s\">%s</td>\n",
+                            {escape_html(col_title), to_content_string(row[c])})
         end for
         html &= "      </tr>\n"
     end for
@@ -602,6 +685,49 @@ public function set_val(sequence id, sequence value)
     return {{"type", "setValue"}, {"id", id}, {"val", value}}
 end function
 
+--**
+-- Send updated data rows to a vsgrid component or table,
+-- causing it to re-render smoothly without rebuilding the entire page.
+public function grid_set_data(sequence id, sequence data)
+    return {{"type", "gridSetData"}, {"id", id}, {"data", data}}
+end function
+
+--**
+-- Set input focus to the specified element ID.
+public function set_focus(sequence id)
+    return {{"type", "setFocus"}, {"id", id}}
+end function
+
+--**
+-- Enable or disable an input or button element.
+public function set_enabled(sequence id, integer is_enabled)
+    return {{"type", "setEnabled"}, {"id", id}, {"enabled", is_enabled}}
+end function
+
+--**
+-- Show or hide an element (via display: none vs display: '').
+public function set_visible(sequence id, integer is_visible)
+    return {{"type", "setVisible"}, {"id", id}, {"visible", is_visible}}
+end function
+
+--**
+-- Set a specific CSS style property on an element (e.g., border-color, color, background).
+public function set_css(sequence id, sequence prop, sequence val)
+    return {{"type", "setCss"}, {"id", id}, {"prop", prop}, {"val", val}}
+end function
+
+--**
+-- Add, remove, or toggle a CSS class on an element (action: "add", "remove", or "toggle").
+public function set_class(sequence id, sequence class_name, sequence action = "add")
+    return {{"type", "setClass"}, {"id", id}, {"cls", class_name}, {"action", action}}
+end function
+
+--**
+-- Clear all input, select, and textarea values within a container (or entire page if empty).
+public function clear_form(sequence container_id = "")
+    return {{"type", "clearForm"}, {"id", container_id}}
+end function
+
 public function toast_show(sequence text, sequence toast_type = TOAST_INFO, integer duration = 3000)
     return {{"type", "toast"}, {"text", text}, {"toast_type", toast_type}, {"duration", duration}}
 end function
@@ -644,11 +770,31 @@ end function
 -- 6. Application Lifecycle & HTTP Server Integration
 -- =============================================================================
 
+function resolve_static_dir(sequence given_dir)
+    if length(given_dir) > 0 and filesys:file_exists(given_dir & "/lib2/ldom.js") then
+        return given_dir
+    end if
+    -- Check local relative directory: html
+    if filesys:file_exists("html/lib2/ldom.js") then
+        return filesys:canonical_path("html")
+    end if
+    -- Check intpret repository
+    if filesys:file_exists("/home/volkix/prj/intpret/html/lib2/ldom.js") then
+        return "/home/volkix/prj/intpret/html"
+    end if
+    -- Fallback to cgibash/html if present
+    if filesys:file_exists("/home/volkix/prj/cgibash/html/lib2/ldom.js") then
+        return "/home/volkix/prj/cgibash/html"
+    end if
+    return given_dir
+end function
+
 public function app(sequence title, integer port = DEFAULT_PORT, sequence static_dir = DEFAULT_STATIC_DIR)
+    sequence resolved_dir = resolve_static_dir(static_dir)
     sequence instance = {
         title,          -- APP_TITLE
         port,           -- APP_PORT
-        static_dir,     -- APP_STATIC_DIR
+        resolved_dir,   -- APP_STATIC_DIR
         -1,             -- APP_SRV_ID
         {},             -- APP_PAGES
         {},             -- APP_EVENTS

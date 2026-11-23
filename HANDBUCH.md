@@ -1398,9 +1398,9 @@ Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek
 
 #### `std/vsui.e` (Namespace: `vsui`)
 
-* **Zweck:** Autarkes High-Density ERP Web-Framework aus `/home/volkix/prj/cgibash/html`: Sticky-Header DataGrid, vsevent-Bridge und kompakte Formular-Controls.
-* **Öffentliche Funktionen & Prozeduren (32):**
-  * `public function page(sequence title, object content, sequence options = {})`: Erstellt das vollständige HTML-Grundgerüst mit cgibash/html CSS und ES6-Modulen.
+* **Zweck:** Autarkes High-Density ERP Web-Framework aus `/home/volkix/prj/cgibash/html`: Sticky-Header DataGrid, vsevent-Bridge, reaktive DOM-Patches und mobile Responsiveness.
+* **Öffentliche Funktionen & Prozeduren (39):**
+  * `public function page(sequence title, object content, sequence options = {})`: Erstellt das vollständige HTML-Grundgerüst mit cgibash/html CSS, vs-mobile.css und ES6-Modulen.
   * `public function button(sequence id, sequence text, sequence options = {})`: Erstellt einen High-Density Button (`.vs-button`) mit Klick-Event-Weiterleitung.
   * `public function input(sequence id, sequence value = "", sequence options = {})`: Erstellt ein kompaktes Eingabefeld (`.vs-input`).
   * `public function numinput(sequence id, atom value = 0, sequence options = {})`: Erstellt ein numerisches Eingabefeld mit Schrittweite und Min/Max.
@@ -1413,19 +1413,26 @@ Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek
   * `public function group(sequence legend_text, object content, sequence options = {})`: Erstellt eine Fieldset-Gruppe (`.vs-group`) mit blauem Rahmen und Titel.
   * `public function panel(sequence id, sequence title, object content, sequence options = {})`: Erstellt einen High-Density Container (`.vs-panel`) mit Header und Body.
   * `public function collapse(sequence id, sequence sections, integer open_first = 1, sequence options = {})`: Erstellt klappbare Abschnitte (`<details>` / `<summary>`).
-  * `public function grid(sequence id, sequence columns, sequence rows, sequence options = {})`: Erstellt die High-Density Tabelle `vsgrid` mit Sticky-Header und Client-Live-Suche.
-  * `public function tabs(sequence id, sequence tabs_list, sequence options = {})`: Erstellt eine Reiter-Navigation mit dynamischer Inhaltsumschaltung.
-  * `public function modal(sequence id, sequence title, object content, object footer_buttons = {}, sequence options = {})`: Erstellt ein modales Dialogfenster mit Abdunklungs-Overlay.
-  * `public function splitter(sequence id, object left_content, object right_content, integer split_pct = 50, sequence options = {})`: Erstellt ein 2-Spalten-Layout mit anpassbarer Breitenaufteilung.
+  * `public function grid(sequence id, sequence columns, sequence rows, sequence options = {})`: Erstellt die High-Density Tabelle `vsgrid` mit Sticky-Header, Client-Live-Suche und automatischem Mobile-Card-View.
+  * `public function tabs(sequence id, sequence tabs_list, sequence options = {})`: Erstellt eine Reiter-Navigation mit dynamischer Inhaltsumschaltung und horizontalem Mobile-Swipe.
+  * `public function modal(sequence id, sequence title, object content, object footer_buttons = {}, sequence options = {})`: Erstellt ein modales Dialogfenster mit Abdunklungs-Overlay (mobil Vollbild).
+  * `public function splitter(sequence id, object left_content, object right_content, integer split_pct = 50, sequence options = {})`: Erstellt ein 2-Spalten-Layout mit anpassbarer Breitenaufteilung (mobil vertikal gestapelt).
   * `public function patch(sequence id, sequence html)`: Erzeugt eine DOM-Patch-Anweisung für ein Element über seine ID.
   * `public function append_html(sequence id, sequence html)`: Erzeugt eine DOM-Patch-Anweisung zum Anhängen von HTML an ein Target-Element.
-  * `public function set_val(sequence id, sequence value)`: Erzeugt eine Patch-Anweisung zum Aktualisieren eines Formularwerts im Frontend.
+  * `public function set_val(sequence id, sequence value)`: Erzeugt eine Patch-Anweisung zum Aktualisieren eines Formularwerts im Frontend (nutzt `setValue()` des Elements).
+  * `public function grid_set_data(sequence id, sequence data)`: Aktualisiert die Datenzeilen eines Grids oder einer Tabelle per JSON-Patch ohne HTML-Neuaufbau.
+  * `public function set_focus(sequence id)`: Setzt den Tastatur-Fokus auf das angegebene Formularfeld.
+  * `public function set_enabled(sequence id, integer is_enabled)`: Aktiviert oder sperrt ein Eingabefeld bzw. einen Button reaktiv.
+  * `public function set_visible(sequence id, integer is_visible)`: Blendet ein DOM-Element reaktiv ein oder aus (`display: none` vs. `''`).
+  * `public function set_css(sequence id, sequence prop, sequence val)`: Setzt eine CSS-Style-Eigenschaft direkt an einem DOM-Element.
+  * `public function set_class(sequence id, sequence class_name, sequence action = "add")`: Fügt eine CSS-Klasse hinzu, entfernt sie oder schaltet sie um ("add", "remove", "toggle").
+  * `public function clear_form(sequence container_id = "")`: Leert alle Formularfelder (Inputs, Checks, Combos, Textareas) eines Containers.
   * `public function toast_show(sequence text, sequence toast_type = TOAST_INFO, integer duration = 3000)`: Zeigt eine schwebende Erfolgs- oder Fehlermeldung im High-Density Theme an.
   * `public function modal_open(sequence id)`: Öffnet ein modales Dialogfenster.
   * `public function modal_close(sequence id)`: Schließt das aktive modale Fenster.
   * `public function redirect(sequence url)`: Leitet den Webbrowser auf eine neue URL um.
   * `public function updates(sequence patches_list)`: Serialisiert eine Liste von DOM-Patch-Anweisungen für die `vsevent`-Bridge.
-  * `public function val(sequence ctx, sequence key, sequence default_val = "")`: Extrahiert den gesendeten Formularwert eines Feldes aus dem Anfragekontext.
+  * `public function val(sequence ctx, sequence key, sequence default_val = "")`: Extrahiert den gesendeten Formularwert eines Feldes aus dem Anfragekontext (nutzt `getValue()`).
   * `public function app(sequence title, integer port = DEFAULT_PORT, sequence static_dir = DEFAULT_STATIC_DIR)`: Erstellt ein vollständiges ERP-Portal mit Navigation und Hauptbereich.
   * `public procedure page_route(integer app_id, sequence path, integer handler_rid)`: Verknüpft einen relativen URL-Pfad mit einer Seiten-Generatorfunktion.
   * `public procedure on_event(integer app_id, sequence event_name, integer handler_rid)`: Registriert einen Event-Handler für ein benutzerdefiniertes Client-Ereignis.
@@ -2341,11 +2348,11 @@ Das vollständige, lauffähige Anwendungsbeispiel eines Fiori Horizon Enterprise
 
 ## 15. Alternative Web-UI mit cgibash/html (`std/vsui.e`)
 
-Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert Euphorix mit `std/vsui.e` Volker Schultes hauseigenes Web-Framework aus `/home/volkix/prj/cgibash/html`.
+Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert Euphorix mit `std/vsui.e` Volker Schultes hauseigenes Web-Framework direkt im Projektverzeichnis `html/` (basierend auf `/home/volkix/prj/cgibash/html`).
 
 ### 15.1 Architektur & Vorteile der hauseigenen cgibash/html-Bibliothek
 
-* **100% Autark & Offline-fähig**: Keine externen CDNs, kein Internetzugriff erforderlich. Alle JavaScript-Module (`ldom.js`, `vsevent.js`, `vsgrid.js`) und Stylesheets (`globalblauklein.css`, `vs.css`) werden direkt aus dem lokalen Verzeichnis ausgeliefert.
+* **100% Autark & Offline-fähig**: Keine externen CDNs, kein Internetzugriff erforderlich. Alle JavaScript-Module (`ldom.js`, `vsevent.js`, `vsgrid.js`) und Stylesheets (`globalblauklein.css`, `vs.css`, `vs-mobile.css`) sind direkt im Projekt unter `html/` gebündelt und versioniert.
 * **High-Density Enterprise Design**: Die Farbpalette (`--vs-blau: #41518b`, `--vs-gruen: #3e8548`) und kompakte Zeilenhöhen sind speziell auf datenintensive kaufmännische Anwendungen (ERP, CRM, Lager, Disposition) optimiert.
 * **Reine ES6-Module**: Basiert auf modernem nativem JavaScript und Hyperscript (`ldom.js` mit `e()`, `_()`, `n()`) sowie dem flexiblen Event-Bus `vsevent.js`.
 
@@ -2367,15 +2374,15 @@ Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert E
 | **Fieldset** | `vsui:group(legend, content, opts)` | Gruppierungsrahmen `.vs-group` mit Titel |
 | **Panel** | `vsui:panel(id, title, content, opts)` | Karte/Container `.vs-panel` mit blauem Header |
 | **Collapse** | `vsui:collapse(id, sections, open_first, opts)` | Klappbare Abschnitte (`<details>` / `<summary>`) |
-| **DataGrid** | `vsui:grid(id, cols, rows, opts)` | Tabellenkomponente mit **Sticky-Header** und **Client-Live-Suche** |
-| **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Reiter-Navigation mit dynamischer Umschaltung |
-| **Modal** | `vsui:modal(id, title, content, footer, opts)` | Zentrierter Popup-Dialog mit Abdunklungs-Overlay |
-| **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-Spalten-Container mit anpassbarer Breitenaufteilung |
+| **DataGrid** | `vsui:grid(id, cols, rows, opts)` | Tabellenkomponente mit **Sticky-Header**, **Client-Live-Suche** und automatischem **Mobile-Card-View** |
+| **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Reiter-Navigation mit dynamischer Umschaltung und horizontalem Mobile-Swipe |
+| **Modal** | `vsui:modal(id, title, content, footer, opts)` | Zentrierter Popup-Dialog mit Abdunklungs-Overlay (mobil Vollbild) |
+| **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-Spalten-Container mit anpassbarer Breitenaufteilung (mobil vertikal) |
 
 ### 15.3 Integrierter Asset-Server (`/lib2/*`, `/css/*`, `/img/*`)
 
-Der integrierte Server in `std/vsui.e` bedient Anfragen für statische Dateien automatisch direkt aus `/home/volkix/prj/cgibash/html`:
-* `/css/globalblauklein.css` und `/css/vs.css`
+Der integrierte Server in `std/vsui.e` bedient Anfragen für statische Dateien automatisch direkt aus dem lokalen `html/`-Verzeichnis (bzw. `/home/volkix/prj/intpret/html` mit automatischem Fallback auf `/home/volkix/prj/cgibash/html`):
+* `/css/globalblauklein.css`, `/css/vs.css` und `/css/vs-mobile.css`
 * `/lib2/ldom.js`, `/lib2/vsevent.js`, `/lib2/ui.js`, `/lib2/vsgrid.js`
 * `/img/*` (Logos, Icons) und `/app/*`
 
@@ -2383,7 +2390,25 @@ Die MIME-Types werden anhand der Dateiendung automatisch ermittelt (`application
 
 ### 15.4 Reaktive Event-Bridge mit `vsevent` & DOM-Patches
 
-Das Frontend sammelt bei Nutzerinteraktionen (`button_click`, `changevalue`) alle Formularwerte ein und sendet sie per POST an `/__vs_event`. Der Euphorix-Server antwortet mit einer Liste von DOM-Patches:
+Das Frontend sammelt bei Nutzerinteraktionen (`button_click`, `changevalue`) alle Formularwerte ein und sendet sie per POST an `/__vs_event`. Dabei nutzt der Bridge intelligent die komponentenspezifische Methode `.getValue()`, wodurch z. B. formatierte Zahlen oder standardisierte Daten fehlerfrei übertragen werden.
+
+Der Euphorix-Server antwortet mit einer Liste reaktiver Patches (`vsui:updates({...})`):
+
+| Patch-Funktion | Parameter | Wirkung im Browser |
+| :--- | :--- | :--- |
+| `vsui:patch(id, html)` | `id, html` | Ersetzt den `innerHTML` des Zielelements |
+| `vsui:append_html(id, html)` | `id, html` | Hängt HTML am Ende des Elements an (`beforeend`) |
+| `vsui:set_val(id, val)` | `id, val` | Setzt den Wert und ruft `.setValue(val)` auf |
+| `vsui:grid_set_data(id, data)` | `id, data` | **Neu:** Aktualisiert DataGrid-Zeilen direkt per JSON ohne HTML-Neuaufbau |
+| `vsui:set_focus(id)` | `id` | **Neu:** Setzt den Cursor direkt in das Zielfeld |
+| `vsui:set_enabled(id, bool)` | `id, 0/1` | **Neu:** Aktiviert oder sperrt Eingabefelder und Buttons |
+| `vsui:set_visible(id, bool)` | `id, 0/1` | **Neu:** Blendet Elemente ein oder aus (`display: none` / `''`) |
+| `vsui:set_css(id, prop, val)` | `id, prop, val` | **Neu:** Dynamisches Inline-Styling (z. B. rote Rahmen bei Validierung) |
+| `vsui:set_class(id, cls, act)` | `id, cls, act` | **Neu:** Fügt CSS-Klassen hinzu, entfernt sie oder schaltet sie um |
+| `vsui:clear_form(container_id)`| `container_id` | **Neu:** Leert alle Formularfelder innerhalb des Containers |
+| `vsui:toast_show(txt, type, ms)`| `txt, type, ms`| Blendet eine schwebende Erfolgs- oder Fehlermeldung ein |
+| `vsui:modal_open(id)` / `close`| `id` | Öffnet oder schließt ein modales Dialogfenster |
+| `vsui:redirect(url)` | `url` | Leitet den Browser auf eine neue URL weiter |
 
 ```euphoria
 function on_save_kunde(sequence ctx)
@@ -2393,9 +2418,13 @@ function on_save_kunde(sequence ctx)
     -- In SQLite speichern...
     sqlite:exec(db, "INSERT INTO kunden (kdnr, name) VALUES (?, ?);", {kdnr, name})
     
+    -- Frische Kundenzeilen holen
+    sequence frische_kunden = sqlite:query_all(db, "SELECT kdnr, name FROM kunden ORDER BY kdnr DESC;")
+    
     return vsui:updates({
-        vsui:patch("grid_container", render_kunden_grid()),
-        vsui:set_val("txt_name", ""),
+        vsui:grid_set_data("grid_kunden", frische_kunden),
+        vsui:clear_form("form_kunde"),
+        vsui:set_focus("txt_kdnr"),
         vsui:toast_show("Kunde erfolgreich angelegt!", vsui:TOAST_SUCCESS)
     })
 end function
@@ -2412,6 +2441,16 @@ end function
   ./euphorix demo/vsui_demo.ex
   # Im Browser öffnen: http://127.0.0.1:8089/
   ```
+
+### 15.6 Mobile Responsiveness & Touch-Ergonomie (`vs-mobile.css`)
+
+Über das automatisch eingebundene Stylesheet `/css/vs-mobile.css` passt sich die gesamte `vsui`-Suite nahtlos an Smartphones und Tablets (Breakpoints `<= 768px`) an, ohne die Desktop-Bedienung zu verändern:
+
+* **Eingabe-Zoom-Stopp (iOS Safari)**: Alle Formularfelder (`.vs-input`, `.vs-combo`, `.vs-spreadsheet-search`) erhalten auf Mobilgeräten `font-size: 16px;`, wodurch das störende automatische Hineinzoomen auf iPhones unterbunden wird.
+* **Touch-Ziele nach Fitts's Law**: Buttons und Eingabefelder bieten eine Mindesthöhe von 42px mit vergrößerten Klickflächen für Daumenbedienung.
+* **DataGrid Card-View**: Auf Bildschirmen `<= 768px` transformiert CSS das tabellarische `vsgrid` automatisch in eine strukturierte Kartenansicht (Card-View). Die Spaltentitel werden über das Attribut `data-label` vor jedem Feld angezeigt.
+* **Horizontales Wischen für Tabs**: `.vs-tabs` unterstützen flüssiges horizontales Swipen mit Touch-Momentum, ohne die Kopfleiste vertikal umzubrechen.
+* **Splitter & Modale**: `.vs-splitter-container` stapelt Seitenbereiche vertikal untereinander, und Modaldialoge passen sich als Vollbild-Dialoge mit flüssigem Scrollbereich an.
 
 
 

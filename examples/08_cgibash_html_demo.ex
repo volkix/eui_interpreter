@@ -126,7 +126,7 @@ function render_cockpit_page(sequence req)
     -- Details-Bereich (Collapsible)
     sequence collapse_section = vsui:collapse("col_tools", {
         {"Schnellfilter & Export", "<p>Exportoptionen: CSV, JSON, DIN A4 Rechnungsausgabe via <code>printRecord</code>.</p>"},
-        {"Hinweise zur Architektur", "<p>Dieses UI basiert direkt auf den Assets von <code>/home/volkix/prj/cgibash/html</code> (ldom.js, vsevent.js, globalblauklein.css) ohne externe Cloud-CDNs.</p>"}
+        {"Hinweise zur Architektur", "<p>Dieses UI basiert direkt auf den im Projekt integrierten Assets unter <code>html/</code> (ldom.js, vsevent.js, globalblauklein.css, vs-mobile.css) ohne externe Cloud-CDNs.</p>"}
     })
 
     -- Tabs mit Kundenstamm und Formular

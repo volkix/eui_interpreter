@@ -1,0 +1,716 @@
+/* hier stehen mögliche variablen drin für meine webcomponenten */
+
+* {
+    box-sizing: border-box;
+    font-family: monospace;
+    margin: 0;
+    padding: 0;
+    --vs-gruen: #549e53;
+    --vs-blau: #41518b;
+    --vs-blassblau:rgb(55, 82, 158);
+    /* vs-button */
+    --vs-button-bgcolor: var(--vs-blassblau);
+    --vs-button-fontsize: 12px;
+    --vs-button-color: white;
+    --vs-button-hovercolor: orange;
+    /* vs-collapse und vs-panel */
+    --vs-panel-bgcolor: white;
+    --vs-panel-fontsize: 14px;
+    --vs-panel-border: 1px solid silver;
+    --vs-panel-color: #900000;
+    --vs-panel-header-bgcolor: var(--vs-blau);
+    --vs-panel-header-color: white;
+    /* diverse inputfelder */
+    --vs-textinput-bgcolor: white;
+    --vs-textinput-fontsize: 12px;
+    --vs-textinput-border: 1px solid silver;
+    --vs-textinput-color: #900000;
+    --vs-textinput-color-disabled: gray;
+    /* grid */
+    --vs-gridrow-width: 100%;
+    --vs-gridrow-height: 40px;
+    --vs-grid-bgcolor: white;
+    --vs-vs-grid-fontsize: 12px;
+    --vs-vs-grid-border: 1px solid silver;
+    --vs-vs-grid-color: #900000;
+    --vs-grid-width: 100%;
+    /* vs-group */
+    --vs-fieldset-bgcolor: white;
+    --vs-fieldset-fontsize: 12px;
+    --vs-fieldset-color: #900000;
+    --vs-fieldset-border: 1px solid silver;
+    --vs-legend-bgcolor: white;
+    --vs-legend-fontsize: 12px;
+    --vs-legend-color: #900000;
+    --vs-legend-border: 1px solid silver;
+    /* vs-label */
+    --vs-label-bgcolor: white;
+    --vs-label-fontsize: 12px;
+    --vs-label-color: #900000;
+    --vs-label-textalign: left;
+}
+
+
+
+
+.vs-button{
+    background-color: var(--vs-button-bgcolor);
+    color: var(--vs-button-color);
+    font-size: var(--vs-button-fontsize);
+    padding: 4px 12px;
+    width: auto;
+    min-width: 120px;
+    height: 40px;
+    border: 0px;
+}
+.vs-button:hover{
+    background-color: var(--vs-button-hovercolor);
+    cursor: pointer;
+}
+
+input.vs-check{
+    background-color:var(--vs-textinput-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-textinput-fontsize,16px);
+    border:var(--vs-textinput-border,1px solid silver);
+    padding: 3px;
+    margin: 3px;
+    width:20px;
+    height:20px;
+    color:var(--vs-textinput-color,#900000);
+
+
+}
+
+input.vs-input{
+
+    background-color:var(--vs-textinput-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-textinput-fontsize,16px);
+    border:var(--vs-textinput-border,1px solid silver);
+    padding: 3px;
+    margin: 3px;
+    width:120px;
+    height:30px;
+    color:var(--vs-textinput-color,#900000);
+
+    text-align:left;
+
+}
+input.vs-input:focus{
+    background-color:#f2f2f2;
+}
+input.vs-input[disabled]{
+    color:var(--vs-textinput-color-disabled,gray)
+}
+
+
+input.vs-number{
+
+    background-color:var(--vs-textinput-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-textinput-fontsize,16px);
+    border:var(--vs-textinput-border,1px solid silver);
+    padding: 3px;
+    margin: 3px;
+    width:120px;
+    height:30px;
+    color:var(--vs-textinput-color,#900000);
+
+    text-align:right;
+
+}
+input.vs-number:focus{
+    background-color:#f2f2f2;
+}
+input.vs-number[disabled]{
+    color:var(--vs-textinput-color-disabled,gray)
+}
+input.vs-date{
+
+    background-color:var(--vs-textinput-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-textinput-fontsize,16px);
+    border:var(--vs-textinput-border,1px solid silver);
+    padding: 3px;
+    margin: 3px;
+    width:120px;
+    height:30px;
+    color:var(--vs-textinput-color,#900000);
+
+    text-align:center;
+
+}
+input.vs-date:focus{
+    background-color:#f2f2f2;
+}
+input.vs-date[disabled]{
+    color:var(--vs-textinput-color-disabled,gray)
+}
+input.vs-time{
+
+    background-color:var(--vs-textinput-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-textinput-fontsize,16px);
+    border:var(--vs-textinput-border,1px solid silver);
+    padding: 3px;
+    margin: 3px;
+    width:120px;
+    height:30px;
+    color:var(--vs-textinput-color,#900000);
+    text-align:center;
+}
+input.vs-time:focus{
+    background-color:#f2f2f2;
+}
+input.vs-time[disabled]{
+    color:var(--vs-textinput-color-disabled,gray)
+}
+
+.blocker{
+    background-color: #d0d0d0;
+    opacity: 0.3;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+}
+.vscollapsedetail{
+    background-color:var(--vs-panel-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-panel-fontsize,16px);
+    border:var(--vs-panel-border,1px solid silver);
+    padding: 0px;
+    margin: 0px;
+    color:var(--vs-panel-color,#900000);
+    overflow:auto;
+    display:block;
+    
+    
+
+}
+.vscollapsesummary{
+    background-color:var(--vs-panel-header-bgcolor,#549e53);
+    color:var(--vs-panel-header-color,white);
+    padding:5px;
+    margin: 0px;
+    text-align:left;
+
+}
+
+.detailbox{
+    overflow: auto;
+ 
+}
+
+select{
+
+    background-color:var(--vs-textinput-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-textinput-fontsize,16px);
+    border:var(--vs-textinput-border,1px solid silver);
+    padding: 3px;
+    margin: 0px;
+    color:var(--vs-textinput-color,#900000);
+    text-align:left;
+    width:120px;
+    height: 30px;
+
+
+}
+select:focus{
+    background-color:#f2f2f2;
+}
+select[disabled]{
+    color:var(--vs-textinput-color-disabled,gray)
+}
+option{
+    font-size: 16px;
+}
+.vs-label{
+
+    background-color:var(--vs-label-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-label-fontsize,16px);
+    border: 0px solid;
+    padding: 3px;
+    margin: 3px;
+    color:var(--vs-label-color,#900000);
+    text-align:var(--vs-label-textalign);
+    width:120px;
+    height: 30px;
+
+}
+fieldset{
+
+    background-color:var(--vs-fieldset-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-fieldset-fontsize,16px);
+    border:var(--vs-fieldset-border,1px solid silver);
+    padding: 5px;
+    margin: 0px;
+    color:var(--vs-fieldset-color,#900000);
+    overflow: auto;
+    width:200px;
+    height:200px;
+
+}
+legend{
+
+    background-color:var(--vs-legend-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-legend-fontsize,16px);
+    font-weight: bold;
+    border:var(--vs-legend-border,0px solid silver);
+    padding: 5px;
+    margin: 10px;
+    color:var(--vs-legend-color,#900000);
+
+
+}
+
+textarea{
+
+    background-color:var(--vs-textinput-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-textinput-fontsize,16px);
+    border:var(--vs-textinput-border,1px solid silver);
+    padding: 3px;
+    margin: 3px;
+    width:200px;
+    height:100px;
+    color:var(--vs-textinput-color,#900000);
+    resize: none;
+    text-align:left;
+
+}
+textarea:focus{
+    background-color:#f2f2f2;
+}
+textarea[disabled]{
+    color:var(--vs-textinput-color-disabled,gray)
+}
+dialog{
+
+    border: solid gray 2px;
+    width:300px;
+    height:300px;
+
+
+}
+
+.vs-panel{
+    background-color:var(--vs-panel-bgcolor,white);
+    box-sizing: border-box;
+    font-family:monospace;
+    font-size: var(--vs-panel-fontsize,16px);
+    border:var(--vs-panel-border,1px solid silver);
+    padding: 0px;
+    margin: 0px;
+    color:var(--vs-panel-color,#900000);
+
+    height:100%;
+    width:100%;
+    overflow:auto;
+}
+.vs-panel-header{
+    background-color:var(--vs-panel-header-bgcolor,#549e53);
+    color:var(--vs-panel-header-color,white);
+    padding:5px;
+    text-align:center;
+
+    width:100%;
+    height:30px;
+
+}
+.vs-panel-content{
+    padding-top:10px;
+    width:100%;
+    overflow:auto;
+    height:calc( 100% - 40px );
+}
+
+.vs-table{
+
+    width:100%
+}
+.vs-table-sticky{
+
+    width:100%;
+    position:sticky;
+    top:0px;
+    margin: 0px;
+}
+.vs-thead-tr{
+    width:100%;
+    height:30px;
+    background-color:var(--vs-panel-header-bgcolor,#549e53);
+    color:var(--vs-panel-header-color,white);
+}
+.vs-thead-th{
+    text-align:center;
+}
+
+
+.vs-tbody-tr{
+    width:100%;
+    border:var(--vs-panel-border,1px solid silver);
+    height:30px;
+}
+
+.vs-tbody-tr:nth-child(even){
+
+    background-color:#f0f0f0;
+}
+.vs-tbody-tr:nth-child(odd){
+
+    background-color:white;
+}
+.vs-tbody-tr:hover{
+
+    background-color: #a9d0f7;
+    cursor: pointer;
+}
+.vs-tbody-td{
+    /*background-color:var(--vs-panel-bgcolor,white);*/
+
+    font-family:monospace;
+    font-size: var(--vs-panel-fontsize,16px);
+    height:30px;
+    padding: 0px;
+    margin: 0px;
+    color:var(--vs-panel-color,#900000);
+}
+
+
+.vsgrid-container{
+    border:var(--vs-panel-border,0px solid silver);
+    overflow:auto;
+}
+
+/* ============================================================================
+   Spezifische Spreadsheet-Styles
+   ============================================================================ */
+
+.vs-spreadsheet-container {
+    width: 100%;
+    overflow-x: auto;
+    background-color: white;
+    border: var(--vs-panel-border, 1px solid silver);
+    box-sizing: border-box;
+    padding: 0px;
+}
+
+.vs-spreadsheet-table {
+    border-collapse: collapse;
+    width: auto;
+    table-layout: fixed;
+}
+
+.vs-spreadsheet-corner {
+    background-color: var(--vs-panel-header-bgcolor, #549e53) !important;
+    border: var(--vs-panel-border, 1px solid silver);
+    width: 40px;
+}
+
+.vs-spreadsheet-col-header {
+    background-color: var(--vs-panel-header-bgcolor, #549e53);
+    color: var(--vs-panel-header-color, white);
+    font-weight: 600;
+    text-align: center;
+    border: var(--vs-panel-border, 1px solid silver);
+    user-select: none;
+}
+
+.vs-spreadsheet-row-header {
+    background-color: #f2f2f2;
+    color: var(--vs-panel-color, #900000);
+    font-weight: 600;
+    text-align: center;
+    border: var(--vs-panel-border, 1px solid silver);
+    user-select: none;
+    width: 40px;
+}
+
+.vs-spreadsheet-cell {
+    background-color: white;
+    color: black;
+    border: var(--vs-panel-border, 1px solid silver);
+    padding: 2px 5px;
+    outline: none;
+    transition: background-color 0.15s ease;
+}
+
+.vs-spreadsheet-cell:focus {
+    background-color: #e6f2ff;
+    border: 1px solid #0078d4;
+    box-shadow: inset 0 0 3px rgba(0, 120, 212, 0.3);
+}
+
+/* --- vstreeview --- */
+.vs-treeview {
+    list-style-type: none;
+    padding-left: 0;
+    margin: 0;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.vs-treeview ul {
+    list-style-type: none;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.vs-treeview-node {
+    margin: 4px 0;
+    position: relative;
+}
+
+.vs-treeview-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    padding: 3px 6px;
+}
+
+.vs-treeview-header:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.vs-treeview-toggle {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--vs-panel-color, #900000);
+    transition: transform 0.15s ease;
+}
+
+.vs-treeview-toggle.collapsed {
+    transform: rotate(-90deg);
+}
+
+.vs-treeview-toggle.empty {
+    visibility: hidden;
+}
+
+.vs-treeview-label-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.vs-treeview-content-container {
+    margin-top: 4px;
+    margin-left: 20px;
+    padding: 4px;
+    border-left: 1px dashed silver;
+}
+
+.vs-treeview-content-container.collapsed {
+    display: none;
+}
+
+/* --- vsspreadsheetgrid Row Hover & Search --- */
+.vs-tbody-tr:hover td.vs-spreadsheet-cell {
+    background-color: #f1f5f9 !important;
+}
+
+.vs-spreadsheet-search {
+    margin: 8px;
+    padding: 4px 8px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    border: var(--vs-panel-border, 1px solid silver);
+    background-color: white;
+    color: black;
+    outline: none;
+    width: 220px;
+    box-sizing: border-box;
+}
+
+.vs-spreadsheet-search:focus {
+    border-color: #0078d4;
+    box-shadow: 0 0 3px rgba(0, 120, 212, 0.2);
+}
+
+/* --- Tab-Steuerung (vstabs) --- */
+.vs-tabs {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+.vs-tab-headers {
+    display: flex;
+    border-bottom: 2px solid silver;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.vs-tab-btn {
+    padding: 8px 16px;
+    background: #e5e7eb;
+    border: 1px solid silver;
+    border-bottom: none;
+    margin-right: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-family: inherit;
+    font-size: 13px;
+    user-select: none;
+}
+.vs-tab-btn:hover {
+    background: #d1d5db;
+}
+.vs-tab-btn.active {
+    background: white;
+    border-top: 3px solid var(--vs-panel-header-bgcolor, #41518b);
+    color: var(--vs-panel-header-bgcolor, #41518b);
+    margin-top: -2px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid white;
+}
+.vs-tab-contents {
+    flex: 1;
+    background: white;
+    border: 1px solid silver;
+    border-top: none;
+    padding: 12px;
+    overflow: auto;
+}
+.vs-tab-pane {
+    display: none;
+    height: 100%;
+}
+.vs-tab-pane.active {
+    display: block;
+}
+
+/* --- Toast-Benachrichtigungen (vstoast) --- */
+#vs-toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+.vs-toast {
+    pointer-events: auto;
+    padding: 12px 20px;
+    border-radius: 4px;
+    color: white;
+    font-size: 13px;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    min-width: 200px;
+    max-width: 350px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    transform: translateY(-20px);
+    opacity: 0;
+}
+.vs-toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+.vs-toast-info { background-color: var(--vs-panel-header-bgcolor, #41518b); border-left: 5px solid var(--vs-button-bgcolor, #37529e); }
+.vs-toast-success { background-color: var(--vs-gruen, #549e53); border-left: 5px solid #047857; }
+.vs-toast-warning { background-color: #f59e0b; border-left: 5px solid #b45309; }
+.vs-toast-error { background-color: var(--vs-panel-color, #900000); border-left: 5px solid #b91c1c; }
+
+/* --- Kontextmenü (vscontextmenu) --- */
+.vs-context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid silver;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 9998;
+    padding: 4px 0;
+    min-width: 150px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+}
+.vs-context-menu-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    user-select: none;
+    color: #374151;
+}
+.vs-context-menu-item:hover {
+    background-color: var(--vs-panel-header-bgcolor, #41518b);
+    color: white;
+}
+.vs-context-menu-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 4px 0;
+}
+
+/* --- Layout-Splitter (vssplitter) --- */
+.vs-splitter-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+.vs-splitter-pane {
+    overflow: auto;
+}
+.vs-splitter-bar {
+    background-color: #d1d5db;
+    transition: background-color 0.15s;
+    user-select: none;
+    z-index: 10;
+}
+.vs-splitter-bar:hover {
+    background-color: #9ca3af;
+}
+
+/* --- Tooltips (vstooltip) --- */
+.vs-tooltip {
+    position: fixed;
+    background: #1f2937;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-family: 'Courier New', Courier, monospace;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+.vs-tooltip.show {
+    opacity: 1;
+}
+
+/* --- Mobile Responsiveness & Touch Overrides --- */
+@import url("vs-mobile.css");
+
+
+
+

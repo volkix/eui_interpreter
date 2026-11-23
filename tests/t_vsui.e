@@ -12,8 +12,8 @@ include std/search.e as search
 set_test_verbosity(TEST_SHOW_ALL)
 
 -- 1. Constants & Configuration
-test_equal("default static dir points to cgibash/html",
-           vsui:DEFAULT_STATIC_DIR, "/home/volkix/prj/cgibash/html")
+test_equal("default static dir points to intpret/html",
+           vsui:DEFAULT_STATIC_DIR, "/home/volkix/prj/intpret/html")
 test_equal("default port is 8089", vsui:DEFAULT_PORT, 8089)
 test_equal("toast types", {vsui:TOAST_INFO, vsui:TOAST_SUCCESS, vsui:TOAST_WARNING, vsui:TOAST_ERROR},
            {"info", "success", "warning", "error"})
@@ -142,7 +142,7 @@ test_true("grid filter function call", match("oninput=\"filterVsGrid_grd_art(thi
 test_true("grid sticky table header", match("<table id=\"grd_art_head\" class=\"vs-table-sticky\"", g) > 0)
 test_true("grid column header ArtNr", match("<th class=\"vs-thead-th\" style=\"width: 100px;\">ArtNr</th>", g) > 0)
 test_true("grid column header Bezeichnung", match("<th class=\"vs-thead-th\" style=\"width: 250px;\">Bezeichnung</th>", g) > 0)
-test_true("grid data table", match("<table id=\"grd_art_data\" class=\"vs-table\"", g) > 0)
+test_true("grid data table", match("<table id=\"grd_art_data\" class=\"vs-table vs-table-responsive\"", g) > 0)
 test_true("grid row 1 data", match("Kugelschreiber blau", g) > 0)
 test_true("grid row 2 data", match("Notizblock DIN A4", g) > 0)
 test_true("grid filter script embedded", match("function filterVsGrid_grd_art(q)", g) > 0)

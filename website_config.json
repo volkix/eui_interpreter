@@ -1,0 +1,77 @@
+{
+  "project": {
+    "name": "Euphorix",
+    "version": "1.0.0",
+    "tagline": "Next-Gen Virtual Machine für die prozedurale Programmiersprache OpenEuphoria",
+    "headline": "Elegante prozedurale Syntax. Modernste Java 25 Power.",
+    "subheadline": "Euphorix interpretiert OpenEuphoria (openeuphoria.org) – eine prozedurale Programmiersprache mit bemerkenswert einfacher, intuitiver Syntax und mächtigen Sequences. Kombiniert mit einer 65.536-Register-VM, Java 25 Loom Virtual Threads, CSP Channels, nativen Enterprise-Datenbanken und autarkem High-Density Web-Framework.",
+    "github_url": "https://github.com/volkix/eui_interpreter",
+    "openeuphoria_url": "https://openeuphoria.org",
+    "license": "GPLv3"
+  },
+  "downloads": {
+    "standalone": {
+      "filename": "euphorix-standalone",
+      "source_path": "euphorix-standalone",
+      "title": "Euphorix Standalone (Linux 64-Bit)",
+      "badge": "Empfohlen",
+      "size": "53 MB",
+      "description": "Vollständig autarke Single-Binary für 64-Bit Linux. Enthält die komplette Java 25 VM und Standardbibliothek – kein vorinstalliertes Java erforderlich!",
+      "cmd_install": "chmod +x euphorix-standalone && ./euphorix-standalone"
+    },
+    "jar": {
+      "filename": "euphorix.jar",
+      "source_path": "euphorix.jar",
+      "title": "Euphorix JAR-Paket",
+      "badge": "Plattformunabhängig",
+      "size": "19 MB",
+      "description": "Portables Bytecode-Paket für Linux, Windows und macOS. Benötigt eine installierte Java 25+ Laufzeitumgebung.",
+      "cmd_install": "java -jar euphorix.jar"
+    },
+    "handbuch_pdf": {
+      "filename": "HANDBUCH.pdf",
+      "source_path": "website/downloads/HANDBUCH.pdf",
+      "title": "Deutsches Handbuch (PDF)",
+      "badge": "PDF Dokument",
+      "size": "2.4 MB",
+      "description": "Druckfertiges, formatiertes PDF-Dokument mit 15 Kapiteln, vollständiger API-Referenz (861 Routinen), Architektur und Codebeispielen."
+    },
+    "manual_pdf": {
+      "filename": "MANUAL.pdf",
+      "source_path": "website/downloads/MANUAL.pdf",
+      "title": "English Manual (PDF)",
+      "badge": "PDF Document",
+      "size": "2.5 MB",
+      "description": "Formatted, publication-quality PDF manual with complete syntax guide, VM architecture breakdown, and full standard library docs."
+    },
+    "handbuch_de": {
+      "filename": "HANDBUCH.md",
+      "source_path": "HANDBUCH.md",
+      "title": "Deutsches Handbuch",
+      "badge": "Deutsch",
+      "size": "199 KB",
+      "description": "Vollständige Referenzdokumentation (15 Kapitel, 861 Standard-Bibliotheksfunktionen, Tutorials)."
+    },
+    "manual_en": {
+      "filename": "MANUAL.md",
+      "source_path": "MANUAL.md",
+      "title": "English Developer Manual",
+      "badge": "English",
+      "size": "188 KB",
+      "description": "Developer manual, syntax guide, architecture details, and standard library documentation."
+    }
+  },
+  "impressum": {
+    "owner": "Volker Schulte",
+    "company": "VS IT-Solutions",
+    "street": "Tilsiter Str. 16",
+    "city": "31789 Hameln",
+    "country": "Deutschland",
+    "email": "volker.schulte.itsolutions@gmail.com",
+    "phone": "+49 (0) 1738017585",
+    "tax_id": "22/142/47159",
+    "responsible_person": "Volker Schulte (Inhaltlich verantwortlich nach § 18 Abs. 2 MStV)",
+    "disclaimer": "Die Inhalte dieser Webseite wurden mit größtmöglicher Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der bereitgestellten Inhalte und Downloads wird jedoch keine Gewähr übernommen. Als Diensteanbieter sind wir gemäß § 7 Abs. 1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Verpflichtungen zur Entfernung oder Sperrung der Nutzung von Informationen nach den allgemeinen Gesetzen bleiben hiervon unberührt.",
+    "privacy": "Der Schutz Ihrer persönlichen Daten ist uns ein wichtiges Anliegen. Diese Webseite verwendet keinerlei Tracking-Tools, keine Werbenetzwerke und keine Third-Party Cookies. Beim Abruf von Webseiten und dem Herunterladen von Dateien werden auf dem Webserver (lighttpd) lediglich die technisch unumgänglichen Server-Logdaten (IP-Adresse, Datum, Uhrzeit, abgerufene Ressource, HTTP-Statuscode und User-Agent) zur Sicherstellung des fehlerfreien und sicheren Betriebs verarbeitet und nach Ablauf der gesetzlichen Fristen automatisch gelöscht."
+  }
+}
