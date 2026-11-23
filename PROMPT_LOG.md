@@ -2,7 +2,7 @@
 
 > **Projekt:** Euphorix – High-Performance OpenEuphoria-kompatibler Interpreter (Java 25 VM)
 > **Zeitraum:** 06. November 2026 bis 23. November 2026
-> **Gesamtanzahl Anweisungen:** 157 Prompts in 12 Arbeitssitzungen
+> **Gesamtanzahl Anweisungen:** 159 Prompts in 12 Arbeitssitzungen
 
 Dieses Dokument enthält alle Anweisungen, Anforderungen und Entscheidungen, die während der Entwicklung von Euphorix gegeben wurden. Es dient als vollständige Referenz, um den Entwicklungspfad Schritt für Schritt nachzuvollziehen oder für ähnliche Projekte zu reproduzieren.
 
@@ -23,7 +23,7 @@ Dieses Dokument enthält alle Anweisungen, Anforderungen und Entscheidungen, die
 | **Phase 9: VM-Optimierungsauftrag** | 19.11.2026 (Spätnachmittag) | `125499a9...` | 1 | Direkte Fortsetzung der Performance-Optimierung der VM |
 | **Phase 10: VM-Tuning & Web-Komponenten** | 19.11.2026 (Abend) | `7a1b02d4...` | 8 | Abschluss VM-Optimierung, Untersuchung SAP UI5 vs. eigenes cgibash/html (VSUI) |
 | **Phase 11: VSUI-Integration, Handbücher & Website** | 20.11.2026 – 23.11.2026 | `0261a81d...` | 16 | Vollständige Doku in HANDBUCH/MANUAL, VSUI-Komponenten, Tutorial, Website-Generator & PDF |
-| **Phase 12: Dokumentation des Projektverlaufs** | 23.11.2026 (Aktuell) | `1312f9ff...` | 2 | Erstellung des Reproduktions-Skripts und des vollständigen Anweisungs-Logs |
+| **Phase 12: Framework-Ausbau (Punkte 1-4) & Doku** | 23.11.2026 | `1312f9ff...` | 4 | Reproduktionspaket, Excel/CSV, PDF-Berichte, Auth/JWT/Sessions, Cron/SSE, VSUI-Charts/Upload, Hot-Reload |
 
 ---
 
@@ -736,11 +736,11 @@ Dieses Dokument enthält alle Anweisungen, Anforderungen und Entscheidungen, die
 
 ---
 
-## Phase 12: Dokumentation des Projektverlaufs
-- **Zeitraum:** 23.11.2026 (Aktuell)
+## Phase 12: Framework-Ausbau (Punkte 1-4) & Doku
+- **Zeitraum:** 23.11.2026
 - **Interne Sitzungs-ID:** `1312f9ff-8bb6-42f3-aa7b-b9bc5fe6a189`
-- **Fokus:** Erstellung des Reproduktions-Skripts und des vollständigen Anweisungs-Logs
-- **Anzahl Benutzeranweisungen:** 2
+- **Fokus:** Reproduktionspaket, Excel/CSV, PDF-Berichte, Auth/JWT/Sessions, Cron/SSE, VSUI-Charts/Upload, Hot-Reload
+- **Anzahl Benutzeranweisungen:** 4
 
 ### 12.1 Anweisung vom 23.11.2026 15:02:24 UTC
 
@@ -749,5 +749,13 @@ Dieses Dokument enthält alle Anweisungen, Anforderungen und Entscheidungen, die
 ### 12.2 Anweisung vom 23.11.2026 15:04:29 UTC
 
 > kannst du beides erstellen?
+
+### 12.3 Anweisung vom 23.11.2026 20:26:49 UTC
+
+> was kann ich noch im framework gebrauchen
+
+### 12.4 Anweisung vom 23.11.2026 20:33:36 UTC
+
+> mache die punkte 1 bis 4
 
 ---
