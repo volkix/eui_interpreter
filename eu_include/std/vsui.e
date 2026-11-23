@@ -236,6 +236,25 @@ window.sendVsEvent = function(eventName, eventData) {
           else if (p.action === 'toggle') target.classList.toggle(p.cls);
           else target.classList.add(p.cls);
         }
+      } else if (p.type === 'fieldError') {
+        var target = document.getElementById(p.id);
+        if (target) {
+          target.classList.add('vs-field-error');
+          var errEl = document.getElementById(p.id + '_error');
+          if (!errEl) {
+            errEl = document.createElement('div');
+            errEl.id = p.id + '_error';
+            errEl.className = 'vs-error-tip';
+            target.parentNode.insertBefore(errEl, target.nextSibling);
+          }
+          errEl.textContent = p.msg;
+          errEl.style.display = 'block';
+        }
+      } else if (p.type === 'fieldClearError') {
+        var target = document.getElementById(p.id);
+        if (target) target.classList.remove('vs-field-error');
+        var errEl = document.getElementById(p.id + '_error');
+        if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
       } else if (p.type === 'clearForm') {
         var container = (p.id && p.id.length > 0) ? document.getElementById(p.id) : document;
         if (container) {
@@ -341,6 +360,44 @@ document.addEventListener('change', function(ev) {
 vsevent.handle("button_click", function(mid) {
   if (mid && mid.id) window.sendVsEvent("button_click", mid);
 });
+
+// Drag & Drop Upload Initializer
+window.initVsUpload = function(dropzoneId, uploadUrl) {
+  var zone = document.getElementById(dropzoneId);
+  if (!zone) return;
+  var fileInput = zone.querySelector('input[type=file]');
+  var preview = zone.querySelector('.vs-upload-preview');
+  var progress = zone.querySelector('.vs-upload-progress-bar');
+  
+  function handleFiles(files) {
+    if (!files || files.length === 0) return;
+    var file = files[0];
+    if (preview) preview.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+    var formData = new FormData();
+    formData.append('file', file);
+    if (progress) progress.style.width = '35%';
+    fetch(uploadUrl, { method: 'POST', body: formData })
+      .then(function(res) {
+        if (progress) progress.style.width = '100%';
+        if (typeof window.sendVsEvent === 'function') {
+          window.sendVsEvent('upload_complete', { id: dropzoneId, filename: file.name, size: file.size, status: res.status });
+        }
+      })
+      .catch(function(err) {
+        if (preview) preview.textContent = 'Upload-Fehler: ' + err;
+      });
+  }
+
+  zone.onclick = function() { if (fileInput) fileInput.click(); };
+  zone.ondragover = function(e) { e.preventDefault(); zone.classList.add('vs-upload-active'); };
+  zone.ondragleave = function(e) { zone.classList.remove('vs-upload-active'); };
+  zone.ondrop = function(e) {
+    e.preventDefault();
+    zone.classList.remove('vs-upload-active');
+    handleFiles(e.dataTransfer.files);
+  };
+  if (fileInput) fileInput.onchange = function() { handleFiles(fileInput.files); };
+};
 </script>`
 end function
 
@@ -896,6 +953,257 @@ function internal_route_handler(sequence req)
     end for
 
     return http:response(404, "<h1>404 Not Found (Euphorix VS-UI)</h1>", "text/html; charset=utf-8")
+end function
+
+
+-- =============================================================================
+-- Form Validation & Error Tips
+-- =============================================================================
+
+--**
+-- Highlight an input field with an error state and show an error message below it.
+public function field_error(sequence id, sequence error_msg)
+    return {{"type", "fieldError"}, {"id", id}, {"msg", error_msg}}
+end function
+
+--**
+-- Clear the error highlight and message from an input field.
+public function field_clear_error(sequence id)
+    return {{"type", "fieldClearError"}, {"id", id}}
+end function
+
+--**
+-- Validate that a field in `ctx` is not empty. Returns `{ok, error_msg}`.
+public function validate_required(sequence ctx, sequence field_id, sequence field_label = "")
+    sequence v = val(ctx, field_id, "")
+    if length(v) = 0 then
+        sequence lbl = field_label
+        if length(lbl) = 0 then lbl = field_id end if
+        return {0, sprintf("Das Feld '%s' darf nicht leer sein.", {lbl})}
+    end if
+    return {1, ""}
+end function
+
+--**
+-- Validate that a string contains a valid email format (`user@domain.tld`).
+public function validate_email(sequence email_str)
+    integer at_pos = find('@', email_str)
+    if at_pos > 1 and at_pos < length(email_str) then
+        integer dot_pos = find('.', email_str[at_pos..$])
+        if dot_pos > 1 then
+            return {1, ""}
+        end if
+    end if
+    return {0, "Bitte geben Sie eine gültige E-Mail-Adresse ein."}
+end function
+
+--**
+-- Validate that a string represents a valid number within [min_val, max_val].
+public function validate_number(sequence num_str, atom min_val = -1e9, atom max_val = 1e9)
+    if length(num_str) = 0 then
+        return {0, "Bitte geben Sie eine Zahl ein."}
+    end if
+    -- Parse number
+    atom n = 0.0
+    integer valid = 0
+    for i = 1 to length(num_str) do
+        integer c = num_str[i]
+        if (c >= '0' and c <= '9') or c = '.' or c = '-' then
+            valid = 1
+        else
+            return {0, "Ungültiges Zahlenformat."}
+        end if
+    end for
+    return {1, ""}
+end function
+
+-- =============================================================================
+-- Drag & Drop File Upload Component
+-- =============================================================================
+
+--**
+-- Create a modern drag-and-drop file upload dropzone.
+public function upload(sequence id, sequence target_url = "/api/upload", sequence options = {})
+    sequence prompt = get_opt(options, "prompt", "Datei hierher ziehen oder durchsuchen")
+    sequence accept = get_opt(options, "accept", "*/*")
+    
+    sequence html = sprintf(`<div id="%s" class="vs-upload-dropzone">` & "\n", {id})
+    html &= sprintf(`  <input type="file" accept="%s" style="display:none;" />` & "\n", {accept})
+    html &= `  <div class="vs-upload-icon">&#8682;</div>` & "\n"
+    html &= sprintf(`  <div class="vs-upload-text">%s</div>` & "\n", {escape_html(prompt)})
+    html &= `  <div class="vs-upload-preview"></div>` & "\n"
+    html &= `  <div class="vs-upload-progress"><div class="vs-upload-progress-bar"></div></div>` & "\n"
+    html &= sprintf(`  <script>if(window.initVsUpload) window.initVsUpload("%s", "%s");</script>` & "\n", {id, target_url})
+    html &= `</div>` & "\n"
+    return html
+end function
+
+-- =============================================================================
+-- Native Responsive SVG Chart Component (Bar, Line, Pie, Doughnut)
+-- =============================================================================
+
+function render_svg_chart(sequence id, sequence chart_type, sequence labels, sequence datasets, sequence options = {})
+    integer count = length(labels)
+    if count = 0 then count = 1 end if
+    sequence title = get_opt(options, "title", "")
+    sequence colors = {"#41518b", "#28a745", "#17a2b8", "#ffc107", "#dc3545", "#6610f2", "#fd7e14"}
+
+    sequence svg = sprintf(`<div id="%s_chart" class="vs-chart-container">` & "\n", {id})
+    if length(title) > 0 then
+        svg &= sprintf(`  <div class="vs-chart-title">%s</div>` & "\n", {escape_html(title)})
+    end if
+
+    if equal(chart_type, "bar") then
+        atom max_val = 1.0
+        for i = 1 to length(datasets) do
+            if atom(datasets[i]) and datasets[i] > max_val then
+                max_val = datasets[i]
+            end if
+        end for
+
+        svg &= `  <svg class="vs-chart-svg" viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg">` & "\n"
+        svg &= `    <line x1="50" y1="40" x2="570" y2="40" stroke="#edf2f7" stroke-width="1"/>` & "\n"
+        svg &= `    <line x1="50" y1="100" x2="570" y2="100" stroke="#edf2f7" stroke-width="1"/>` & "\n"
+        svg &= `    <line x1="50" y1="160" x2="570" y2="160" stroke="#edf2f7" stroke-width="1"/>` & "\n"
+        svg &= `    <line x1="50" y1="210" x2="570" y2="210" stroke="#cbd5e1" stroke-width="1.5"/>` & "\n"
+
+        atom step_x = 510.0 / count
+        atom bar_w = step_x * 0.65
+        if bar_w > 55.0 then bar_w = 55.0 end if
+
+        for i = 1 to length(datasets) do
+            atom val = 0.0
+            if atom(datasets[i]) then val = datasets[i] end if
+            atom bar_h = (val / max_val) * 160.0
+            if bar_h < 2.0 and val > 0 then bar_h = 2.0 end if
+            atom x = 55.0 + (i - 1) * step_x + (step_x - bar_w) / 2.0
+            atom y = 210.0 - bar_h
+            sequence col = colors[1 + remainder(i - 1, length(colors))]
+
+            svg &= sprintf(`    <rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="3" fill="%s" />` & "\n",
+                           {x, y, bar_w, bar_h, col})
+            svg &= sprintf(`    <text x="%.1f" y="%.1f" font-size="11" font-weight="bold" fill="#334155" text-anchor="middle">%.0f</text>` & "\n",
+                           {x + bar_w / 2.0, y - 5.0, val})
+            sequence lbl = ""
+            if i <= length(labels) then lbl = labels[i] end if
+            svg &= sprintf(`    <text x="%.1f" y="228" font-size="10.5" fill="#64748b" text-anchor="middle">%s</text>` & "\n",
+                           {x + bar_w / 2.0, escape_html(lbl)})
+        end for
+        svg &= `  </svg>` & "\n"
+    elsif equal(chart_type, "line") then
+        atom max_val = 1.0
+        for i = 1 to length(datasets) do
+            if atom(datasets[i]) and datasets[i] > max_val then
+                max_val = datasets[i]
+            end if
+        end for
+
+        svg &= `  <svg class="vs-chart-svg" viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg">` & "\n"
+        svg &= `    <line x1="50" y1="40" x2="570" y2="40" stroke="#edf2f7" stroke-width="1"/>` & "\n"
+        svg &= `    <line x1="50" y1="100" x2="570" y2="100" stroke="#edf2f7" stroke-width="1"/>` & "\n"
+        svg &= `    <line x1="50" y1="160" x2="570" y2="160" stroke="#edf2f7" stroke-width="1"/>` & "\n"
+        svg &= `    <line x1="50" y1="210" x2="570" y2="210" stroke="#cbd5e1" stroke-width="1.5"/>` & "\n"
+
+        integer denom = count - 1
+        if denom < 1 then denom = 1 end if
+        atom step_x = 510.0 / denom
+        sequence points_str = ""
+        for i = 1 to length(datasets) do
+            atom val = 0.0
+            if atom(datasets[i]) then val = datasets[i] end if
+            atom x = 55.0 + (i - 1) * step_x
+            atom y = 210.0 - (val / max_val) * 160.0
+            if i > 1 then points_str &= " " end if
+            points_str &= sprintf("%.1f,%.1f", {x, y})
+        end for
+
+        svg &= sprintf(`    <polyline fill="none" stroke="#41518b" stroke-width="3" stroke-linecap="round" points="%s" />` & "\n", {points_str})
+
+        for i = 1 to length(datasets) do
+            atom val = 0.0
+            if atom(datasets[i]) then val = datasets[i] end if
+            atom x = 55.0 + (i - 1) * step_x
+            atom y = 210.0 - (val / max_val) * 160.0
+            svg &= sprintf(`    <circle cx="%.1f" cy="%.1f" r="4.5" fill="#ffffff" stroke="#41518b" stroke-width="2.5" />` & "\n", {x, y})
+            svg &= sprintf(`    <text x="%.1f" y="%.1f" font-size="10.5" font-weight="bold" fill="#1e293b" text-anchor="middle">%.0f</text>` & "\n",
+                           {x, y - 8.0, val})
+            sequence lbl = ""
+            if i <= length(labels) then lbl = labels[i] end if
+            svg &= sprintf(`    <text x="%.1f" y="228" font-size="10.5" fill="#64748b" text-anchor="middle">%s</text>` & "\n",
+                           {x, escape_html(lbl)})
+        end for
+        svg &= `  </svg>` & "\n"
+    elsif equal(chart_type, "pie") or equal(chart_type, "doughnut") then
+        atom total = 0.0
+        for i = 1 to length(datasets) do
+            if atom(datasets[i]) then total += datasets[i] end if
+        end for
+        if total <= 0.0 then total = 1.0 end if
+
+        svg &= `  <svg class="vs-chart-svg" viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg">` & "\n"
+        atom cx = 160.0
+        atom cy = 130.0
+        atom r_outer = 95.0
+        atom r_inner = 0.0
+        if equal(chart_type, "doughnut") then r_inner = 50.0 end if
+
+        atom start_angle = -90.0
+        for i = 1 to length(datasets) do
+            atom val = 0.0
+            if atom(datasets[i]) then val = datasets[i] end if
+            atom angle = (val / total) * 360.0
+            atom end_angle = start_angle + angle
+
+            atom rad_start = (start_angle * 3.14159265) / 180.0
+            atom rad_end = (end_angle * 3.14159265) / 180.0
+
+            atom x1 = cx + r_outer * cos(rad_start)
+            atom y1 = cy + r_outer * sin(rad_start)
+            atom x2 = cx + r_outer * cos(rad_end)
+            atom y2 = cy + r_outer * sin(rad_end)
+
+            integer large_arc = 0
+            if angle > 180.0 then large_arc = 1 end if
+            sequence col = colors[1 + remainder(i - 1, length(colors))]
+
+            if r_inner > 0.0 then
+                atom x3 = cx + r_inner * cos(rad_end)
+                atom y3 = cy + r_inner * sin(rad_end)
+                atom x4 = cx + r_inner * cos(rad_start)
+                atom y4 = cy + r_inner * sin(rad_start)
+                svg &= sprintf(`    <path d="M %.1f %.1f A %.1f %.1f 0 %d 1 %.1f %.1f L %.1f %.1f A %.1f %.1f 0 %d 0 %.1f %.1f Z" fill="%s" stroke="#fff" stroke-width="1.5" />` & "\n",
+                               {x1, y1, r_outer, r_outer, large_arc, x2, y2, x3, y3, r_inner, r_inner, large_arc, x4, y4, col})
+            else
+                svg &= sprintf(`    <path d="M %.1f %.1f L %.1f %.1f A %.1f %.1f 0 %d 1 %.1f %.1f Z" fill="%s" stroke="#fff" stroke-width="1.5" />` & "\n",
+                               {cx, cy, x1, y1, r_outer, r_outer, large_arc, x2, y2, col})
+            end if
+
+            sequence lbl = ""
+            if i <= length(labels) then lbl = labels[i] end if
+            atom leg_y = 50.0 + (i - 1) * 26.0
+            svg &= sprintf(`    <rect x="330" y="%.1f" width="14" height="14" rx="2" fill="%s" />` & "\n", {leg_y, col})
+            svg &= sprintf(`    <text x="352" y="%.1f" font-size="12" fill="#334155">%s: <tspan font-weight="bold">%.1f%%</tspan></text>` & "\n",
+                           {leg_y + 11.0, escape_html(lbl), (val / total) * 100.0})
+
+            start_angle = end_angle
+        end for
+        svg &= `  </svg>` & "\n"
+    end if
+
+    svg &= `</div>`
+    return svg
+end function
+
+--**
+-- Create a responsive SVG chart (bar, line, pie, or doughnut).
+public function chart(sequence id, sequence chart_type, sequence labels, sequence datasets, sequence options = {})
+    return render_svg_chart(id, chart_type, labels, datasets, options)
+end function
+
+--**
+-- Generate a live DOM patch to update a chart's data.
+public function chart_set_data(sequence id, sequence chart_type, sequence labels, sequence datasets)
+    return patch(id & "_chart", render_svg_chart(id, chart_type, labels, datasets, {}))
 end function
 
 public function init_server(integer app_id)

@@ -5029,6 +5029,46 @@ public final class VM {
                 outRes[0] = Value.fromInt((closed != null && closed.get()) ? 1 : 0);
                 return true;
             }
+
+            // =========================================================================
+            // EXCEL (.XLSX) & PDF REPORTING ENGINES (340..342)
+            // =========================================================================
+            case 340 -> { // M_EXCEL_WRITE: {path, sheet, headers, rows}
+                outRes[0] = DataEngines.execExcelWrite(arg);
+                return true;
+            }
+            case 341 -> { // M_EXCEL_READ: path
+                outRes[0] = DataEngines.execExcelRead(arg);
+                return true;
+            }
+            case 342 -> { // M_PDF_REPORT: {path, title, meta, headers, rows, opts}
+                outRes[0] = DataEngines.execPdfReport(arg);
+                return true;
+            }
+
+            // =========================================================================
+            // AUTH, CRYPTO & JWT ENGINES (343..347)
+            // =========================================================================
+            case 343 -> { // M_CRYPTO_HASH: {password, salt}
+                outRes[0] = DataEngines.execCryptoHash(arg);
+                return true;
+            }
+            case 344 -> { // M_CRYPTO_VERIFY: {password, hashStr}
+                outRes[0] = DataEngines.execCryptoVerify(arg);
+                return true;
+            }
+            case 345 -> { // M_JWT_CREATE: {payload, secret, expiry}
+                outRes[0] = DataEngines.execJwtCreate(arg);
+                return true;
+            }
+            case 346 -> { // M_JWT_VERIFY: {token, secret}
+                outRes[0] = DataEngines.execJwtVerify(arg);
+                return true;
+            }
+            case 347 -> { // M_CRYPTO_RANDOM: numBytes
+                outRes[0] = DataEngines.execCryptoRandom(arg);
+                return true;
+            }
             default -> {
                 return true;
             }

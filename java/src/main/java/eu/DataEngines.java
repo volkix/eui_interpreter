@@ -53,6 +53,23 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.security.spec.KeySpec;
+import java.util.Base64;
+import java.util.HexFormat;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+import javax.crypto.Mac;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+
+
 /**
  * Native Data & Web Engines for Euphorix (JSON, JSONPath, JSON-Schema Draft 2020-12,
  * XML DOM, W3C XPath 1.0, W3C XSD Schema, and UTF-8 Unicode Engine).
@@ -1473,4 +1490,685 @@ public final class DataEngines {
         int prefixCp = haystack.codePointCount(0, foundCharIdx);
         return Value.fromInt(prefixCp + 1);
     }
+
+
+    // =========================================================================
+    // NATIVE EXCEL (.XLSX) ENGINE
+    // =========================================================================
+
+    private static String formatCellValue(Value v) {
+        if (v == null) return "";
+        if (v.isInt()) return Long.toString(v.asInt());
+        if (v.isF64()) {
+            double d = v.asDouble();
+            if (d == (long) d) return Long.toString((long) d);
+            return String.format(Locale.US, "%.2f", d);
+        }
+        return v.toUtf8String();
+    }
+
+    private static String toColumnLetter(int colIdx) {
+        StringBuilder sb = new StringBuilder();
+        int n = colIdx;
+        while (n >= 0) {
+            sb.insert(0, (char) ('A' + (n % 26)));
+            n = (n / 26) - 1;
+        }
+        return sb.toString();
+    }
+
+    private static String escapeXml(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder(s.length() + 16);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '&' -> sb.append("&amp;");
+                case '<' -> sb.append("&lt;");
+                case '>' -> sb.append("&gt;");
+                case '"' -> sb.append("&quot;");
+                case '\'' -> sb.append("&apos;");
+                default -> sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+    public static Value execExcelWrite(Value arg) {
+        // arg: {filePath, sheetName, headersSeq, rowsSeq}
+        if (!arg.isSeq() || arg.asSeq().size() < 4) {
+            return Value.fromInt(0);
+        }
+        Sequence s = arg.asSeq();
+        String filePath = s.get(0).toUtf8String();
+        String sheetName = s.get(1).toUtf8String();
+        if (sheetName.isBlank()) sheetName = "Tabelle1";
+        Sequence headers = s.get(2).isSeq() ? s.get(2).asSeq() : null;
+        Sequence rows = s.get(3).isSeq() ? s.get(3).asSeq() : new Sequence();
+
+        try {
+            File outFile = new File(filePath);
+            File parent = outFile.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
+            try (ZipOutputStream zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outFile)))) {
+                // 1. [Content_Types].xml
+                zos.putNextEntry(new ZipEntry("[Content_Types].xml"));
+                String contentTypes = """
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                      <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                      <Default Extension="xml" ContentType="application/xml"/>
+                      <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+                      <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+                      <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+                    </Types>""";
+                zos.write(contentTypes.trim().getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+
+                // 2. _rels/.rels
+                zos.putNextEntry(new ZipEntry("_rels/.rels"));
+                String rootRels = """
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                      <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+                    </Relationships>""";
+                zos.write(rootRels.trim().getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+
+                // 3. xl/_rels/workbook.xml.rels
+                zos.putNextEntry(new ZipEntry("xl/_rels/workbook.xml.rels"));
+                String wbRels = """
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                      <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+                      <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+                    </Relationships>""";
+                zos.write(wbRels.trim().getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+
+                // 4. xl/workbook.xml
+                zos.putNextEntry(new ZipEntry("xl/workbook.xml"));
+                String wbXml = String.format("""
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                      <sheets>
+                        <sheet name="%s" sheetId="1" r:id="rId1"/>
+                      </sheets>
+                    </workbook>""", escapeXml(sheetName));
+                zos.write(wbXml.trim().getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+
+                // 5. xl/styles.xml
+                zos.putNextEntry(new ZipEntry("xl/styles.xml"));
+                String stylesXml = """
+                    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                    <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                      <fonts count="2">
+                        <font><sz val="11"/><name val="Calibri"/></font>
+                        <font><b/><sz val="11"/><name val="Calibri"/><color rgb="FFFFFFFF"/></font>
+                      </fonts>
+                      <fills count="3">
+                        <fill><patternFill patternType="none"/></fill>
+                        <fill><patternFill patternType="gray125"/></fill>
+                        <fill><patternFill patternType="solid"><fgColor rgb="FF005599"/></patternFill></fill>
+                      </fills>
+                      <borders count="1">
+                        <border><left/><right/><top/><bottom/><diagonal/></border>
+                      </borders>
+                      <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+                      <cellXfs count="2">
+                        <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+                        <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+                      </cellXfs>
+                    </styleSheet>""";
+                zos.write(stylesXml.trim().getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+
+                // 6. xl/worksheets/sheet1.xml
+                zos.putNextEntry(new ZipEntry("xl/worksheets/sheet1.xml"));
+                StringBuilder sheetSb = new StringBuilder();
+                sheetSb.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
+                sheetSb.append("<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">\n");
+                sheetSb.append("  <sheetData>\n");
+
+                int rowNum = 1;
+                if (headers != null && headers.size() > 0) {
+                    sheetSb.append("    <row r=\"").append(rowNum).append("\">\n");
+                    for (int c = 0; c < headers.size(); c++) {
+                        String colLetter = toColumnLetter(c);
+                        String cellRef = colLetter + rowNum;
+                        String valStr = escapeXml(headers.get(c).toUtf8String());
+                        sheetSb.append("      <c r=\"").append(cellRef).append("\" s=\"1\" t=\"inlineStr\"><is><t>")
+                               .append(valStr).append("</t></is></c>\n");
+                    }
+                    sheetSb.append("    </row>\n");
+                    rowNum++;
+                }
+
+                for (int r = 0; r < rows.size(); r++) {
+                    Value rVal = rows.get(r);
+                    if (!rVal.isSeq()) continue;
+                    Sequence rowSeq = rVal.asSeq();
+                    sheetSb.append("    <row r=\"").append(rowNum).append("\">\n");
+                    for (int c = 0; c < rowSeq.size(); c++) {
+                        String colLetter = toColumnLetter(c);
+                        String cellRef = colLetter + rowNum;
+                        Value cellVal = rowSeq.get(c);
+                        if (cellVal.isInt()) {
+                            sheetSb.append("      <c r=\"").append(cellRef).append("\"><v>")
+                                   .append(cellVal.asInt()).append("</v></c>\n");
+                        } else if (cellVal.isF64()) {
+                            sheetSb.append("      <c r=\"").append(cellRef).append("\"><v>")
+                                   .append(cellVal.asDouble()).append("</v></c>\n");
+                        } else {
+                            String valStr = escapeXml(formatCellValue(cellVal));
+                            sheetSb.append("      <c r=\"").append(cellRef).append("\" t=\"inlineStr\"><is><t>")
+                                   .append(valStr).append("</t></is></c>\n");
+                        }
+                    }
+                    sheetSb.append("    </row>\n");
+                    rowNum++;
+                }
+
+                sheetSb.append("  </sheetData>\n");
+                sheetSb.append("</worksheet>\n");
+
+                zos.write(sheetSb.toString().getBytes(StandardCharsets.UTF_8));
+                zos.closeEntry();
+            }
+            return Value.fromInt(1);
+        } catch (Exception e) {
+            return Value.fromInt(0);
+        }
+    }
+
+    public static Value execExcelRead(Value arg) {
+        String filePath;
+        if (arg.isSeq() && arg.asSeq().size() > 0 && arg.asSeq().get(0).isSeq()) {
+            filePath = arg.asSeq().get(0).toUtf8String();
+        } else {
+            filePath = arg.toUtf8String();
+        }
+        try {
+            File f = new File(filePath);
+            if (!f.exists()) {
+                Sequence err = new Sequence(2);
+                err.add(Value.fromInt(0));
+                err.add(Value.fromString("Datei nicht gefunden: " + filePath));
+                return Value.fromSeq(err);
+            }
+
+            List<String> sharedStrings = new ArrayList<>();
+            byte[] sheetBytes = null;
+
+            try (ZipInputStream zis = new ZipInputStream(new BufferedInputStream(new FileInputStream(f)))) {
+                ZipEntry entry;
+                while ((entry = zis.getNextEntry()) != null) {
+                    if (entry.getName().equals("xl/sharedStrings.xml")) {
+                        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(zis.readAllBytes()));
+                        NodeList siList = doc.getElementsByTagName("si");
+                        for (int i = 0; i < siList.getLength(); i++) {
+                            Element el = (Element) siList.item(i);
+                            NodeList tList = el.getElementsByTagName("t");
+                            StringBuilder tText = new StringBuilder();
+                            for (int j = 0; j < tList.getLength(); j++) {
+                                tText.append(tList.item(j).getTextContent());
+                            }
+                            sharedStrings.add(tText.toString());
+                        }
+                    } else if (entry.getName().equals("xl/worksheets/sheet1.xml")) {
+                        sheetBytes = zis.readAllBytes();
+                    }
+                    zis.closeEntry();
+                }
+            }
+
+            if (sheetBytes == null) {
+                Sequence err = new Sequence(2);
+                err.add(Value.fromInt(0));
+                err.add(Value.fromString("Kein Arbeitsblatt (sheet1.xml) gefunden"));
+                return Value.fromSeq(err);
+            }
+
+            Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(sheetBytes));
+            NodeList rowNodes = doc.getElementsByTagName("row");
+            Sequence allRows = new Sequence(rowNodes.getLength());
+
+            for (int r = 0; r < rowNodes.getLength(); r++) {
+                Element rowEl = (Element) rowNodes.item(r);
+                NodeList cNodes = rowEl.getElementsByTagName("c");
+                Sequence curRow = new Sequence(cNodes.getLength());
+                for (int c = 0; c < cNodes.getLength(); c++) {
+                    Element cEl = (Element) cNodes.item(c);
+                    String tAttr = cEl.getAttribute("t");
+                    String cellVal = "";
+                    if ("s".equals(tAttr)) {
+                        NodeList vList = cEl.getElementsByTagName("v");
+                        if (vList.getLength() > 0) {
+                            int sIdx = Integer.parseInt(vList.item(0).getTextContent().trim());
+                            if (sIdx >= 0 && sIdx < sharedStrings.size()) {
+                                cellVal = sharedStrings.get(sIdx);
+                            }
+                        }
+                    } else if ("inlineStr".equals(tAttr)) {
+                        NodeList tList = cEl.getElementsByTagName("t");
+                        if (tList.getLength() > 0) cellVal = tList.item(0).getTextContent();
+                    } else {
+                        NodeList vList = cEl.getElementsByTagName("v");
+                        if (vList.getLength() > 0) cellVal = vList.item(0).getTextContent().trim();
+                    }
+                    curRow.add(Value.fromString(cellVal));
+                }
+                allRows.add(Value.fromSeq(curRow));
+            }
+
+            Sequence res = new Sequence(2);
+            res.add(Value.fromInt(1));
+            res.add(Value.fromSeq(allRows));
+            return Value.fromSeq(res);
+        } catch (Exception e) {
+            Sequence err = new Sequence(2);
+            err.add(Value.fromInt(0));
+            err.add(Value.fromString(e.getMessage() != null ? e.getMessage() : e.toString()));
+            return Value.fromSeq(err);
+        }
+    }
+
+    // =========================================================================
+    // NATIVE PDF REPORT ENGINE (Standard PDF 1.4 Business Reports)
+    // =========================================================================
+
+    private static String escapePdfText(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '(' -> sb.append("\\(");
+                case ')' -> sb.append("\\)");
+                case '\\' -> sb.append("\\\\");
+                case 'ä' -> sb.append("\\344");
+                case 'ö' -> sb.append("\\366");
+                case 'ü' -> sb.append("\\374");
+                case 'ß' -> sb.append("\\337");
+                case 'Ä' -> sb.append("\\304");
+                case 'Ö' -> sb.append("\\326");
+                case 'Ü' -> sb.append("\\334");
+                case '€' -> sb.append("\\200");
+                case '°' -> sb.append("\\260");
+                default -> {
+                    if (c >= 32 && c <= 126) {
+                        sb.append(c);
+                    } else {
+                        sb.append(String.format("\\%03o", (int) (c & 0xFF)));
+                    }
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    public static Value execPdfReport(Value arg) {
+        // arg: {filePath, title, metadataSeq, headersSeq, rowsSeq, optionsSeq}
+        if (!arg.isSeq() || arg.asSeq().size() < 5) {
+            return Value.fromInt(0);
+        }
+        Sequence s = arg.asSeq();
+        String filePath = s.get(0).toUtf8String();
+        String title = s.get(1).toUtf8String();
+        Sequence meta = s.get(2).isSeq() ? s.get(2).asSeq() : null;
+        Sequence headers = s.get(3).isSeq() ? s.get(3).asSeq() : new Sequence();
+        Sequence rows = s.get(4).isSeq() ? s.get(4).asSeq() : new Sequence();
+
+        try {
+            File outFile = new File(filePath);
+            File parent = outFile.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+
+            // A4: 595.28 x 841.89 pt. Printable width: 515.28 pt (margins 40 left, 40 right)
+            final float pageWidth = 595.28f;
+            final float pageHeight = 841.89f;
+            final float marginX = 40.0f;
+            final float contentWidth = pageWidth - (2 * marginX);
+
+            int colCount = Math.max(1, headers.size());
+            float colWidth = contentWidth / colCount;
+
+            // Partition rows into pages (approx. 22 rows per page)
+            final int rowsPerPage = 22;
+            int totalRows = rows.size();
+            int totalPages = Math.max(1, (int) Math.ceil((double) totalRows / rowsPerPage));
+
+            List<byte[]> pageStreams = new ArrayList<>();
+
+            for (int p = 0; p < totalPages; p++) {
+                ByteArrayOutputStream pageBos = new ByteArrayOutputStream();
+                PrintWriter pw = new PrintWriter(new OutputStreamWriter(pageBos, StandardCharsets.ISO_8859_1));
+
+                float y = pageHeight - 40.0f;
+
+                // 1. Header Banner (Deep Blue)
+                float bannerHeight = 55.0f;
+                float bannerY = y - bannerHeight;
+                pw.printf(Locale.US, "0.08 0.35 0.65 rg\n%.2f %.2f %.2f %.2f re f\n", marginX, bannerY, contentWidth, bannerHeight);
+
+                // Title in Banner (Bold Helvetica, 18pt, White)
+                pw.printf(Locale.US, "BT /F2 18 Tf 1 1 1 rg %.2f %.2f Td (%s) Tj ET\n",
+                        marginX + 15.0f, bannerY + 28.0f, escapePdfText(title));
+
+                // Subtitle / Date in Banner (Helvetica, 9pt, White)
+                String dateStr = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+                pw.printf(Locale.US, "BT /F1 9 Tf 0.9 0.95 1 rg %.2f %.2f Td (Berichtsdatum: %s | Euphorix Reporting Engine) Tj ET\n",
+                        marginX + 15.0f, bannerY + 12.0f, dateStr);
+
+                y = bannerY - 15.0f;
+
+                // 2. Metadata Block (Page 1 only)
+                if (p == 0 && meta != null && meta.size() > 0) {
+                    float metaHeight = 28.0f;
+                    float metaY = y - metaHeight;
+                    pw.printf(Locale.US, "0.96 0.97 0.99 rg %.2f %.2f %.2f %.2f re f\n", marginX, metaY, contentWidth, metaHeight);
+                    pw.printf(Locale.US, "0.80 0.85 0.90 RG 0.5 w %.2f %.2f %.2f %.2f re S\n", marginX, metaY, contentWidth, metaHeight);
+
+                    StringBuilder metaLine = new StringBuilder();
+                    for (int m = 0; m < meta.size(); m++) {
+                        if (m > 0) metaLine.append("   •   ");
+                        metaLine.append(meta.get(m).toUtf8String());
+                    }
+                    pw.printf(Locale.US, "BT /F1 9 Tf 0.2 0.25 0.3 rg %.2f %.2f Td (%s) Tj ET\n",
+                            marginX + 10.0f, metaY + 9.0f, escapePdfText(metaLine.toString()));
+                    y = metaY - 15.0f;
+                }
+
+                // 3. Table Headers
+                float headerRowH = 22.0f;
+                float headerY = y - headerRowH;
+                pw.printf(Locale.US, "0.20 0.25 0.32 rg %.2f %.2f %.2f %.2f re f\n", marginX, headerY, contentWidth, headerRowH);
+                for (int c = 0; c < headers.size(); c++) {
+                    float cellX = marginX + (c * colWidth);
+                    String hText = headers.get(c).toUtf8String();
+                    pw.printf(Locale.US, "BT /F2 9.5 Tf 1 1 1 rg %.2f %.2f Td (%s) Tj ET\n",
+                            cellX + 6.0f, headerY + 6.5f, escapePdfText(hText));
+                }
+                y = headerY;
+
+                // 4. Data Rows for this Page
+                int startRow = p * rowsPerPage;
+                int endRow = Math.min(totalRows, startRow + rowsPerPage);
+                float rowH = 19.0f;
+
+                for (int r = startRow; r < endRow; r++) {
+                    Value rowVal = rows.get(r);
+                    if (!rowVal.isSeq()) continue;
+                    Sequence rowSeq = rowVal.asSeq();
+
+                    float rowY = y - rowH;
+                    // Zebra background
+                    if ((r % 2) == 1) {
+                        pw.printf(Locale.US, "0.96 0.97 0.98 rg %.2f %.2f %.2f %.2f re f\n", marginX, rowY, contentWidth, rowH);
+                    }
+                    // Border line bottom
+                    pw.printf(Locale.US, "0.85 0.88 0.92 RG 0.5 w %.2f %.2f m %.2f %.2f l S\n",
+                            marginX, rowY, marginX + contentWidth, rowY);
+
+                    for (int c = 0; c < Math.min(colCount, rowSeq.size()); c++) {
+                        float cellX = marginX + (c * colWidth);
+                        String valStr = formatCellValue(rowSeq.get(c));
+                        pw.printf(Locale.US, "BT /F1 9 Tf 0.15 0.15 0.15 rg %.2f %.2f Td (%s) Tj ET\n",
+                                cellX + 6.0f, rowY + 5.5f, escapePdfText(valStr));
+                    }
+                    y = rowY;
+                }
+
+                // 5. Page Footer
+                float footerY = 32.0f;
+                pw.printf(Locale.US, "0.85 0.88 0.92 RG 0.5 w %.2f %.2f m %.2f %.2f l S\n",
+                        marginX, footerY + 12.0f, marginX + contentWidth, footerY + 12.0f);
+                pw.printf(Locale.US, "BT /F1 8 Tf 0.5 0.5 0.5 rg %.2f %.2f Td (Euphorix Business Reporting | Vertraulich) Tj ET\n",
+                        marginX, footerY);
+                pw.printf(Locale.US, "BT /F1 8 Tf 0.5 0.5 0.5 rg %.2f %.2f Td (Seite %d von %d) Tj ET\n",
+                        marginX + contentWidth - 65.0f, footerY, p + 1, totalPages);
+
+                pw.flush();
+                pageStreams.add(pageBos.toByteArray());
+            }
+
+            // Assemble complete PDF structure
+            ByteArrayOutputStream pdfOut = new ByteArrayOutputStream();
+            pdfOut.write(new byte[]{'%', 'P', 'D', 'F', '-', '1', '.', '4', '\n', '%', (byte)0xe2, (byte)0xe3, (byte)0xcf, (byte)0xd3, '\n'});
+
+            List<Integer> offsets = new ArrayList<>();
+            offsets.add(0);
+
+            // Helper to write object
+            java.util.function.Consumer<byte[]> writeObj = (data) -> {
+                offsets.add(pdfOut.size());
+                int objNum = offsets.size() - 1;
+                String header = objNum + " 0 obj\n";
+                try {
+                    pdfOut.write(header.getBytes(StandardCharsets.US_ASCII));
+                    pdfOut.write(data);
+                    pdfOut.write("\nendobj\n".getBytes(StandardCharsets.US_ASCII));
+                } catch (IOException ignored) {}
+            };
+
+            // Obj 1: Catalog
+            writeObj.accept("<< /Type /Catalog /Pages 2 0 R >>".getBytes(StandardCharsets.US_ASCII));
+
+            // Obj 2: Pages
+            StringBuilder kids = new StringBuilder();
+            for (int i = 0; i < totalPages; i++) {
+                if (i > 0) kids.append(" ");
+                kids.append((5 + i * 2)).append(" 0 R");
+            }
+            String pagesObj = String.format("<< /Type /Pages /Kids [%s] /Count %d >>", kids, totalPages);
+            writeObj.accept(pagesObj.getBytes(StandardCharsets.US_ASCII));
+
+            // Obj 3: Font /F1 Helvetica
+            writeObj.accept("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".getBytes(StandardCharsets.US_ASCII));
+
+            // Obj 4: Font /F2 Helvetica-Bold
+            writeObj.accept("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>".getBytes(StandardCharsets.US_ASCII));
+
+            // Pages and Content Streams
+            for (int i = 0; i < totalPages; i++) {
+                int streamObjNum = 6 + i * 2;
+                String pageObj = String.format(Locale.US,
+                        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %.2f %.2f] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents %d 0 R >>",
+                        pageWidth, pageHeight, streamObjNum);
+                writeObj.accept(pageObj.getBytes(StandardCharsets.US_ASCII));
+
+                byte[] streamBytes = pageStreams.get(i);
+                ByteArrayOutputStream stBos = new ByteArrayOutputStream();
+                stBos.write(String.format("<< /Length %d >>\nstream\n", streamBytes.length).getBytes(StandardCharsets.US_ASCII));
+                stBos.write(streamBytes);
+                stBos.write("\nendstream".getBytes(StandardCharsets.US_ASCII));
+                writeObj.accept(stBos.toByteArray());
+            }
+
+            int xrefOffset = pdfOut.size();
+            int numObjs = offsets.size();
+            pdfOut.write(String.format("xref\n0 %d\n0000000000 65535 f \n", numObjs).getBytes(StandardCharsets.US_ASCII));
+            for (int i = 1; i < numObjs; i++) {
+                pdfOut.write(String.format(Locale.US, "%010d 00000 n \n", offsets.get(i)).getBytes(StandardCharsets.US_ASCII));
+            }
+            pdfOut.write(String.format("trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n", numObjs, xrefOffset).getBytes(StandardCharsets.US_ASCII));
+
+            try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                pdfOut.writeTo(fos);
+            }
+            return Value.fromInt(1);
+        } catch (Exception e) {
+            return Value.fromInt(0);
+        }
+    }
+
+    // =========================================================================
+    // NATIVE AUTH & CRYPTO ENGINE (Password Hashing, JWT, Random Tokens)
+    // =========================================================================
+
+    public static Value execCryptoHash(Value arg) {
+        // arg: {password, salt}
+        if (!arg.isSeq() || arg.asSeq().size() < 1) {
+            return Value.emptySeq();
+        }
+        Sequence s = arg.asSeq();
+        String password = s.get(0).toUtf8String();
+        String salt = (s.size() > 1 && !s.get(1).toUtf8String().isBlank())
+                ? s.get(1).toUtf8String()
+                : HexFormat.of().formatHex(SecureRandom.getSeed(16));
+
+        try {
+            int iterations = 65536;
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(StandardCharsets.UTF_8), iterations, 256);
+            SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] hash = skf.generateSecret(spec).getEncoded();
+            String formatted = "pbkdf2$" + iterations + "$" + salt + "$" + HexFormat.of().formatHex(hash);
+            return Value.fromString(formatted);
+        } catch (Exception e) {
+            return Value.emptySeq();
+        }
+    }
+
+    public static Value execCryptoVerify(Value arg) {
+        // arg: {password, hashString}
+        if (!arg.isSeq() || arg.asSeq().size() < 2) {
+            return Value.fromInt(0);
+        }
+        Sequence s = arg.asSeq();
+        String password = s.get(0).toUtf8String();
+        String hashStr = s.get(1).toUtf8String();
+
+        String[] parts = hashStr.split("\\$");
+        if (parts.length != 4 || !parts[0].equals("pbkdf2")) {
+            return Value.fromInt(0);
+        }
+
+        try {
+            int iterations = Integer.parseInt(parts[1]);
+            String salt = parts[2];
+            byte[] expectedHash = HexFormat.of().parseHex(parts[3]);
+
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(StandardCharsets.UTF_8), iterations, 256);
+            SecretKeyFactory skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+            byte[] actualHash = skf.generateSecret(spec).getEncoded();
+
+            boolean matches = MessageDigest.isEqual(expectedHash, actualHash);
+            return Value.fromInt(matches ? 1 : 0);
+        } catch (Exception e) {
+            return Value.fromInt(0);
+        }
+    }
+
+    public static Value execCryptoRandom(Value arg) {
+        int bytes = (int) Math.max(8, arg.toIntCoerce());
+        if (bytes <= 0 || bytes > 1024) bytes = 32;
+        byte[] buf = new byte[bytes];
+        new SecureRandom().nextBytes(buf);
+        return Value.fromString(HexFormat.of().formatHex(buf));
+    }
+
+    public static Value execJwtCreate(Value arg) {
+        // arg: {payloadJson, secretKey, expirySecs}
+        if (!arg.isSeq() || arg.asSeq().size() < 2) {
+            return Value.emptySeq();
+        }
+        Sequence s = arg.asSeq();
+        String payloadJson = s.get(0).toUtf8String();
+        String secretKey = s.get(1).toUtf8String();
+        long expirySecs = (s.size() > 2) ? s.get(2).toIntCoerce() : 3600;
+
+        try {
+            long now = System.currentTimeMillis() / 1000L;
+            JsonNode root;
+            if (payloadJson.trim().startsWith("{")) {
+                root = MAPPER.readTree(payloadJson);
+            } else {
+                root = MAPPER.createObjectNode().put("sub", payloadJson);
+            }
+            if (root instanceof ObjectNode obj) {
+                if (!obj.has("iat")) obj.put("iat", now);
+                if (expirySecs > 0 && !obj.has("exp")) obj.put("exp", now + expirySecs);
+                payloadJson = MAPPER.writeValueAsString(obj);
+            }
+
+            String headerB64 = Base64.getUrlEncoder().withoutPadding().encodeToString("{\"alg\":\"HS256\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
+            String payloadB64 = Base64.getUrlEncoder().withoutPadding().encodeToString(payloadJson.getBytes(StandardCharsets.UTF_8));
+            String dataToSign = headerB64 + "." + payloadB64;
+
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] sigBytes = mac.doFinal(dataToSign.getBytes(StandardCharsets.UTF_8));
+            String sigB64 = Base64.getUrlEncoder().withoutPadding().encodeToString(sigBytes);
+
+            return Value.fromString(dataToSign + "." + sigB64);
+        } catch (Exception e) {
+            return Value.emptySeq();
+        }
+    }
+
+    public static Value execJwtVerify(Value arg) {
+        // arg: {token, secretKey}
+        if (!arg.isSeq() || arg.asSeq().size() < 2) {
+            Sequence err = new Sequence(2);
+            err.add(Value.fromInt(0));
+            err.add(Value.fromString("Ungültige Argumente"));
+            return Value.fromSeq(err);
+        }
+        Sequence s = arg.asSeq();
+        String token = s.get(0).toUtf8String();
+        String secretKey = s.get(1).toUtf8String();
+
+        String[] parts = token.split("\\.");
+        if (parts.length != 3) {
+            Sequence err = new Sequence(2);
+            err.add(Value.fromInt(0));
+            err.add(Value.fromString("Ungültiges JWT Token-Format"));
+            return Value.fromSeq(err);
+        }
+
+        try {
+            String dataToSign = parts[0] + "." + parts[1];
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] expectedSig = mac.doFinal(dataToSign.getBytes(StandardCharsets.UTF_8));
+            byte[] actualSig = Base64.getUrlDecoder().decode(parts[2]);
+
+            if (!MessageDigest.isEqual(expectedSig, actualSig)) {
+                Sequence err = new Sequence(2);
+                err.add(Value.fromInt(0));
+                err.add(Value.fromString("Signatur ungültig"));
+                return Value.fromSeq(err);
+            }
+
+            String payloadJson = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
+            JsonNode root = MAPPER.readTree(payloadJson);
+            if (root.has("exp")) {
+                long exp = root.get("exp").asLong();
+                long now = System.currentTimeMillis() / 1000L;
+                if (exp < now) {
+                    Sequence err = new Sequence(2);
+                    err.add(Value.fromInt(0));
+                    err.add(Value.fromString("Token ist abgelaufen"));
+                    return Value.fromSeq(err);
+                }
+            }
+
+            Sequence ok = new Sequence(2);
+            ok.add(Value.fromInt(1));
+            ok.add(Value.fromString(payloadJson));
+            return Value.fromSeq(ok);
+        } catch (Exception e) {
+            Sequence err = new Sequence(2);
+            err.add(Value.fromInt(0));
+            err.add(Value.fromString(e.getMessage() != null ? e.getMessage() : e.toString()));
+            return Value.fromSeq(err);
+        }
+    }
+
 }

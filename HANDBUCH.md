@@ -1672,6 +1672,72 @@ Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek
 
 ### 2.8.13 Euphoria Interna, Debugger & Syntax-Tokenizer
 
+
+#### `std/csv.e` (Namespace: `csv`)
+
+* **Zweck:** RFC 4180-konforme CSV-Engine: Parsing und Serialisierung von Tabellendaten mit Trennzeichen-Konfiguration (Komma, Semikolon, Tabulator), Maskierung von Quotes (`""`), Zeilenumbrüchen und UTF-8-Encoding.
+* **Öffentliche Funktionen & Prozeduren (5):**
+  * `public function format_field(object val, integer delimiter = ',', integer quote_all = 0)`: Formatiert einen einzelnen Wert nach RFC 4180 mit automatischer Anführungszeichen-Maskierung.
+  * `public function to_csv(sequence headers, sequence rows, integer delimiter = ',', integer quote_all = 0)`: Konvertiert Header- und Datenzeilen in einen vollständigen CSV-String.
+  * `public function parse(sequence csv_text, integer delimiter = ',')`: Zerlegt einen CSV-Text in Zeilen und Spalten (`{ {col1, col2, ...}, ... }`).
+  * `public function write_file(sequence filepath, sequence headers, sequence rows, integer delimiter = ',', integer quote_all = 0)`: Schreibt tabellarische Daten direkt in eine CSV-Datei.
+  * `public function read_file(sequence filepath, integer delimiter = ',', integer has_header = 1)`: Liest eine CSV-Datei ein und liefert `{headers, rows}`.
+
+#### `std/excel.e` (Namespace: `excel`)
+
+* **Zweck:** Native Microsoft Excel (.xlsx) OpenXML-Engine: Erzeugt und liest moderne `.xlsx`-Arbeitsmappen direkt über die Java 25 Runtime – ohne externe Abhängigkeiten oder Apache POI. Kompatibel mit Excel, LibreOffice Calc und Google Sheets.
+* **Öffentliche Funktionen & Prozeduren (3):**
+  * `public function write_file(sequence filepath, sequence headers, sequence rows, sequence sheet_name = "Tabelle1")`: Erzeugt eine vollwertige `.xlsx`-Datei mit formatierten Kopfzeilen, Zahlenspalten und Datumsfeldern.
+  * `public function export_table(sequence filepath, sequence headers, sequence rows, sequence sheet_name = "Export")`: Komfortable Export-Funktion für Datenbankabfragen und UI-Tabellen.
+  * `public function read_file(sequence filepath)`: Liest eine `.xlsx`-Datei ein und extrahiert Tabellenzeilen und Zellwerte (`{1, rows}` bei Erfolg).
+
+#### `std/pdf_report.e` (Namespace: `pdf_report`)
+
+* **Zweck:** Native Business-PDF-Engine: Generiert Standard-PDF-1.4-Geschäftsberichte, Monatsstatistiken, Rechnungen und Tabellenauszüge mit Firmenbannern, Metadatenkarten, Zebrastreifen und automatischer Mehrseiten-Paginierung.
+* **Öffentliche Funktionen & Prozeduren (2):**
+  * `public function create_report(sequence filepath, sequence title, sequence metadata, sequence headers, sequence rows, sequence options = {})`: Erstellt einen formatierten PDF-Geschäftsbericht mit Titelbanner, Metadaten, Tabellenlayout und Seitennummerierung ("Seite X von Y").
+  * `public function export_table(sequence filepath, sequence title, sequence headers, sequence rows)`: Schneller Export einer Datentabelle als PDF-Dokument.
+
+#### `std/auth.e` (Namespace: `auth`)
+
+* **Zweck:** Enterprise-Sicherheits- & Authentifizierungs-Modul: PBKDF2-Passwort-Hashing mit 65.536 Iterationen und Salt, Timing-sichere Hash-Validierung, JSON Web Tokens (JWT HS256) und kryptografische Zufallstoken.
+* **Öffentliche Funktionen & Prozeduren (5):**
+  * `public function hash_password(sequence password, sequence salt = "")`: Erzeugt einen sicheren PBKDF2-HMAC-SHA256-Passworthash mit individuellem Salt.
+  * `public function verify_password(sequence password, sequence hash_str)`: Prüft ein Klartext-Passwort gegen einen PBKDF2-Hash in konstanter Zeit (Schutz vor Timing-Angriffen).
+  * `public function random_token(integer byte_count = 32)`: Generiert einen kryptografisch sicheren Zufallstoken in Hexadezimaldarstellung.
+  * `public function create_jwt(sequence payload, sequence secret_key, integer expiry_secs = 3600)`: Erstellt ein signiertes JSON Web Token (JWT) mit HMAC-SHA256 und Ablaufzeit (`exp`).
+  * `public function verify_jwt(sequence token, sequence secret_key)`: Validiert die Signatur und Ablaufzeit eines JWT-Tokens und liefert die Payload zurück (`{1, payload_json}`).
+
+#### `std/session.e` (Namespace: `session`)
+
+* **Zweck:** HTTP-Session-Management für Intranet- und Webanwendungen: Server-seitige Attribut-Verwaltung, automatische Cookie-Header-Erstellung (`Set-Cookie`) und Session-Lebenszeitüberwachung.
+* **Öffentliche Funktionen & Prozeduren (7):**
+  * `public function extract_sid(sequence cookie_header, sequence cookie_name = "EUI_SESSION")`: Liest die Session-ID aus einem HTTP-`Cookie`-Header aus.
+  * `public function start(sequence cookie_str = "", sequence cookie_name = "EUI_SESSION")`: Startet eine neue Session oder setzt eine bestehende fort (`{sid, is_new}`).
+  * `public procedure set(sequence sid, sequence key, object val)`: Speichert ein Schlüssel-Wert-Attribut in der Session.
+  * `public function get(sequence sid, sequence key, object default_val = {})`: Liest ein Attribut aus der Session aus.
+  * `public function has(sequence sid, sequence key)`: Prüft, ob ein Attribut in der Session existiert (1 = ja, 0 = nein).
+  * `public procedure destroy(sequence sid)`: Beendet und löscht eine aktive Session.
+  * `public function cookie_header(sequence sid, integer max_age = 86400, sequence cookie_name = "EUI_SESSION", sequence path = "/", integer http_only = 1)`: Erzeugt den HTTP-`Set-Cookie`-Header mit `HttpOnly`, `Path` und `SameSite=Lax`.
+
+#### `std/cron.e` (Namespace: `cron`)
+
+* **Zweck:** Integrierter Task-Scheduler: Führt wiederkehrende Hintergrundaufgaben (Intervall-Timer oder tägliche Uhrzeiten wie 02:00 Uhr) auf leichtgewichtigen Java 25 Virtual Threads aus.
+* **Öffentliche Funktionen & Prozeduren (6):**
+  * `public function schedule_interval(sequence name, atom interval_seconds, integer routine_id, sequence args = {})`: Registriert eine Aufgabe, die alle N Sekunden ausgeführt wird.
+  * `public function schedule_daily(sequence name, integer hour, integer minute, integer routine_id, sequence args = {})`: Registriert eine tägliche Aufgabe zu einer festen Uhrzeit (HH:MM).
+  * `public procedure start()`: Startet den Hintergrund-Scheduler-Thread.
+  * `public procedure stop()`: Hält den Hintergrund-Scheduler an.
+  * `public function list_jobs()`: Gibt eine Liste aller registrierten Jobs zurück.
+  * `public function trigger_now(sequence name)`: Führt einen registrierten Job sofort einmalig aus.
+
+#### `std/sse.e` (Namespace: `sse`)
+
+* **Zweck:** Server-Sent Events (SSE) Streaming-Engine: Erzeugt W3C-konforme `text/event-stream`-Nachrichten für Push-Benachrichtigungen an Web-Browser ohne WebSocket-Overhead.
+* **Öffentliche Funktionen & Prozeduren (2):**
+  * `public function event(sequence event_name, sequence data, sequence id = "", integer retry_ms = 0)`: Formatiert eine SSE-Nachricht mit Event-Name, Datenblock (auch mehrzeilig) und optionaler ID.
+  * `public function headers()`: Liefert die Standard-HTTP-Header für eine persistente SSE-Streamingverbindung.
+
 #### `euphoria/debug/debug.e` (Namespace: `debug`)
 
 * **Zweck:** Interaktiver VM-Debugger: Call-Stack-Inspektion, Breakpoints setzen, Einzelschritt-Ausführung (Step Over/Into) und Symbolabfragen.

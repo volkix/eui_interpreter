@@ -77,6 +77,7 @@ public final class Main {
         }
 
         boolean dumpBytecode = false;
+        boolean watchMode = false;
         String filename = null;
         String evalCode = null;
         List<String> includeDirs = new ArrayList<>();
@@ -124,6 +125,9 @@ public final class Main {
             String arg = args[i];
             if (filename == null && (arg.equals("-batch") || arg.equals("--batch"))) {
                 continue;
+            } else if (filename == null && (arg.equals("-w") || arg.equals("--watch"))) {
+                watchMode = true;
+                continue;
             } else if (filename == null && (arg.equals("-v") || arg.equals("--version"))) {
                 System.out.println("Euphorix 1.0.0 (Java 25 VM / OpenEuphoria 4.x Syntax)");
                 System.exit(0);
@@ -146,7 +150,7 @@ public final class Main {
             } else if (filename == null && (arg.startsWith("-D") || arg.startsWith("-d")) && arg.length() > 2) {
                 defines.add(arg.substring(2));
             } else if (filename == null && (arg.equals("-h") || arg.equals("--help"))) {
-                System.out.println("Verwendung: euphorix [-batch] [--disasm] [-i dir] [-D TAG] [-e \"code\"] [datei.ex [args...]]");
+                System.out.println("Verwendung: euphorix [-batch] [--watch] [--disasm] [-i dir] [-D TAG] [-e \"code\"] [datei.ex [args...]]");
                 System.exit(0);
             } else if (filename == null) {
                 filename = arg;
@@ -173,6 +177,11 @@ public final class Main {
             System.exit(1);
         }
 
+        if (watchMode) {
+            runWatchLoop(filename, dumpBytecode, scriptArgs, includeDirs, defines);
+            System.exit(0);
+        }
+
         try {
             String source;
             try {
@@ -186,6 +195,109 @@ public final class Main {
             System.err.printf("Fehler: Datei '%s' konnte nicht geöffnet werden.%n", filename);
             System.exit(1);
         }
+    }
+
+    private static void runWatchLoop(String filename, boolean dumpBytecode,
+                                     List<String> scriptArgs, List<String> includeDirs, List<String> defines) {
+        Path scriptPath = Path.of(filename).toAbsolutePath();
+        Path watchDir = scriptPath.getParent();
+        if (watchDir == null) watchDir = Path.of(".");
+
+        System.out.println("[WATCH] Beobachte '" + filename + "' und Verzeichnis '" + watchDir + "' auf Änderungen...");
+        System.out.println("[WATCH] Drücke Strg+C zum Beenden.");
+
+        final Path finalWatchDir = watchDir;
+        java.util.concurrent.atomic.AtomicReference<Thread> currentWorker = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.atomic.AtomicBoolean running = new java.util.concurrent.atomic.AtomicBoolean(true);
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            running.set(false);
+            Thread t = currentWorker.get();
+            if (t != null) t.interrupt();
+        }));
+
+        java.util.function.Consumer<String> starter = (reason) -> {
+            Thread old = currentWorker.getAndSet(null);
+            if (old != null) {
+                old.interrupt();
+                try { old.join(1000); } catch (InterruptedException ignored) {}
+            }
+            if (reason != null) {
+                System.out.println("\n[WATCH] " + reason + " -> Starte Anwendung neu...");
+            }
+            Thread worker = Thread.ofVirtual().name("watch-worker").start(() -> {
+                try {
+                    String source;
+                    try {
+                        source = Files.readString(scriptPath, StandardCharsets.UTF_8);
+                    } catch (java.nio.charset.MalformedInputException mie) {
+                        source = Files.readString(scriptPath, StandardCharsets.ISO_8859_1);
+                    }
+                    runSource(source, filename, dumpBytecode, scriptArgs, includeDirs, defines);
+                } catch (Exception e) {
+                    System.err.println("[WATCH] Ausführungsfehler: " + e.getMessage());
+                }
+            });
+            currentWorker.set(worker);
+        };
+
+        starter.accept(null);
+
+        java.util.Map<Path, Long> lastModified = getDirectorySnapshots(finalWatchDir);
+
+        while (running.get()) {
+            try {
+                Thread.sleep(600);
+            } catch (InterruptedException e) {
+                break;
+            }
+
+            java.util.Map<Path, Long> current = getDirectorySnapshots(finalWatchDir);
+            String changedFile = null;
+
+            for (var entry : current.entrySet()) {
+                Long oldTs = lastModified.get(entry.getKey());
+                if (oldTs == null || !oldTs.equals(entry.getValue())) {
+                    changedFile = entry.getKey().getFileName().toString();
+                    break;
+                }
+            }
+            if (changedFile == null) {
+                for (var oldKey : lastModified.keySet()) {
+                    if (!current.containsKey(oldKey)) {
+                        changedFile = oldKey.getFileName().toString() + " (gelöscht)";
+                        break;
+                    }
+                }
+            }
+
+            if (changedFile != null) {
+                lastModified = current;
+                starter.accept("Änderung erkannt in '" + changedFile + "'");
+            }
+        }
+    }
+
+    private static java.util.Map<Path, Long> getDirectorySnapshots(Path dir) {
+        java.util.Map<Path, Long> map = new java.util.HashMap<>();
+        try {
+            Files.walkFileTree(dir, java.util.Set.of(), 3, new java.nio.file.SimpleFileVisitor<Path>() {
+                @Override
+                public java.nio.file.FileVisitResult visitFile(Path file, java.nio.file.attribute.BasicFileAttributes attrs) {
+                    String name = file.getFileName().toString().toLowerCase();
+                    if (name.endsWith(".ex") || name.endsWith(".e") || name.endsWith(".html") || name.endsWith(".css") || name.endsWith(".js")) {
+                        map.put(file, attrs.lastModifiedTime().toMillis());
+                    }
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public java.nio.file.FileVisitResult visitFileFailed(Path file, IOException exc) {
+                    return java.nio.file.FileVisitResult.SKIP_SUBTREE;
+                }
+            });
+        } catch (Exception ignored) {}
+        return map;
     }
 
     private static void loadCfgFile(String pathStr, List<String> includeDirs, List<String> defines) {

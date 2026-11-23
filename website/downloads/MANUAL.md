@@ -1668,6 +1668,72 @@ This section documents every single include file in the Euphorix standard librar
 
 ### 2.8.13 Euphoria Internals, Debugger & Syntax Tokenizer
 
+
+#### `std/csv.e` (Namespace: `csv`)
+
+* **Purpose:** RFC 4180 compliant CSV Engine: Parse and serialize tabular data with customizable delimiters (comma, semicolon, tab), automatic quote escaping (`""`), newline preservation, and UTF-8 encoding.
+* **Public Functions & Procedures (5):**
+  * `public function format_field(object val, integer delimiter = ',', integer quote_all = 0)`: Formats an individual value conforming to RFC 4180 with auto-quoting.
+  * `public function to_csv(sequence headers, sequence rows, integer delimiter = ',', integer quote_all = 0)`: Converts headers and rows to a complete CSV string.
+  * `public function parse(sequence csv_text, integer delimiter = ',')`: Parses CSV text into row and column sequences (`{ {col1, col2, ...}, ... }`).
+  * `public function write_file(sequence filepath, sequence headers, sequence rows, integer delimiter = ',', integer quote_all = 0)`: Writes tabular data to a CSV file.
+  * `public function read_file(sequence filepath, integer delimiter = ',', integer has_header = 1)`: Reads a CSV file and returns `{headers, rows}`.
+
+#### `std/excel.e` (Namespace: `excel`)
+
+* **Purpose:** Native Microsoft Excel (.xlsx) OpenXML Engine: Generates and reads modern `.xlsx` workbooks directly using Java 25 standard runtime zip & xml engine—zero external dependencies or POI needed.
+* **Public Functions & Procedures (3):**
+  * `public function write_file(sequence filepath, sequence headers, sequence rows, sequence sheet_name = "Tabelle1")`: Creates a valid `.xlsx` spreadsheet with styled headers and typed numbers.
+  * `public function export_table(sequence filepath, sequence headers, sequence rows, sequence sheet_name = "Export")`: Convenient export helper for SQL queries and UI grids.
+  * `public function read_file(sequence filepath)`: Reads an `.xlsx` workbook and extracts table rows and cells (`{1, rows}`).
+
+#### `std/pdf_report.e` (Namespace: `pdf_report`)
+
+* **Purpose:** Native Business PDF Engine: Generates standard PDF 1.4 reports, invoices, summaries, and data tables with corporate headers, metadata cards, zebra striping, and automatic multi-page layout.
+* **Public Functions & Procedures (2):**
+  * `public function create_report(sequence filepath, sequence title, sequence metadata, sequence headers, sequence rows, sequence options = {})`: Generates a professional multi-page PDF business report.
+  * `public function export_table(sequence filepath, sequence title, sequence headers, sequence rows)`: Quick PDF export for tabular data.
+
+#### `std/auth.e` (Namespace: `auth`)
+
+* **Purpose:** Enterprise Security & Authentication Module: PBKDF2 password hashing (65,536 iterations with salt), constant-time verification, JSON Web Tokens (JWT HS256), and cryptographic random tokens.
+* **Public Functions & Procedures (5):**
+  * `public function hash_password(sequence password, sequence salt = "")`: Computes a PBKDF2-HMAC-SHA256 password hash.
+  * `public function verify_password(sequence password, sequence hash_str)`: Verifies plaintext password against stored hash in constant time (protecting against timing attacks).
+  * `public function random_token(integer byte_count = 32)`: Generates a cryptographically secure random token in hex format.
+  * `public function create_jwt(sequence payload, sequence secret_key, integer expiry_secs = 3600)`: Creates a signed JWT with HS256 signature and expiration (`exp`).
+  * `public function verify_jwt(sequence token, sequence secret_key)`: Cryptographically verifies JWT signature and expiration, returning `{1, payload_json}`.
+
+#### `std/session.e` (Namespace: `session`)
+
+* **Purpose:** HTTP Session Management for intranet and web applications: In-memory session store, automatic `Set-Cookie` header generation, and session lifetime tracking.
+* **Public Functions & Procedures (7):**
+  * `public function extract_sid(sequence cookie_header, sequence cookie_name = "EUI_SESSION")`: Extracts session ID from incoming `Cookie` header.
+  * `public function start(sequence cookie_str = "", sequence cookie_name = "EUI_SESSION")`: Resumes existing or creates new session (`{sid, is_new}`).
+  * `public procedure set(sequence sid, sequence key, object val)`: Stores a key-value attribute in the session.
+  * `public function get(sequence sid, sequence key, object default_val = {})`: Retrieves an attribute value from the session.
+  * `public function has(sequence sid, sequence key)`: Checks if a key exists in the session.
+  * `public procedure destroy(sequence sid)`: Terminates and cleans up an active session.
+  * `public function cookie_header(sequence sid, integer max_age = 86400, sequence cookie_name = "EUI_SESSION", sequence path = "/", integer http_only = 1)`: Generates `Set-Cookie` header string.
+
+#### `std/cron.e` (Namespace: `cron`)
+
+* **Purpose:** Built-in Task Scheduler: Executes recurring background tasks (interval timers or daily wall-clock schedules) on lightweight Java 25 Virtual Threads.
+* **Public Functions & Procedures (6):**
+  * `public function schedule_interval(sequence name, atom interval_seconds, integer routine_id, sequence args = {})`: Registers interval task.
+  * `public function schedule_daily(sequence name, integer hour, integer minute, integer routine_id, sequence args = {})`: Registers daily task at HH:MM.
+  * `public procedure start()`: Starts background scheduler thread.
+  * `public procedure stop()`: Stops background scheduler.
+  * `public function list_jobs()`: Returns list of registered jobs.
+  * `public function trigger_now(sequence name)`: Manually triggers a scheduled job immediately.
+
+#### `std/sse.e` (Namespace: `sse`)
+
+* **Purpose:** Server-Sent Events (SSE) Streaming Engine: Formats W3C-compliant `text/event-stream` message frames for browser live-push without WebSocket complexity.
+* **Public Functions & Procedures (2):**
+  * `public function event(sequence event_name, sequence data, sequence id = "", integer retry_ms = 0)`: Formats an SSE message frame.
+  * `public function headers()`: Returns standard HTTP headers for SSE streaming connection.
+
 #### `euphoria/debug/debug.e` (Namespace: `debug`)
 
 * **Purpose:** Interactive VM debugger: call stack inspection, breakpoint placement, single-step execution (step over/into), and symbol queries.

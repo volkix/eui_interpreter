@@ -53,9 +53,17 @@ test-java: $(JAVA_BIN)
 	./$(JAVA_BIN) examples/06_postgresql_datenbank.ex
 	./$(JAVA_BIN) examples/07_sapui5_webcomponents_demo.ex
 	./$(JAVA_BIN) examples/08_cgibash_html_demo.ex
+	./$(JAVA_BIN) examples/09_excel_und_csv_demo.ex
+	./$(JAVA_BIN) examples/10_auth_jwt_und_session_demo.ex
+	./$(JAVA_BIN) examples/11_vsui_charts_und_upload_demo.ex
+	./$(JAVA_BIN) examples/12_cron_scheduler_demo.ex
 	./$(JAVA_BIN) tests/t_gui.e
 	./$(JAVA_BIN) tests/t_ui5.e
 	./$(JAVA_BIN) tests/t_vsui.e
+	./$(JAVA_BIN) tests/t_vsui_ext.e
+	./$(JAVA_BIN) tests/t_excel_csv.e
+	./$(JAVA_BIN) tests/t_auth_session.e
+	./$(JAVA_BIN) tests/t_cron_sse.e
 	./$(JAVA_BIN) tests/t_java_interop.e
 	./$(JAVA_BIN) tests/t_concurrency.ex
 
@@ -74,9 +82,17 @@ test-standalone: $(STANDALONE_BIN)
 	./$(STANDALONE_BIN) examples/06_postgresql_datenbank.ex
 	./$(STANDALONE_BIN) examples/07_sapui5_webcomponents_demo.ex
 	./$(STANDALONE_BIN) examples/08_cgibash_html_demo.ex
+	./$(STANDALONE_BIN) examples/09_excel_und_csv_demo.ex
+	./$(STANDALONE_BIN) examples/10_auth_jwt_und_session_demo.ex
+	./$(STANDALONE_BIN) examples/11_vsui_charts_und_upload_demo.ex
+	./$(STANDALONE_BIN) examples/12_cron_scheduler_demo.ex
 	./$(STANDALONE_BIN) tests/t_gui.e
 	./$(STANDALONE_BIN) tests/t_ui5.e
 	./$(STANDALONE_BIN) tests/t_vsui.e
+	./$(STANDALONE_BIN) tests/t_vsui_ext.e
+	./$(STANDALONE_BIN) tests/t_excel_csv.e
+	./$(STANDALONE_BIN) tests/t_auth_session.e
+	./$(STANDALONE_BIN) tests/t_cron_sse.e
 	./$(STANDALONE_BIN) tests/t_java_interop.e
 	./$(STANDALONE_BIN) tests/t_concurrency.ex
 

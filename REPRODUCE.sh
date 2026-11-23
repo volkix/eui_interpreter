@@ -85,19 +85,11 @@ check_environment() {
 build_jar() {
     log_step "2. Kompiliere Java 25 Quellcode und baue Fat-JAR..."
 
-    JAVA_HOME="${JAVA_HOME:-/home/volkix/prg/jdk25}" mvn clean package -DskipTests
+    JAVA_HOME="${JAVA_HOME:-/home/volkix/prg/jdk25}" mvn package -DskipTests
 
-    if [ ! -f "target/euphorix-1.0.0.jar" ] && [ ! -f "target/euphorix.jar" ]; then
-        # Falls Shade-Plugin direkt nach java/target baut
-        if [ -f "java/target/euphorix-1.0.0.jar" ]; then
-            cp "java/target/euphorix-1.0.0.jar" "euphorix.jar"
-        else
-            log_error "Build-Fehler: JAR-Datei konnte nicht erstellt werden!"
-            exit 1
-        fi
-    else
-        JAR_FILE="$(ls target/euphorix*.jar | grep -v 'original' | head -n 1)"
-        cp "$JAR_FILE" "euphorix.jar"
+    if [ ! -f "euphorix.jar" ]; then
+        log_error "Build-Fehler: euphorix.jar konnte nicht erstellt werden!"
+        exit 1
     fi
 
     # Kompatibilitäts-Symlink eui.jar
@@ -167,19 +159,27 @@ run_tests() {
     ./euphorix examples/stdlib_full_test.ex >/dev/null
     log_ok "Standard-Bibliothek funktionsfähig."
 
-    log_info "3/4: Erweiterte Module (UTF-8, JSON/Schema, XML, SQLite, REST, SAPUI5, VSUI)..."
+    log_info "3/4: Erweiterte Module (UTF-8, JSON, SQLite, Excel, PDF, Auth, Cron, VSUI)..."
     ./euphorix examples/01_utf8_textverarbeitung.ex >/dev/null
     ./euphorix examples/02_json_und_schema.ex >/dev/null
     ./euphorix examples/03_xml_xpath_xsd.ex >/dev/null
     ./euphorix examples/04_sqlite_datenbank.ex >/dev/null
     ./euphorix examples/07_sapui5_webcomponents_demo.ex >/dev/null
     ./euphorix examples/08_cgibash_html_demo.ex >/dev/null
-    log_ok "Moderne Subsysteme erfolgreich validiert."
+    ./euphorix examples/09_excel_und_csv_demo.ex >/dev/null
+    ./euphorix examples/10_auth_jwt_und_session_demo.ex >/dev/null
+    ./euphorix examples/11_vsui_charts_und_upload_demo.ex >/dev/null
+    ./euphorix examples/12_cron_scheduler_demo.ex >/dev/null
+    log_ok "Moderne Subsysteme & Business-Module erfolgreich validiert."
 
-    log_info "4/4: UI- & Nebenläufigkeits-Tests..."
+    log_info "4/4: UI-, Sicherheits- & Nebenläufigkeits-Tests..."
     ./euphorix tests/t_gui.e >/dev/null
     ./euphorix tests/t_ui5.e >/dev/null
     ./euphorix tests/t_vsui.e >/dev/null
+    ./euphorix tests/t_vsui_ext.e >/dev/null
+    ./euphorix tests/t_excel_csv.e >/dev/null
+    ./euphorix tests/t_auth_session.e >/dev/null
+    ./euphorix tests/t_cron_sse.e >/dev/null
     ./euphorix tests/t_java_interop.e >/dev/null
     ./euphorix tests/t_concurrency.ex >/dev/null
     log_ok "Alle Kern- und Integrationstests bestanden!"
