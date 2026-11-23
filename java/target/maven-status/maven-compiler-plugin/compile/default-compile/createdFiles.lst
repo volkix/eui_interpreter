@@ -44,6 +44,7 @@ eu/Value$1.class
 eu/Compiler$1.class
 eu/VM$SqliteInstance.class
 eu/Compiler.class
+eu/Main$1.class
 eu/Value.class
 eu/Bytecode$Program.class
 eu/Bytecode$Instr.class
