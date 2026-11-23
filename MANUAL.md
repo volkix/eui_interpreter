@@ -76,20 +76,42 @@ The runtime environment combines the clean, lightweight syntax of OpenEuphoria w
 11. [Dual-Stack Networking & Sockets (`std/socket.e` & `std/net/dns.e`)](#11-dual-stack-networking--sockets-stdsockete--stdnetdnse)
 12. [Demos, Examples & Execution](#12-demos-examples--execution)
 13. [Modern Concurrency: Virtual Threads, Async/Await & Channels (`std/thread.e`, `std/channel.e`, `std/task.e`)](#13-modern-concurrency-virtual-threads-asyncawait--channels-stdthreade-stdchannele-stdtaske)
+   - 13.1 [Approach 1: Classic Tasks with Virtual Threads (`task:create_thread`)](#131-approach-1-classic-tasks-with-virtual-threads-taskcreate_thread)
+   - 13.2 [Approach 2: Channels / Go-Style Concurrency (`std/channel.e`)](#132-approach-2-channels--go-style-concurrency-stdchannele)
+   - 13.3 [Approach 3: Async / Await Futures (`std/thread.e`)](#133-approach-3-async--await-futures-stdthreade)
 14. [Web Applications with SAP UI5 Web Components 2.29 (`std/ui5.e`)](#14-web-applications-with-sap-ui5-web-components-229-stdui5e)
    - 14.1 [Architecture & Fiori Horizon Design](#141-architecture--fiori-horizon-design)
    - 14.2 [Component Suite & Declaration](#142-component-suite--declaration)
    - 14.3 [Reactive Server Bridge & Live DOM Updates (`/__ui5_action`)](#143-reactive-server-bridge--live-dom-updates-__ui5_action)
    - 14.4 [Complete Application Example (`examples/07_sapui5_webcomponents_demo.ex`)](#144-complete-application-example-examples07_sapui5_webcomponents_demoex)
-15. [Alternative Web-UI with cgibash/html (`std/vsui.e`)](#15-alternative-web-ui-with-cgibashhtml-stdvsuie)
+15. [Alternative Web-UI with cgibash/html (`std/vsui.e`)](#15-alternative-web-ui-mit-cgibashhtml-stdvsuie)
    - 15.1 [Architecture & Features of In-House cgibash/html Library](#151-architecture--features-of-in-house-cgibashhtml-library)
    - 15.2 [Component Suite (High-Density Controls, vsgrid, Forms, Dialogs)](#152-component-suite-high-density-controls-vsgrid-forms-dialogs)
    - 15.3 [Integrated Asset Server (`/lib2/*`, `/css/*`, `/img/*`)](#153-integrated-asset-server-lib2-css-img)
-   - 15.4 [Reactive Event Bridge with `vsevent` & DOM Patches](#154-reactive-event-bridge-with-vsevent--dom-patches)
-   - 15.5 [Complete Application Example (`examples/08_cgibash_html_demo.ex` & `demo/vsui_demo.ex`)](#155-complete-application-example-examples08_cgibash_html_demoex--demovsui_demoex)
-   - 13.1 [Approach 1: Classic Tasks with Virtual Threads (`task:create_thread`)](#131-approach-1-classic-tasks-with-virtual-threads-taskcreate_thread)
-   - 13.2 [Approach 2: Channels / Go-Style Concurrency (`std/channel.e`)](#132-approach-2-channels--go-style-concurrency-stdchannele)
-   - 13.3 [Approach 3: Async / Await Futures (`std/thread.e`)](#133-approach-3-async--await-futures-stdthreade)
+   - 15.4 [Reactive Event Bridge with `vsevent` & DOM Patches](#154-reactive-event-bridge-mit-vsevent--dom-patches)
+   - 15.5 [Complete Application Example (`examples/08_cgibash_html_demo.ex` & `demo/vsui_demo.ex`)](#155-vollständiges-anwendungsbeispiel-examples08_cgibash_html_demoex--demovsui_demoex)
+   - 15.6 [Mobile Responsiveness & Touch Ergonomics (`vs-mobile.css`)](#156-mobile-responsiveness--touch-ergonomie-vs-mobilecss)
+   - 15.7 [Form Validation & Error Tooltips (`vsui:field_error`)](#157-formularvalidierung--fehlertooltips-vsuifield_error)
+   - 15.8 [Drag & Drop File Upload Dropzone (`vsui:upload`)](#158-drag--drop-datei-upload-dropzone-vsuiupload)
+   - 15.9 [Native Responsive SVG Charts (`vsui:chart`)](#159-native-responsive-svg-charts-vsuichart)
+16. [Business Reporting & Spreadsheets (`std/excel.e`, `std/csv.e`, `std/pdf_report.e`)](#16-business-reporting--tabellenkalkulation-stdexcele-stdcsve-stdpdf_reporte)
+   - 16.1 [Native Microsoft Excel Engine (`std/excel.e`)](#161-native-microsoft-excel-engine-stdexcele)
+   - 16.2 [RFC 4180 High-Performance CSV Engine (`std/csv.e`)](#162-rfc-4180-high-performance-csv-engine-stdcsve)
+   - 16.3 [Standard PDF 1.4 Business Report Generator (`std/pdf_report.e`)](#163-standard-pdf-14-business-report-generator-stdpdf_reporte)
+   - 16.4 [Complete Application Example (`examples/09_excel_und_csv_demo.ex`)](#164-vollständiges-anwendungsbeispiel-examples09_excel_und_csv_demoex)
+17. [Enterprise Security & Authentication (`std/auth.e`, `std/session.e`)](#17-enterprise-sicherheit--authentifizierung-stdauthe-stdsessione)
+   - 17.1 [Secure Password Hashing with PBKDF2 & Salt (`auth:hash_password`, `auth:verify_password`)](#171-sicheres-passwort-hashing-mit-pbkdf2--salt-authhash_password-authverify_password)
+   - 17.2 [JSON Web Tokens (JWT HS256) for Microservices & APIs (`auth:create_jwt`, `auth:verify_jwt`)](#172-json-web-tokens-jwt-hs256-für-microservices--apis-authcreate_jwt-authverify_jwt)
+   - 17.3 [Cryptographic Random Tokens & Secrets (`auth:random_token`)](#173-kryptografische-zufallstoken--secrets-authrandom_token)
+   - 17.4 [HTTP Session & Cookie Management (`std/session.e`)](#174-http-session---cookie-management-stdsessione)
+   - 17.5 [Complete Application Example (`examples/10_auth_jwt_und_session_demo.ex`)](#175-vollständiges-anwendungsbeispiel-examples10_auth_jwt_und_session_demoex)
+18. [Background Tasks & Realtime Push (`std/cron.e`, `std/sse.e`)](#18-hintergrundaufgaben--realtime-push-stdcrone-stdssee)
+   - 18.1 [Integrated Task Scheduler with Virtual Threads (`std/cron.e`)](#181-integrierter-task-scheduler-mit-virtual-threads-stdcrone)
+   - 18.2 [Server-Sent Events (SSE) for Browser Push (`std/sse.e`)](#182-server-sent-events-sse-für-live-push-im-browser-stdssee)
+   - 18.3 [Complete Application Example (`examples/12_cron_scheduler_demo.ex`)](#183-vollständiges-anwendungsbeispiel-examples12_cron_scheduler_demoex)
+19. [Developer Experience & Linux Operations (Hot-Reload `--watch`, `tools/make_service.ex`)](#19-developer-experience--linux-betrieb-hot-reload---watch-toolsmake_serviceex)
+   - 19.1 [Hot-Reload File Watcher (`./euphorix --watch` / `-w`)](#191-hot-reload-file-watcher-euphorix---watch---w)
+   - 19.2 [Systemd Service Unit Generator (`tools/make_service.ex`)](#192-systemd-service-unit-generator-toolsmake_serviceex)
 
 ---
 
@@ -2491,3 +2513,297 @@ Via the automatically included stylesheet `/css/vs-mobile.css`, the entire `vsui
 * **DataGrid Mobile Card-View**: On screen widths `<= 768px`, CSS transforms the tabular `vsgrid` into a sleek list of individual record cards, displaying column names via `data-label` attributes.
 * **Horizontal Tab Swiping**: `.vs-tabs` enables smooth momentum horizontal swiping without vertical stacking or breaking tabs.
 * **Splitters & Modals**: `.vs-splitter-container` collapses to vertical layout, while modals adapt as full-screen views with fluid touch scrolling.
+
+### 15.7 Form Validation & Error Tooltips (`vsui:field_error`)
+
+For robust user input validation, `std/vsui.e` provides a direct reactive error-feedback bridge between server and browser. When server-side validation detects an error, the corresponding input field can be highlighted in red with an explanatory tooltip:
+
+* `vsui:field_error(id, error_msg)`: Produces a reactive DOM patch that adds the `.vs-input-error` class to the input and displays an inline error tip `<div class="vs-field-error-tip">` below it.
+* `vsui:field_clear_error(id)`: Removes the error styling and removes the tooltip.
+* `vsui:validate_required(ctx, field_id, field_label)`: Helper function to verify non-empty inputs. Returns `{1, ""}` if valid, or `{0, "The field '...' is required."}` on validation failure.
+
+```euphoria
+function on_submit_form(sequence ctx)
+    sequence email = vsui:val(ctx, "txt_email")
+    if length(email) = 0 then
+        return vsui:updates({
+            vsui:field_error("txt_email", "Please provide a valid e-mail address."),
+            vsui:set_focus("txt_email")
+        })
+    end if
+    
+    return vsui:updates({
+        vsui:field_clear_error("txt_email"),
+        vsui:toast_show("Input validated successfully!", vsui:TOAST_SUCCESS)
+    })
+end function
+```
+
+### 15.8 Drag & Drop File Upload Dropzone (`vsui:upload`)
+
+With `vsui:upload`, developers can embed a ready-to-use file upload dropzone supporting drag-and-drop, native file browser selection, and visual progress tracking:
+
+* `vsui:upload(id, target_url, options)`: Generates the dropzone markup `.vs-upload-dropzone` with an upload icon, instructional text, file preview area, and upload progress bar.
+* **Options:**
+  * `"prompt"`: Custom prompt text (e.g. `"Drag and drop Excel or CSV file here or click to browse"`).
+  * `"accept"`: Accepted file types or extensions (e.g. `".xlsx,.csv,.pdf"`).
+
+```euphoria
+sequence upload_box = vsui:upload("my_dropzone", "/api/upload", {
+    {"prompt", "Drop business reports (XLSX, CSV) here or browse"},
+    {"accept", ".xlsx,.csv"}
+})
+```
+
+### 15.9 Native Responsive SVG Charts (`vsui:chart`)
+
+Euphorix includes a fully self-contained SVG chart engine. Charts are rendered directly on the server as lightweight, responsive vector graphics (`viewBox="0 0 600 300"`) without requiring any third-party JavaScript libraries (no Chart.js, D3, or Canvas needed):
+
+* `vsui:chart(id, chart_type, labels, datasets, options)`: Generates an SVG chart.
+  * `chart_type`: `"bar"` (Bar chart), `"line"` (Line graph), `"pie"` (Pie chart), or `"doughnut"` (Donut chart).
+  * `labels`: Sequence of label strings, e.g. `{"Jan", "Feb", "Mar", "Apr"}`.
+  * `datasets`: Sequence of datasets in format `{ {name, {val1, val2, ...}}, ... }`.
+  * `options`: Additional settings such as `{"title", "Monthly Revenue 2026"}`.
+* `vsui:chart_set_data(id, chart_type, labels, datasets)`: Generates a live DOM patch to update an existing chart via SSE or event bus without reloading the web page.
+
+A complete example demonstrating forms, live charts, and file upload is available in [examples/11_vsui_charts_und_upload_demo.ex](file:///home/volkix/prj/intpret/examples/11_vsui_charts_und_upload_demo.ex).
+
+---
+
+## 16. Business Reporting & Spreadsheets (`std/excel.e`, `std/csv.e`, `std/pdf_report.e`)
+
+Euphorix provides built-in enterprise modules for creating, processing, and exporting tabular data and publication-ready documents completely natively.
+
+### 16.1 Native Microsoft Excel Engine (`std/excel.e`)
+
+The `std/excel.e` module implements a native OpenXML engine (OOXML / `.xlsx`) that writes and reads modern workbook files directly on the Java 25 VM runtime. No external software or third-party dependencies (such as Apache POI) are required. The generated spreadsheets open cleanly in Microsoft Excel (2007–2024 / 365), LibreOffice Calc, Apple Numbers, and Google Sheets.
+
+#### Core API Functions:
+
+* `excel:write_file(sequence filepath, sequence headers, sequence rows, sequence sheet_name = "Sheet1")`: Writes a complete, formatted `.xlsx` workbook.
+  * Automatically distinguishes integers, floating-point numbers, and UTF-8 strings.
+  * Automatically formats header rows with corporate blue styling (`#365F91`), white bold typography, and centered alignment.
+  * Assembles the complete Open Packaging Convention (OPC) package (`[Content_Types].xml`, `_rels/.rels`, `xl/workbook.xml`, `xl/styles.xml`, `xl/worksheets/sheet1.xml`).
+* `excel:read_file(sequence filepath)`: Reads an existing `.xlsx` file, extracts shared strings, and returns `{status, rows}` where each row contains the cell values.
+* `excel:export_table(filepath, headers, rows, sheet_name)`: Convenience function for database queries and reports.
+
+```euphoria
+include std/excel.e as excel
+
+sequence headers = {"CustomerID", "Company", "City", "Revenue"}
+sequence rows = {
+    {1001, "Mueller Engineering", "Munich", 84500.50},
+    {1002, "Schmidt IT Consulting", "Berlin", 42300.00}
+}
+
+excel:write_file("customers.xlsx", headers, rows, "CustomerList")
+```
+
+### 16.2 RFC 4180 High-Performance CSV Engine (`std/csv.e`)
+
+The `std/csv.e` module ensures strict compliance with RFC 4180 while maximizing I/O performance:
+
+* `csv:write_file(sequence filepath, sequence headers, sequence rows, integer delimiter = ',', integer quote_all = 0)`: Writes tabular data to a CSV file.
+* `csv:read_file(sequence filepath, integer delimiter = ',', integer has_header = 1)`: Reads a CSV file and returns `{headers, rows}`.
+* `csv:to_csv(sequence headers, sequence rows, integer delimiter = ',', integer quote_all = 0)`: Converts in-memory sequences into a standard CSV string.
+* `csv:parse(sequence csv_text, integer delimiter = ',')`: Parses CSV content into nested sequences of rows and fields.
+* `csv:format_field(object val, integer delimiter = ',', integer quote_all = 0)`: Formats an individual field value with automatic quote escaping (`"` to `""`).
+
+Supports configurable delimiters (comma `,`, semicolon `;`, tab `\t` for TSV, pipe `|`) and multi-line quoted values.
+
+### 16.3 Standard PDF 1.4 Business Report Generator (`std/pdf_report.e`)
+
+`std/pdf_report.e` generates publication-ready PDF business reports complying with the standard PDF 1.4 specification directly from Euphoria sequences:
+
+* `pdf_report:create_report(filepath, title, metadata, headers, rows, options = {})`:
+  * **Header Banner:** Polished color title bar displaying the document title and generation timestamp.
+  * **Metadata Card:** Key-value summary cards (e.g. Account, Period, Status).
+  * **Data Table:** Dynamic column width calculation, dark headers, and alternating zebra striping.
+  * **Number Formatting:** Right-aligned numerical columns for financial accuracy.
+  * **Pagination:** Automatic footer with page numbering ("Page X of Y").
+* `pdf_report:export_table(filepath, title, headers, rows)`: Quick tabular export without metadata cards.
+
+```euphoria
+include std/pdf_report.e as pdf
+
+sequence meta = {"Report: Month-End", "Department: Finance", "Status: Approved"}
+sequence headers = {"AccNo", "Description", "Debit EUR", "Credit EUR"}
+sequence rows = {
+    {"1200", "Bank Account", 15420.50, 0.00},
+    {"1600", "Liabilities", 0.00, 8930.20}
+}
+
+pdf:create_report("financial_report.pdf", "Finance Status November 2026", meta, headers, rows)
+```
+
+### 16.4 Complete Application Example (`examples/09_excel_und_csv_demo.ex`)
+
+The runnable example [examples/09_excel_und_csv_demo.ex](file:///home/volkix/prj/intpret/examples/09_excel_und_csv_demo.ex) demonstrates synchronized export and re-import of enterprise customer records across CSV, Excel (.xlsx), and PDF formats:
+
+```bash
+./euphorix examples/09_excel_und_csv_demo.ex
+```
+
+---
+
+## 17. Enterprise Security & Authentication (`std/auth.e`, `std/session.e`)
+
+For mission-critical web applications and microservices, Euphorix integrates industry-standard cryptographic tools and session management.
+
+### 17.1 Secure Password Hashing with PBKDF2 & Salt (`auth:hash_password`, `auth:verify_password`)
+
+Password security adheres to the PBKDF2 standard using HMAC-SHA256:
+
+* **Cryptographic Parameters:** 65,536 iterations with a 16-byte (128-bit) cryptographically strong random salt.
+* **Hash Format:** `pbkdf2:sha256:65536:<salt_hex>:<hash_hex>`.
+* **Timing-Attack Resistance:** `auth:verify_password` compares digests in constant time using `MessageDigest.isEqual`, preventing side-channel timing attacks.
+
+```euphoria
+include std/auth.e as auth
+
+-- Hash password (generates fresh salt per call)
+sequence hash = auth:hash_password("SuperSecretPassword!2026")
+
+-- Verify password
+if auth:verify_password("SuperSecretPassword!2026", hash) = 1 then
+    puts(1, "Authentication successful!\n")
+else
+    puts(1, "Invalid credentials!\n")
+end if
+```
+
+### 17.2 JSON Web Tokens (JWT HS256) for Microservices & APIs (`auth:create_jwt`, `auth:verify_jwt`)
+
+For stateless session handling between APIs and clients, Euphorix provides RFC 7519 compliant JSON Web Tokens:
+
+* `auth:create_jwt(sequence payload_json, sequence secret_key, integer expiry_secs = 3600)`:
+  * Encodes header `{"alg":"HS256","typ":"JWT"}`.
+  * Adds expiration timestamp `exp` to the payload.
+  * Signs the token using HMAC-SHA256 with the designated secret key.
+* `auth:verify_jwt(sequence token, sequence secret_key)`:
+  * Validates the cryptographic signature and token expiration.
+  * Returns `{1, payload_json}` upon success, or `{0, "error reason"}` if invalid or expired.
+
+```euphoria
+sequence payload = `{"sub":"user_42","role":"admin"}`
+sequence token = auth:create_jwt(payload, "my-secret-key", 7200)
+
+sequence res = auth:verify_jwt(token, "my-secret-key")
+if res[1] = 1 then
+    printf(1, "Authenticated user payload: %s\n", {res[2]})
+end if
+```
+
+### 17.3 Cryptographic Random Tokens & Secrets (`auth:random_token`)
+
+`auth:random_token(integer byte_count = 32)` generates high-entropy hexadecimal tokens utilizing Java 25 `SecureRandom` (backed by `/dev/urandom` on Linux). Ideal for CSRF protection tokens, one-time login links, and API access keys.
+
+### 17.4 HTTP Session & Cookie Management (`std/session.e`)
+
+The `std/session.e` module manages stateful user sessions with automated TTL (Time-To-Live) cleanup:
+
+* `session:start(sequence cookie_str = "", sequence cookie_name = "EUI_SESSION")`: Extracts existing session ID or initiates a fresh session (`{sid, is_new}`).
+* `session:set(sequence sid, sequence key, object val)` & `session:get(sequence sid, sequence key, object default_val = {})`: Stores and retrieves arbitrary Euphoria values.
+* `session:destroy(sequence sid)`: Terminates active sessions and frees internal memory.
+* `session:cookie_header(sequence sid, integer max_age = 86400, sequence cookie_name = "EUI_SESSION", sequence path = "/", integer http_only = 1)`: Generates standard HTTP `Set-Cookie` response headers enforced with `HttpOnly`, `SameSite=Lax`, and `Path=/`.
+
+### 17.5 Complete Application Example (`examples/10_auth_jwt_und_session_demo.ex`)
+
+The example [examples/10_auth_jwt_und_session_demo.ex](file:///home/volkix/prj/intpret/examples/10_auth_jwt_und_session_demo.ex) exercises all security, JWT, and session management capabilities:
+
+```bash
+./euphorix examples/10_auth_jwt_und_session_demo.ex
+```
+
+---
+
+## 18. Background Tasks & Realtime Push (`std/cron.e`, `std/sse.e`)
+
+Modern enterprise applications frequently require periodic scheduled maintenance or real-time event pushing to client browsers.
+
+### 18.1 Integrated Task Scheduler with Virtual Threads (`std/cron.e`)
+
+With `std/cron.e`, cron-like periodic tasks run entirely inside the Euphorix runtime without requiring system cron configuration or helper daemons. Tasks run asynchronously on Java 25 Virtual Threads, preventing any blocking of web requests or main thread execution:
+
+* `cron:schedule_interval(sequence name, atom interval_seconds, integer routine_id, sequence args = {})`: Executes a Euphoria procedure repeatedly every N seconds.
+* `cron:schedule_daily(sequence name, integer hour, integer minute, integer routine_id, sequence args = {})`: Schedules a task at a specific time daily (e.g. daily database backup at 03:00).
+* `cron:start()` & `cron:stop()`: Starts or stops the scheduler thread cleanly.
+
+```euphoria
+include std/cron.e as cron
+
+procedure cleanup_temp()
+    puts(1, "Temporary files cleaned up.\n")
+end procedure
+
+-- Run every 60 seconds
+integer job_id = cron:schedule_interval("cleanup", 60, routine_id("cleanup_temp"))
+cron:start()
+```
+
+### 18.2 Server-Sent Events (SSE) for Browser Push (`std/sse.e`)
+
+Server-Sent Events provide unidirectional streaming of live telemetry, status notifications, or dashboard events from the server to web clients over standard HTTP:
+
+* `sse:event(sequence event_name, sequence data, sequence id = "")`: Formats a full SSE event adhering to the W3C event-stream specification (`event: ...\ndata: ...\nid: ...\n\n`).
+* `sse:message(sequence data)`: Generates a standard data message (`data: ...\n\n`).
+* `sse:comment(sequence text)`: Generates a comment frame (`: ...\n\n`), perfect for keep-alive heartbeats to prevent proxy timeouts.
+* `sse:headers()`: Returns proper streaming HTTP headers (`Content-Type: text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive`).
+
+### 18.3 Complete Application Example (`examples/12_cron_scheduler_demo.ex`)
+
+The runnable script [examples/12_cron_scheduler_demo.ex](file:///home/volkix/prj/intpret/examples/12_cron_scheduler_demo.ex) showcases background task scheduling paired with real-time SSE event formatting:
+
+```bash
+./euphorix examples/12_cron_scheduler_demo.ex
+```
+
+---
+
+## 19. Developer Experience & Linux Operations (Hot-Reload `--watch`, `tools/make_service.ex`)
+
+Euphorix includes first-class tooling tailored for professional developers and production deployments on Linux.
+
+### 19.1 Hot-Reload File Watcher (`./euphorix --watch` / `-w`)
+
+When creating web services, APIs, or UI tools, restarting the application manually after every file edit slows down development. With `--watch` (or `-w`), Euphorix actively monitors the project directory:
+
+```bash
+# Start your script with live file watching
+./euphorix --watch my_server.ex
+
+# Or short form:
+./euphorix -w my_server.ex
+```
+
+* **Under the Hood:** Powered by the JDK 25 `WatchService`, recursively capturing file change events (`ENTRY_CREATE`, `ENTRY_MODIFY`, `ENTRY_DELETE` on `.ex` and `.e` files).
+* **Smart Debounce:** Rapid consecutive edits are debounced over a 200ms window to prevent race conditions during multi-file saves.
+* **Instant Automatic Reload:** When a change is saved, the running process is gracefully recycled and replaced with the updated source code immediately.
+
+### 19.2 Systemd Service Unit Generator (`tools/make_service.ex`)
+
+For production deployments under Linux, the integrated CLI generator `tools/make_service.ex` produces hardened systemd unit definitions:
+
+```bash
+# Usage:
+./euphorix tools/make_service.ex <script.ex> [service-name] [description] [user]
+
+# Example:
+./euphorix tools/make_service.ex examples/05_rest_api_microservice.ex euphorix-api "Euphorix Microservice" volkix
+```
+
+The tool produces a production-grade systemd service unit (e.g. `euphorix-api.service`) with:
+* **Automatic Recovery (`Restart=always`, `RestartSec=5`)**: Recovers automatically from transient errors or unexpected termination.
+* **Dedicated User & Working Directory**: Runs unprivileged under the specified service account.
+* **Journald Logging**: Standard and error output stream directly into `systemd-journald`.
+* **Resource Optimization**: Configures `LimitNOFILE=65536` for high-throughput connection concurrency.
+
+The generator also outputs the exact deployment commands:
+
+```bash
+sudo cp euphorix-api.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now euphorix-api
+sudo journalctl -u euphorix-api -f
+```
+

@@ -33,32 +33,32 @@
       "source_path": "website/downloads/HANDBUCH.pdf",
       "title": "Deutsches Handbuch (PDF)",
       "badge": "PDF Dokument",
-      "size": "2.4 MB",
-      "description": "Druckfertiges, formatiertes PDF-Dokument mit 15 Kapiteln, vollständiger API-Referenz (861 Routinen), Architektur und Codebeispielen."
+      "size": "2.8 MB",
+      "description": "Druckfertiges, formatiertes PDF-Dokument mit 19 Kapiteln, vollständiger API-Referenz (890+ Routinen), Architektur und Codebeispielen."
     },
     "manual_pdf": {
       "filename": "MANUAL.pdf",
       "source_path": "website/downloads/MANUAL.pdf",
       "title": "English Manual (PDF)",
       "badge": "PDF Document",
-      "size": "2.5 MB",
-      "description": "Formatted, publication-quality PDF manual with complete syntax guide, VM architecture breakdown, and full standard library docs."
+      "size": "2.9 MB",
+      "description": "Formatted, publication-quality PDF manual with complete syntax guide, VM architecture breakdown, and full standard library docs (19 chapters)."
     },
     "handbuch_de": {
       "filename": "HANDBUCH.md",
       "source_path": "HANDBUCH.md",
       "title": "Deutsches Handbuch",
       "badge": "Deutsch",
-      "size": "199 KB",
-      "description": "Vollständige Referenzdokumentation (15 Kapitel, 861 Standard-Bibliotheksfunktionen, Tutorials)."
+      "size": "225 KB",
+      "description": "Vollständige Referenzdokumentation (19 Kapitel, 890+ Standard-Bibliotheksfunktionen, Tutorials)."
     },
     "manual_en": {
       "filename": "MANUAL.md",
       "source_path": "MANUAL.md",
       "title": "English Developer Manual",
       "badge": "English",
-      "size": "188 KB",
-      "description": "Developer manual, syntax guide, architecture details, and standard library documentation."
+      "size": "215 KB",
+      "description": "Developer manual, syntax guide, architecture details, and standard library documentation (19 chapters)."
     }
   },
   "impressum": {
