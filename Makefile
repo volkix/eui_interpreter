@@ -52,7 +52,7 @@ test-java: $(JAVA_BIN)
 	./$(JAVA_BIN) examples/05_rest_api_microservice.ex
 	./$(JAVA_BIN) examples/06_postgresql_datenbank.ex
 	./$(JAVA_BIN) examples/07_sapui5_webcomponents_demo.ex
-	./$(JAVA_BIN) examples/08_cgibash_html_demo.ex
+	./$(JAVA_BIN) examples/08_vsui_cockpit_demo.ex
 	./$(JAVA_BIN) examples/09_excel_und_csv_demo.ex
 	./$(JAVA_BIN) examples/10_auth_jwt_und_session_demo.ex
 	./$(JAVA_BIN) examples/11_vsui_charts_und_upload_demo.ex
@@ -81,7 +81,7 @@ test-standalone: $(STANDALONE_BIN)
 	./$(STANDALONE_BIN) examples/05_rest_api_microservice.ex
 	./$(STANDALONE_BIN) examples/06_postgresql_datenbank.ex
 	./$(STANDALONE_BIN) examples/07_sapui5_webcomponents_demo.ex
-	./$(STANDALONE_BIN) examples/08_cgibash_html_demo.ex
+	./$(STANDALONE_BIN) examples/08_vsui_cockpit_demo.ex
 	./$(STANDALONE_BIN) examples/09_excel_und_csv_demo.ex
 	./$(STANDALONE_BIN) examples/10_auth_jwt_und_session_demo.ex
 	./$(STANDALONE_BIN) examples/11_vsui_charts_und_upload_demo.ex

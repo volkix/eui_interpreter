@@ -1,7 +1,7 @@
 --****
--- == VS-UI / CGIBASH-HTML Unit Tests (tests/t_vsui.e)
+-- == VS-UI Unit Tests (tests/t_vsui.e)
 --
--- Tests for Euphorix VS-UI integration with Volker Schulte's cgibash/html framework.
+-- Tests for Euphorix VS-UI high-density framework (html/).
 -- Validates component builders, CSS integration, reactive patches, and server lifecycle.
 --
 

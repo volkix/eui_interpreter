@@ -1,9 +1,9 @@
 -- =============================================================================
--- Beispiel 08: Enterprise CRM / ERP Cockpit mit cgibash/html (std/vsui.e)
--- Aufruf: ./euphorix examples/08_cgibash_html_demo.ex
+-- Beispiel 08: Enterprise CRM / ERP Cockpit mit VS-UI (std/vsui.e)
+-- Aufruf: ./euphorix examples/08_vsui_cockpit_demo.ex
 --
 -- Demonstriert:
--- 1) Volker Schultes cgibash/html Framework als schlanke, native Alternative zu UI5
+-- 1) Autarkes High-Density VS-UI Framework (Assets in ./html/) als native Alternative zu UI5
 -- 2) High-Density Enterprise Design (globalblauklein.css & vs.css)
 -- 3) Komponentensuite: vsbutton, vsinput, vsnuminput, vsdateinput, vscombo, vscheck,
 --    vspanel, vscollapse, vsgrid (Sticky Header & Live-Suche), vstabs, vsmodal
@@ -19,7 +19,7 @@ include std/search.e as search
 include std/convert.e as conv
 
 puts(1, "=====================================================================\n")
-puts(1, "  Beispiel 08: Enterprise Cockpit mit cgibash/html (std/vsui.e)\n")
+puts(1, "  Beispiel 08: Enterprise Cockpit mit VS-UI (std/vsui.e)\n")
 puts(1, "=====================================================================\n\n")
 
 -- 1. SQLite Datenbank für CRM-Kunden anlegen
@@ -117,7 +117,7 @@ function render_cockpit_page(sequence req)
         "<div style=\"background: var(--vs-blau, #41518b); color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;\">\n",
         "  <div>\n",
         "    <span style=\"font-size: 18px; font-weight: bold;\">Euphorix CRM / ERP Cockpit</span>\n",
-        "    <span style=\"font-size: 12px; margin-left: 12px; opacity: 0.8;\">Powered by cgibash/html & Java 25 VM</span>\n",
+        "    <span style=\"font-size: 12px; margin-left: 12px; opacity: 0.8;\">Powered by VS-UI & Java 25 VM</span>\n",
         "  </div>\n",
         "  <div style=\"font-size: 12px;\">Angemeldet: <b>Volker Schulte</b> (Admin)</div>\n",
         "</div>\n"
@@ -136,8 +136,8 @@ function render_cockpit_page(sequence req)
     })
 
     -- Modal Dialog
-    sequence modal_dlg = vsui:modal("dlg_info", "Euphorix & cgibash/html Architektur", {
-        "<p><b>Framework:</b> Volker Schultes <code>cgibash/html</code></p>\n",
+    sequence modal_dlg = vsui:modal("dlg_info", "Euphorix & VS-UI Architektur", {
+        "<p><b>Framework:</b> High-Density <code>VS-UI</code> Suite</p>\n",
         "<p><b>Frontend:</b> Native ES6 Module (<code>ldom.js</code>, <code>vsevent.js</code>)</p>\n",
         "<p><b>Design:</b> High-Density Enterprise Theme (<code>globalblauklein.css</code>)</p>\n",
         "<p><b>Backend:</b> Euphorix VM (Java 25) mit eingebettetem Multi-Thread HTTP-Server.</p>\n"
@@ -154,7 +154,7 @@ function render_cockpit_page(sequence req)
         modal_dlg
     }
 
-    return vsui:page("Euphorix CRM Cockpit (cgibash/html)", full_content)
+    return vsui:page("Euphorix CRM Cockpit (VS-UI)", full_content)
 end function
 
 -- 3. Event-Handler für Neukunden-Erfassung
@@ -295,4 +295,4 @@ printf(1, "9. SQLite-Verifikation: K-1003 erfolgreich gelöscht!\n")
 -- Server-Worker beenden
 http:server_close(srv, worker_pid)
 
-puts(1, "\n=== Alle cgibash/html (std/vsui.e) Tests und Demos erfolgreich bestanden! ===\n")
+puts(1, "\n=== Alle VS-UI (std/vsui.e) Tests und Demos erfolgreich bestanden! ===\n")

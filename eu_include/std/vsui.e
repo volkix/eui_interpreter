@@ -1,21 +1,22 @@
 --****
--- == VS-UI / CGIBASH-HTML Framework for Euphorix (std/vsui.e)
+-- == VS-UI Autarkes High-Density Web-Framework für Euphorix (std/vsui.e)
 --
--- Alternative, lightweight enterprise Web-UI library based on Volker Schulte's
--- cgibash/html framework (/home/volkix/prj/cgibash/html).
+-- Native, leichtgewichtige Enterprise Web-UI Bibliothek mit Assets direkt
+-- im Projektverzeichnis html/.
 --
 -- Features:
--- * Zero external dependencies: Uses native ES6 modules, `ldom.js`, and `vsevent.js`.
--- * High-density enterprise styling (vs.css & globalblauklein.css) with compact layouts,
---   monospace / clear typography, and custom CSS variables (--vs-blau, --vs-gruen).
--- * Full component suite: vsbutton, vsinput, vsnuminput, vsdateinput, vstimeinput,
+-- * Zero external dependencies: Verwendet native ES6 Module, `ldom.js`, und `vsevent.js`.
+-- * High-density Enterprise Styling (vs.css & globalblauklein.css) mit kompakten Layouts,
+--   präziser Typografie und anpassbaren CSS-Variablen (--vs-blau, --vs-gruen).
+-- * Vollständige Komponenten-Suite: vsbutton, vsinput, vsnuminput, vsdateinput, vstimeinput,
 --   vscheck, vstextarea, vscombo, vslabel, vsgroup, vspanel, vscollapse, vsgrid (DataGrid
---   with sticky headers & live search), vstabs, vsmodal, vstoast, vssplitter, vstreeview.
--- * Built-in static file server directly serving /lib2/*, /css/*, /img/*, /app/* from
---   the local /home/volkix/prj/cgibash/html repository.
--- * Reactive Event-Bridge connecting frontend `vsevent` ("button_click", "changevalue")
---   directly to OpenEuphoria `routine_id` handlers with live DOM patches (`vsui:patch()`,
---   `vsui:set_val()`, `vsui:toast_show()`, `vsui:modal_open()`).
+--   mit Sticky Headers & Live-Suche), vstabs, vsmodal, vstoast, vssplitter, vsdragdrop-upload,
+--   responsive SVG-Charts (Bar, Line, Pie, Doughnut).
+-- * Integrierter statischer Webserver direkt für /lib2/*, /css/*, /img/*, /app/* aus
+--   dem lokalen Projektverzeichnis html/.
+-- * Reaktive Event-Bridge: Verknüpft Frontend-Ereignisse (`vsevent`: "button_click", "changevalue")
+--   direkt mit OpenEuphoria `routine_id`-Handlern über flackerfreie DOM-Patches (`vsui:patch()`,
+--   `vsui:set_val()`, `vsui:toast_show()`, `vsui:modal_open()`, `vsui:field_error()`).
 --
 
 namespace vsui
@@ -402,7 +403,7 @@ window.initVsUpload = function(dropzoneId, uploadUrl) {
 end function
 
 --**
--- Construct a complete HTML5 page styled with the user's `cgibash/html` framework.
+-- Construct a complete HTML5 page styled with the high-density VS-UI framework (`html/`).
 public function page(sequence title, object content, sequence options = {})
     sequence cont_id = get_opt(options, "container_id", "cont")
     sequence extra_head = get_opt(options, "head", "")
@@ -430,7 +431,7 @@ public function page(sequence title, object content, sequence options = {})
 end function
 
 -- =============================================================================
--- 4. Component Builders (Matching cgibash/html & globalblauklein.css)
+-- 4. Component Builders (Matching VS-UI & globalblauklein.css)
 -- =============================================================================
 
 --**
@@ -1226,7 +1227,7 @@ public procedure run(integer app_id)
         return
     end if
     printf(1, "=====================================================================\n")
-    printf(1, "  Euphorix VS-UI (cgibash/html) Server läuft auf http://127.0.0.1:%d/\n",
+    printf(1, "  Euphorix VS-UI Server läuft auf http://127.0.0.1:%d/\n",
            {registered_apps[app_id][APP_PORT]})
     printf(1, "  Static Assets: %s\n", {registered_apps[app_id][APP_STATIC_DIR]})
     printf(1, "  Beenden mit Ctrl+C\n")

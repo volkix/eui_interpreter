@@ -31,7 +31,7 @@ if length(script_args) < 1 then
     puts(1, "Verwendung:\n")
     puts(1, "  ./euphorix tools/make_service.ex <script.ex> [service-name] [description] [user]\n\n")
     puts(1, "Beispiel:\n")
-    puts(1, "  ./euphorix tools/make_service.ex examples/08_cgibash_html_demo.ex euphorix-web \"Euphorix Intranet App\" volkix\n\n")
+    puts(1, "  ./euphorix tools/make_service.ex examples/08_vsui_cockpit_demo.ex euphorix-web \"Euphorix Intranet App\" volkix\n\n")
     abort(1)
 end if
 

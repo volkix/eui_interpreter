@@ -95,8 +95,8 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 14.2 [Komponenten-Übersicht & Web-Standards](#142-komponenten-übersicht--web-standards)
    - 14.3 [Reaktive Euphorix-Bridge & Live DOM-Updates](#143-reaktive-euphorix-bridge--live-dom-updates)
    - 14.4 [Vollständiges Anwendungsbeispiel (`examples/07_sapui5_webcomponents_demo.ex`)](#144-vollständiges-anwendungsbeispiel-examples07_sapui5_webcomponents_demoex)
-15. [Alternative Web-UI mit cgibash/html (`std/vsui.e`)](#15-alternative-web-ui-mit-cgibashhtml-stdvsuie)
-   - 15.1 [Architektur & Vorteile der hauseigenen cgibash/html-Bibliothek](#151-architektur--vorteile-der-hauseigenen-cgibashhtml-bibliothek)
+15. [Autarke High-Density Web-UI Suite (`std/vsui.e`)](#15-autarke-high-density-web-ui-suite-stdvsuie)
+   - 15.1 [Architektur & Vorteile der integrierten VS-UI Suite (`html/`)](#151-architektur--vorteile-der-integrierten-vs-ui-suite-html)
    - 15.2 [Komponenten-Suite (High-Density Controls, vsgrid, Formulare, Dialoge, Upload, Charts)](#152-komponenten-suite-high-density-controls-vsgrid-formulare-dialoge-upload-charts)
    - 15.3 [Integrierter Asset-Server (/lib2/*, /css/*, /img/*)](#153-integrierter-asset-server-lib2-css-img)
    - 15.4 [Reaktive Event-Bridge mit vsevent & DOM-Patches](#154-reaktive-event-bridge-mit-vsevent--dom-patches)
@@ -104,7 +104,7 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 15.6 [Formularvalidierung & Fehlertooltips (`vsui:field_error`)](#156-formularvalidierung--fehlertooltips-vsuifield_error)
    - 15.7 [Drag & Drop Datei-Upload Dropzone (`vsui:upload`)](#157-drag--drop-datei-upload-dropzone-vsuiupload)
    - 15.8 [Native Responsive SVG-Charts (`vsui:chart`)](#158-native-responsive-svg-charts-vsuichart)
-   - 15.9 [Vollständige Anwendungsbeispiele & Demos (`examples/08_cgibash_html_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)](#159-vollständige-anwendungsbeispiele--demos-examples08_cgibash_html_demoex-examples11_vsui_charts_und_upload_demoex)
+   - 15.9 [Vollständige Anwendungsbeispiele & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)](#159-vollständige-anwendungsbeispiele--demos-demovsui_demoex-examples08_vsui_cockpit_demoex-examples11_vsui_charts_und_upload_demoex)
 
 ---
 
@@ -1457,9 +1457,9 @@ Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek
 
 #### `std/vsui.e` (Namespace: `vsui`)
 
-* **Zweck:** Autarkes High-Density ERP Web-Framework aus `/home/volkix/prj/cgibash/html`: Sticky-Header DataGrid, vsevent-Bridge, reaktive DOM-Patches und mobile Responsiveness.
-* **Öffentliche Funktionen & Prozeduren (39):**
-  * `public function page(sequence title, object content, sequence options = {})`: Erstellt das vollständige HTML-Grundgerüst mit cgibash/html CSS, vs-mobile.css und ES6-Modulen.
+* **Zweck:** Autarkes High-Density ERP Web-Framework mit lokalen Assets (`html/`): Sticky-Header DataGrid, vsevent-Bridge, reaktive DOM-Patches, SVG-Charts, Upload und mobile Responsiveness.
+* **Öffentliche Funktionen & Prozeduren (47):**
+  * `public function page(sequence title, object content, sequence options = {})`: Erstellt das vollständige HTML-Grundgerüst mit VS-UI CSS (`globalblauklein.css`, `vs.css`), `vs-mobile.css` und ES6-Modulen.
   * `public function button(sequence id, sequence text, sequence options = {})`: Erstellt einen High-Density Button (`.vs-button`) mit Klick-Event-Weiterleitung.
   * `public function input(sequence id, sequence value = "", sequence options = {})`: Erstellt ein kompaktes Eingabefeld (`.vs-input`).
   * `public function numinput(sequence id, atom value = 0, sequence options = {})`: Erstellt ein numerisches Eingabefeld mit Schrittweite und Min/Max.
@@ -1476,6 +1476,14 @@ Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek
   * `public function tabs(sequence id, sequence tabs_list, sequence options = {})`: Erstellt eine Reiter-Navigation mit dynamischer Inhaltsumschaltung und horizontalem Mobile-Swipe.
   * `public function modal(sequence id, sequence title, object content, object footer_buttons = {}, sequence options = {})`: Erstellt ein modales Dialogfenster mit Abdunklungs-Overlay (mobil Vollbild).
   * `public function splitter(sequence id, object left_content, object right_content, integer split_pct = 50, sequence options = {})`: Erstellt ein 2-Spalten-Layout mit anpassbarer Breitenaufteilung (mobil vertikal gestapelt).
+  * `public function upload(sequence id, sequence target_url = "/api/upload", sequence options = {})`: Erstellt eine moderne Drag & Drop Datei-Upload Dropzone mit Ladebalken.
+  * `public function chart(sequence id, sequence chart_type, sequence labels, sequence datasets, sequence options = {})`: Erzeugt ein responsives Server-gerendertes SVG-Vektordiagramm (`"bar"`, `"line"`, `"pie"`, `"doughnut"`).
+  * `public function chart_set_data(sequence id, sequence chart_type, sequence labels, sequence datasets)`: Erzeugt eine Live-Patch-Anweisung zur dynamischen Diagrammaktualisierung ohne Reload.
+  * `public function field_error(sequence id, sequence error_msg)`: Markiert ein Formularfeld rot und blendet einen Fehlertooltip darunter ein.
+  * `public function field_clear_error(sequence id)`: Entfernt Fehlermarkierung und Tooltip von einem Formularfeld.
+  * `public function validate_required(sequence ctx, sequence field_id, sequence field_label = "")`: Prüft, ob ein Pflichtfeld im Request-Kontext ausgefüllt ist.
+  * `public function validate_email(sequence email_str)`: Prüft ein Feld auf gültiges E-Mail-Format (`user@domain.tld`).
+  * `public function validate_number(sequence num_str, atom min_val = -1e9, atom max_val = 1e9)`: Validiert numerische Formulareingaben innerhalb von Min/Max-Grenzen.
   * `public function patch(sequence id, sequence html)`: Erzeugt eine DOM-Patch-Anweisung für ein Element über seine ID.
   * `public function append_html(sequence id, sequence html)`: Erzeugt eine DOM-Patch-Anweisung zum Anhängen von HTML an ein Target-Element.
   * `public function set_val(sequence id, sequence value)`: Erzeugt eine Patch-Anweisung zum Aktualisieren eines Formularwerts im Frontend (nutzt `setValue()` des Elements).
@@ -1496,7 +1504,7 @@ Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek
   * `public procedure page_route(integer app_id, sequence path, integer handler_rid)`: Verknüpft einen relativen URL-Pfad mit einer Seiten-Generatorfunktion.
   * `public procedure on_event(integer app_id, sequence event_name, integer handler_rid)`: Registriert einen Event-Handler für ein benutzerdefiniertes Client-Ereignis.
   * `public procedure on_click(integer app_id, sequence button_id, integer handler_rid)`: Registriert einen Klick-Handler für einen Button anhand seiner ID.
-  * `public function init_server(integer app_id)`: Initialisiert den cgibash/html-Webserver mit lokalem Asset-Pfad und Titelleiste.
+  * `public function init_server(integer app_id)`: Initialisiert den VS-UI Webserver mit lokalem Asset-Pfad und Titelleiste.
   * `public procedure run(integer app_id)`: Startet den autarken High-Density ERP-Webserver.
 
 #### `std/graphics.e` (Namespace: `graphics`)
@@ -2419,8 +2427,8 @@ Alle Beispielprogramme befinden sich in `demo/` und `examples/` und können dire
 # 5. SAP UI5 Web Components Cockpit
 ./euphorix examples/07_sapui5_webcomponents_demo.ex
 
-# 6. Autarke Web-UI mit cgibash/html & DataGrid
-./euphorix examples/08_cgibash_html_demo.ex
+# 6. Autarke Web-UI Suite (VS-UI) & DataGrid
+./euphorix examples/08_vsui_cockpit_demo.ex
 ./euphorix demo/vsui_demo.ex
 
 # 7. Excel (.xlsx), CSV & PDF Business-Reporting
@@ -2621,17 +2629,17 @@ Das vollständige, lauffähige Anwendungsbeispiel eines Fiori Horizon Enterprise
 
 ---
 
-## 15. Alternative Web-UI mit cgibash/html (`std/vsui.e`)
+## 15. Autarke High-Density Web-UI Suite (`std/vsui.e`)
 
-Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert Euphorix mit `std/vsui.e` Volker Schultes hauseigenes Web-Framework direkt im Projektverzeichnis `html/` (basierend auf `/home/volkix/prj/cgibash/html`).
+Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert Euphorix mit `std/vsui.e` ein Enterprise-taugliches Web-Framework mit lokalen Assets direkt im Projektverzeichnis `html/`.
 
-### 15.1 Architektur & Vorteile der hauseigenen cgibash/html-Bibliothek
+### 15.1 Architektur & Vorteile der integrierten VS-UI Suite (`html/`)
 
 * **100% Autark & Offline-fähig**: Keine externen CDNs, kein Internetzugriff erforderlich. Alle JavaScript-Module (`ldom.js`, `vsevent.js`, `vsgrid.js`) und Stylesheets (`globalblauklein.css`, `vs.css`, `vs-mobile.css`) sind direkt im Projekt unter `html/` gebündelt und versioniert.
 * **High-Density Enterprise Design**: Die Farbpalette (`--vs-blau: #41518b`, `--vs-gruen: #3e8548`) und kompakte Zeilenhöhen sind speziell auf datenintensive kaufmännische Anwendungen (ERP, CRM, Lager, Disposition) optimiert.
 * **Reine ES6-Module**: Basiert auf modernem nativem JavaScript und Hyperscript (`ldom.js` mit `e()`, `_()`, `n()`) sowie dem flexiblen Event-Bus `vsevent.js`.
 
-### 15.2 Komponenten-Suite (High-Density Controls, vsgrid, Formulare, Dialoge)
+### 15.2 Komponenten-Suite (High-Density Controls, vsgrid, Formulare, Dialoge, Upload, Charts)
 
 `std/vsui.e` stellt fertige Euphorix-Konstruktoren bereit:
 
@@ -2653,10 +2661,12 @@ Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert E
 | **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Reiter-Navigation mit dynamischer Umschaltung und horizontalem Mobile-Swipe |
 | **Modal** | `vsui:modal(id, title, content, footer, opts)` | Zentrierter Popup-Dialog mit Abdunklungs-Overlay (mobil Vollbild) |
 | **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-Spalten-Container mit anpassbarer Breitenaufteilung (mobil vertikal) |
+| **Datei-Upload** | `vsui:upload(id, target_url, opts)` | Drag & Drop Dropzone mit Fortschrittsbalken und Dateiauswahldialog |
+| **SVG-Charts** | `vsui:chart(id, type, lbls, data, opts)` | Server-gerenderte responsive Vektordiagramme (Bar, Line, Pie, Doughnut) |
 
 ### 15.3 Integrierter Asset-Server (`/lib2/*`, `/css/*`, `/img/*`)
 
-Der integrierte Server in `std/vsui.e` bedient Anfragen für statische Dateien automatisch direkt aus dem lokalen `html/`-Verzeichnis (bzw. `/home/volkix/prj/intpret/html` mit automatischem Fallback auf `/home/volkix/prj/cgibash/html`):
+Der integrierte Server in `std/vsui.e` bedient Anfragen für statische Dateien automatisch direkt aus dem lokalen `html/`-Verzeichnis des Projekts:
 * `/css/globalblauklein.css`, `/css/vs.css` und `/css/vs-mobile.css`
 * `/lib2/ldom.js`, `/lib2/vsevent.js`, `/lib2/ui.js`, `/lib2/vsgrid.js`
 * `/img/*` (Logos, Icons) und `/app/*`
@@ -2767,21 +2777,30 @@ Euphorix enthält eine vollständig autarke SVG-Diagramm-Engine. Charts werden d
   * `options`: Zusätzliche Optionen wie `{"title", "Monatsumsatz 2026"}`.
 * `vsui:chart_set_data(id, chart_type, labels, datasets)`: Erzeugt einen Live-Patch, um ein bestehendes Diagramm per SSE oder Event-Bridge ohne Seiten-Reload in Echtzeit zu aktualisieren.
 
-### 15.9 Vollständige Anwendungsbeispiele & Demos (`examples/08_cgibash_html_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)
+### 15.9 Vollständige Anwendungsbeispiele & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)
 
-* **Automatisierter Test & Demo**: [examples/08_cgibash_html_demo.ex](file:///home/volkix/prj/intpret/examples/08_cgibash_html_demo.ex) führt einen kompletten End-to-End-Test inklusive HTTP-GET auf statische Assets, DataGrid-Generierung, Event-Patching und SQLite-Prüfung durch:
-  ```bash
-  ./euphorix examples/08_cgibash_html_demo.ex
-  ```
-* **Formulare, Charts & Upload**: [examples/11_vsui_charts_und_upload_demo.ex](file:///home/volkix/prj/intpret/examples/11_vsui_charts_und_upload_demo.ex) demonstriert interaktive SVG-Charts, Drag & Drop Datei-Upload und Formularvalidierung mit reaktiven Fehlertooltips:
-  ```bash
-  ./euphorix examples/11_vsui_charts_und_upload_demo.ex
-  ```
-* **Interaktiver Live-Server**: [demo/vsui_demo.ex](file:///home/volkix/prj/intpret/demo/vsui_demo.ex) stellt ein interaktives CRM/ERP-Cockpit bereit:
-  ```bash
-  ./euphorix demo/vsui_demo.ex
-  # Im Browser öffnen: http://127.0.0.1:8089/
-  ```
+Euphorix bietet drei abgestimmte Demonstrations- und Testprogramme, die 100% aller Komponenten und Funktionen aus Kapitel 15 abdecken:
+
+1. **Interaktives All-in-One Flaggschiff-Cockpit**: [demo/vsui_demo.ex](file:///home/volkix/prj/intpret/demo/vsui_demo.ex)
+   * **100% Komponentenabdeckung**: Führt sämtliche Komponenten aus Kapitel 15 in einer interaktiven Web-Anwendung auf Port 8089 zusammen (DataGrid mit Sticky-Header & Suche, Splitter-Details, Tab-Navigation, Formularfelder für Text, Datum, Uhrzeit, Zahlen und Notizen, serverseitige Pflichtfeld- und E-Mail-Validierung mit Fehlertooltips, interaktive responsive SVG-Diagramme mit Live-Update per Button sowie Drag & Drop Datei-Upload).
+   * **Starten & im Browser öffnen**:
+     ```bash
+     ./euphorix demo/vsui_demo.ex
+     # Im Browser öffnen: http://127.0.0.1:8089/
+     ```
+
+2. **Automatisierter End-to-End Test & Headless-Prüfung**: [examples/08_vsui_cockpit_demo.ex](file:///home/volkix/prj/intpret/examples/08_vsui_cockpit_demo.ex)
+   * Führt einen vollautomatischen Integrations- und Funktionstest durch: Startet den Hintergrundserver, lädt statische CSS- und JS-Assets per HTTP GET herunter, validiert die HTML- und DataGrid-Generierung, sendet synthetische Klick-Events an `/__vs_event`, prüft reaktive DOM-Patches und verifiziert Datenbankoperationen in SQLite:
+     ```bash
+     ./euphorix examples/08_vsui_cockpit_demo.ex
+     ```
+
+3. **Fokussiertes Dashboard für SVG-Charts & Upload**: [examples/11_vsui_charts_und_upload_demo.ex](file:///home/volkix/prj/intpret/examples/11_vsui_charts_und_upload_demo.ex)
+   * Kompaktes Codebeispiel für den gezielten Einsatz von server-gerenderten SVG-Balken- und Doughnut-Diagrammen, Drag & Drop Upload und E-Mail-Validierung:
+     ```bash
+     ./euphorix examples/11_vsui_charts_und_upload_demo.ex --run
+     # Im Browser öffnen: http://127.0.0.1:8092/
+     ```
 
 
 

@@ -13,7 +13,7 @@ puts(1, "  KAPITEL 10: Web- & Desktop-Frameworks (VS-UI, SAP UI5, Swing)\n")
 puts(1, "=====================================================================\n\n")
 
 -- -----------------------------------------------------------------------------
--- 1. std/vsui.e - High-Density Web UI (aus cgibash/html)
+-- 1. std/vsui.e - High-Density Web-UI Suite (html/)
 -- Autarkes, reaktives Webframework für ERP-Cockpits, Formulare & DataGrids.
 -- -----------------------------------------------------------------------------
 puts(1, "--- 1. std/vsui.e ---\n")

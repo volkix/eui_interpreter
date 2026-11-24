@@ -96,8 +96,8 @@ The runtime environment combines the clean, lightweight syntax of OpenEuphoria w
    - 14.2 [Component Suite & Declaration](#142-component-suite--declaration)
    - 14.3 [Reactive Server Bridge & Live DOM Updates (`/__ui5_action`)](#143-reactive-server-bridge--live-dom-updates-__ui5_action)
    - 14.4 [Complete Application Example (`examples/07_sapui5_webcomponents_demo.ex`)](#144-complete-application-example-examples07_sapui5_webcomponents_demoex)
-15. [Alternative Web-UI with cgibash/html (`std/vsui.e`)](#15-alternative-web-ui-mit-cgibashhtml-stdvsuie)
-   - 15.1 [Architecture & Features of In-House cgibash/html Library](#151-architecture--features-of-in-house-cgibashhtml-library)
+15. [Self-Contained High-Density Web-UI Suite (`std/vsui.e`)](#15-self-contained-high-density-web-ui-suite-stdvsuie)
+   - 15.1 [Architecture & Features of Integrated VS-UI Suite (`html/`)](#151-architecture--features-of-integrated-vs-ui-suite-html)
    - 15.2 [Component Suite (High-Density Controls, vsgrid, Forms, Dialogs, Upload, Charts)](#152-component-suite-high-density-controls-vsgrid-forms-dialogs-upload-charts)
    - 15.3 [Integrated Asset Server (`/lib2/*`, `/css/*`, `/img/*`)](#153-integrated-asset-server-lib2-css-img)
    - 15.4 [Reactive Event Bridge with `vsevent` & DOM Patches](#154-reactive-event-bridge-mit-vsevent--dom-patches)
@@ -105,7 +105,7 @@ The runtime environment combines the clean, lightweight syntax of OpenEuphoria w
    - 15.6 [Form Validation & Error Tooltips (`vsui:field_error`)](#156-form-validation--error-tooltips-vsuifield_error)
    - 15.7 [Drag & Drop File Upload Dropzone (`vsui:upload`)](#157-drag--drop-file-upload-dropzone-vsuiupload)
    - 15.8 [Native Responsive SVG Charts (`vsui:chart`)](#158-native-responsive-svg-charts-vsuichart)
-   - 15.9 [Complete Application Examples & Demos (`examples/08_cgibash_html_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)](#159-complete-application-examples--demos-examples08_cgibash_html_demoex-examples11_vsui_charts_und_upload_demoex)
+   - 15.9 [Complete Application Examples & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)](#159-complete-application-examples--demos-demovsui_demoex-examples08_vsui_cockpit_demoex-examples11_vsui_charts_und_upload_demoex)
 
 ---
 
@@ -1453,9 +1453,9 @@ This section documents every single include file in the Euphorix standard librar
 
 #### `std/vsui.e` (Namespace: `vsui`)
 
-* **Purpose:** Self-contained high-density ERP web framework powered by `/home/volkix/prj/cgibash/html`: sticky-header DataGrid, vsevent bridge, reactive DOM patches, and mobile responsiveness.
-* **Public Functions & Procedures (39):**
-  * `public function page(sequence title, object content, sequence options = {})`: Generates high-density HTML container with cgibash/html CSS, vs-mobile.css, and ES6 modules.
+* **Purpose:** Self-contained high-density ERP web framework with local assets (`html/`): sticky-header DataGrid, vsevent bridge, reactive DOM patches, SVG charts, upload, and mobile responsiveness.
+* **Public Functions & Procedures (47):**
+  * `public function page(sequence title, object content, sequence options = {})`: Generates high-density HTML container with VS-UI CSS (`globalblauklein.css`, `vs.css`), `vs-mobile.css`, and ES6 modules.
   * `public function button(sequence id, sequence text, sequence options = {})`: Creates a high-density button (`.vs-button`) with event forwarding.
   * `public function input(sequence id, sequence value = "", sequence options = {})`: Creates a compact text input (`.vs-input`).
   * `public function numinput(sequence id, atom value = 0, sequence options = {})`: Creates a numeric input field (`type="number"`).
@@ -1472,6 +1472,14 @@ This section documents every single include file in the Euphorix standard librar
   * `public function tabs(sequence id, sequence tabs_list, sequence options = {})`: Creates tab navigation with dynamic panel switching and horizontal mobile swipe.
   * `public function modal(sequence id, sequence title, object content, object footer_buttons = {}, sequence options = {})`: Creates a modal dialog popup with dark backdrop (fullscreen on mobile).
   * `public function splitter(sequence id, object left_content, object right_content, integer split_pct = 50, sequence options = {})`: Creates a 2-column layout container with adjustable ratio (collapses to column on mobile).
+  * `public function upload(sequence id, sequence target_url = "/api/upload", sequence options = {})`: Creates a modern drag-and-drop file upload dropzone with progress bar.
+  * `public function chart(sequence id, sequence chart_type, sequence labels, sequence datasets, sequence options = {})`: Generates a responsive server-rendered vector SVG chart (`"bar"`, `"line"`, `"pie"`, `"doughnut"`).
+  * `public function chart_set_data(sequence id, sequence chart_type, sequence labels, sequence datasets)`: Generates a live DOM patch instruction updating chart datasets smoothly without reload.
+  * `public function field_error(sequence id, sequence error_msg)`: Highlights an input field in red and displays an explanatory error tooltip below it.
+  * `public function field_clear_error(sequence id)`: Clears error styling and error tooltip from a form field.
+  * `public function validate_required(sequence ctx, sequence field_id, sequence field_label = "")`: Verifies whether a mandatory input is filled in request context.
+  * `public function validate_email(sequence email_str)`: Validates email format (`user@domain.tld`).
+  * `public function validate_number(sequence num_str, atom min_val = -1e9, atom max_val = 1e9)`: Validates numeric input within min/max bounds.
   * `public function patch(sequence id, sequence html)`: Creates a DOM patch instruction replacing content of element.
   * `public function append_html(sequence id, sequence html)`: Creates a DOM patch instruction appending HTML to target element.
   * `public function set_val(sequence id, sequence value)`: Creates a patch instruction updating an input field value on the client (invoking `.setValue()`).
@@ -1492,7 +1500,7 @@ This section documents every single include file in the Euphorix standard librar
   * `public procedure page_route(integer app_id, sequence path, integer handler_rid)`: Maps an HTTP route path to a page generator function.
   * `public procedure on_event(integer app_id, sequence event_name, integer handler_rid)`: Binds a custom event name to an event handler routine.
   * `public procedure on_click(integer app_id, sequence button_id, integer handler_rid)`: Binds a button click action to an event handler routine.
-  * `public function init_server(integer app_id)`: Initializes the cgibash/html server with asset root directory.
+  * `public function init_server(integer app_id)`: Initializes the VS-UI server with asset root directory.
   * `public procedure run(integer app_id)`: Starts the high-density ERP web application server.
 
 #### `std/graphics.e` (Namespace: `graphics`)
@@ -2391,8 +2399,8 @@ Example applications reside in `demo/` and `examples/`:
 # 5. SAP UI5 Web Components Cockpit
 ./euphorix examples/07_sapui5_webcomponents_demo.ex
 
-# 6. Autonomous Web-UI with cgibash/html & DataGrid
-./euphorix examples/08_cgibash_html_demo.ex
+# 6. Self-Contained Web-UI Suite (VS-UI) & DataGrid
+./euphorix examples/08_vsui_cockpit_demo.ex
 ./euphorix demo/vsui_demo.ex
 
 # 7. Excel (.xlsx), CSV & PDF Business Reporting
@@ -2597,17 +2605,17 @@ A complete runnable example of an Enterprise Cockpit with SQLite integration is 
 
 ---
 
-## 15. Alternative Web-UI with cgibash/html (`std/vsui.e`)
+## 15. Self-Contained High-Density Web-UI Suite (`std/vsui.e`)
 
-As a lightweight, self-contained alternative to SAP UI5 Web Components, Euphorix integrates Volker Schulte's in-house web framework directly inside the project repository under `html/` (based on `/home/volkix/prj/cgibash/html`).
+As a lightweight, self-contained alternative to SAP UI5 Web Components, Euphorix integrates an enterprise-ready web framework directly inside the project repository under `html/`.
 
-### 15.1 Architecture & Features of In-House cgibash/html Library
+### 15.1 Architecture & Features of Integrated VS-UI Suite (`html/`)
 
 * **100% Self-Contained & Offline-Ready**: No external CDNs, no internet access required. All ES6 modules (`ldom.js`, `vsevent.js`, `vsgrid.js`) and stylesheets (`globalblauklein.css`, `vs.css`, `vs-mobile.css`) are bundled and version-controlled right inside `html/`.
 * **High-Density Enterprise Design**: Blue color palette (`--vs-blau: #41518b`, `--vs-gruen: #3e8548`) and compact line heights optimized for data-dense business applications (ERP, CRM, warehousing, billing).
 * **Pure ES6 Modules**: Built upon native browser JavaScript and Hyperscript (`ldom.js` with `e()`, `_()`, `n()`) and event bus `vsevent.js`.
 
-### 15.2 Component Suite (High-Density Controls, vsgrid, Forms, Dialogs)
+### 15.2 Component Suite (High-Density Controls, vsgrid, Forms, Dialogs, Upload, Charts)
 
 `std/vsui.e` provides ready-to-use constructors:
 
@@ -2629,10 +2637,12 @@ As a lightweight, self-contained alternative to SAP UI5 Web Components, Euphorix
 | **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Tab navigation with dynamic switching and horizontal mobile swipe |
 | **Modal** | `vsui:modal(id, title, content, footer, opts)` | Centered popup dialog with backdrop (fullscreen on mobile) |
 | **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-column container with customizable split ratio (vertical stack on mobile) |
+| **File Upload** | `vsui:upload(id, target_url, opts)` | Drag & Drop dropzone with progress tracking and file selection |
+| **SVG Charts** | `vsui:chart(id, type, lbls, data, opts)` | Server-rendered responsive vector graphics (`bar`, `line`, `pie`, `doughnut`) |
 
 ### 15.3 Integrated Asset Server (`/lib2/*`, `/css/*`, `/img/*`)
 
-The integrated server in `std/vsui.e` automatically serves static assets directly from the repository's `html/` directory (or `/home/volkix/prj/intpret/html` with fallback to `/home/volkix/prj/cgibash/html`):
+The integrated server in `std/vsui.e` automatically serves static assets directly from the repository's `html/` directory:
 * `/css/globalblauklein.css`, `/css/vs.css`, and `/css/vs-mobile.css`
 * `/lib2/ldom.js`, `/lib2/vsevent.js`, `/lib2/ui.js`, `/lib2/vsgrid.js`
 * `/img/*` (logos, icons) and `/app/*`
@@ -2737,19 +2747,28 @@ Euphorix includes a fully self-contained SVG chart engine. Charts are rendered d
 * `vsui:chart(id, chart_type, labels, datasets, options)`: Generates an SVG chart (`"bar"`, `"line"`, `"pie"`, `"doughnut"`).
 * `vsui:chart_set_data(id, chart_type, labels, datasets)`: Generates a live DOM patch to update an existing chart via SSE or event bus without reloading the web page.
 
-### 15.9 Complete Application Examples & Demos (`examples/08_cgibash_html_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)
+### 15.9 Complete Application Examples & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)
 
-* **Automated Test & Demo**: [examples/08_cgibash_html_demo.ex](file:///home/volkix/prj/intpret/examples/08_cgibash_html_demo.ex) executes an end-to-end test verifying HTTP GET on static assets, grid rendering, event patching, and SQLite storage:
-  ```bash
-  ./euphorix examples/08_cgibash_html_demo.ex
-  ```
-* **Forms, Charts & Upload**: [examples/11_vsui_charts_und_upload_demo.ex](file:///home/volkix/prj/intpret/examples/11_vsui_charts_und_upload_demo.ex) demonstrates interactive SVG charts, drag & drop file upload, and form validation with reactive error tooltips:
-  ```bash
-  ./euphorix examples/11_vsui_charts_und_upload_demo.ex
-  ```
-* **Interactive Live Server**: [demo/vsui_demo.ex](file:///home/volkix/prj/intpret/demo/vsui_demo.ex) runs an interactive CRM/ERP cockpit:
-  ```bash
-  ./euphorix demo/vsui_demo.ex
-  # Open in browser: http://127.0.0.1:8089/
-  ```
+Euphorix provides three tailored demo and test programs covering 100% of the components and features in Chapter 15:
+
+1. **Interactive All-in-One Flagship Cockpit**: [demo/vsui_demo.ex](file:///home/volkix/prj/intpret/demo/vsui_demo.ex)
+   * **100% Component Coverage**: Brings together all Chapter 15 components into a single interactive enterprise application on port 8089 (DataGrid with sticky header & search, splitter layout, tab navigation, input fields for text, dates, times, numbers, and textareas, server-side form validation with error tooltips, reactive live SVG charts updated via button, and drag & drop file upload).
+   * **Launch and open in browser**:
+     ```bash
+     ./euphorix demo/vsui_demo.ex
+     # Open in browser: http://127.0.0.1:8089/
+     ```
+
+2. **Automated End-to-End Test & Headless Verification**: [examples/08_vsui_cockpit_demo.ex](file:///home/volkix/prj/intpret/examples/08_vsui_cockpit_demo.ex)
+   * Executes a headless test verifying HTTP GET on static CSS/JS assets, grid rendering, synthetic event dispatching to `/__vs_event`, reactive DOM patches, and SQLite database integrity:
+     ```bash
+     ./euphorix examples/08_vsui_cockpit_demo.ex
+     ```
+
+3. **Focused SVG Charts & Upload Dashboard**: [examples/11_vsui_charts_und_upload_demo.ex](file:///home/volkix/prj/intpret/examples/11_vsui_charts_und_upload_demo.ex)
+   * Concise code example specifically showcasing server-rendered SVG bar and doughnut charts, drag & drop file upload, and email validation:
+     ```bash
+     ./euphorix examples/11_vsui_charts_und_upload_demo.ex --run
+     # Open in browser: http://127.0.0.1:8092/
+     ```
 

@@ -702,7 +702,7 @@ puts(1, "Kooperatives Coroutinen-Multitasking einsatzbereit.\\n")""",
         "id": "kapitel-10",
         "title": "10. Web- & Desktop-Frontends",
         "cat": "gui",
-        "desc": "Frontend-Entwicklung mit Euphorix: Das autarke High-Density Web-Framework VS-UI (aus cgibash/html) mit flackerfreien Patches und Mobile-Card View, SAP UI5 Web Components und Swing Desktop-GUI.",
+        "desc": "Frontend-Entwicklung mit Euphorix: Das autarke High-Density Web-Framework VS-UI (html/) mit flackerfreien Patches und Mobile-Card View, SAP UI5 Web Components und Swing Desktop-GUI.",
         "file": "tutorial/10_web_und_gui.ex",
         "modules": [
             {

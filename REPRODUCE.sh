@@ -165,7 +165,7 @@ run_tests() {
     ./euphorix examples/03_xml_xpath_xsd.ex >/dev/null
     ./euphorix examples/04_sqlite_datenbank.ex >/dev/null
     ./euphorix examples/07_sapui5_webcomponents_demo.ex >/dev/null
-    ./euphorix examples/08_cgibash_html_demo.ex >/dev/null
+    ./euphorix examples/08_vsui_cockpit_demo.ex >/dev/null
     ./euphorix examples/09_excel_und_csv_demo.ex >/dev/null
     ./euphorix examples/10_auth_jwt_und_session_demo.ex >/dev/null
     ./euphorix examples/11_vsui_charts_und_upload_demo.ex >/dev/null

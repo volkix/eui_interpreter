@@ -32,7 +32,7 @@ Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`)
   * 65,536 virtual registers with Copy-on-Write (CoW) memory semantics.
   * Tagged values with 48-bit fast integers and 64-bit IEEE-754 floating point numbers.
 * **High-Density Web-UI Framework (`std/vsui.e`)**:
-  * Integrated, self-contained business web framework derived from Volker Schulte's `cgibash/html`.
+  * Integrated, self-contained business web framework with local assets (`./html/`).
   * Sticky table headers, responsive mobile card view, interactive modals, tabs, splitters, and flicker-free reactive JSON patches (`vsui:updates()`) without full page reloads.
   * Enterprise alternative: SAP UI5 Web Components 2.29 (`std/ui5.e`).
 * **Java 25 Loom Concurrency**:
@@ -196,10 +196,10 @@ make website
 ├── euphorix.jar (eui.jar)       # Executable Fat-JAR (19 MB)
 ├── euphorix-standalone          # Self-extracting single-binary with minimal JRE (53 MB)
 │
-├── html/                        # Integrated static UI assets (CSS, JS, icons from cgibash/html)
+├── html/                        # Integrated static UI assets (CSS, JS, icons)
 ├── eu_include/                  # Standard library include files (OpenEuphoria compatible)
 │   ├── std/
-│   │   ├── vsui.e               # High-Density Web-UI framework (cgibash/html)
+│   │   ├── vsui.e               # High-Density Web-UI framework (VS-UI)
 │   │   ├── ui5.e                # SAP UI5 Web Components 2.29
 │   │   ├── thread.e             # Java 25 Loom Virtual Threads & Async/Await
 │   │   ├── channel.e            # Communicating Sequential Processes (CSP Channels)
