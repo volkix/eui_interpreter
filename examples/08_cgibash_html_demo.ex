@@ -213,17 +213,17 @@ function on_show_info(sequence ctx)
 end function
 
 -- 4. Anwendungs-Setup
-integer app = vsui:app("Euphorix CRM Cockpit", 8089)
+integer app = vsui:app("Euphorix CRM Cockpit", 8090)
 vsui:page_route(app, "/", routine_id("render_cockpit_page"))
 vsui:on_event(app, "add_kunde", routine_id("on_add_kunde"))
 vsui:on_event(app, "delete_kunde", routine_id("on_delete_kunde"))
 vsui:on_event(app, "show_info", routine_id("on_show_info"))
 
 -- 5. Automatisierter End-to-End Simulationstest
-printf(1, "1. Initialisiere VS-UI Server auf Port 8089...\n")
+printf(1, "1. Initialisiere VS-UI Server auf Port 8090...\n")
 integer srv = vsui:init_server(app)
 if srv <= 0 then
-    printf(2, "FEHLER: Server konnte auf Port 8089 nicht gestartet werden: %d\n", {srv})
+    printf(2, "FEHLER: Server konnte auf Port 8090 nicht gestartet werden: %d\n", {srv})
     abort(1)
 end if
 
@@ -232,7 +232,7 @@ integer worker_pid = http:server_background(srv, 10)
 printf(1, "2. Hintergrund-Server läuft (Worker-PID: %d)\n", {worker_pid})
 
 -- Test 1: GET / (HTML Cockpit-Seite)
-sequence get_res = http:get("http://127.0.0.1:8089/")
+sequence get_res = http:get("http://127.0.0.1:8090/")
 printf(1, "3. GET / -> Status %d (HTML-Länge: %d Bytes)\n", {get_res[http:STATUS], length(get_res[http:BODY])})
 if get_res[http:STATUS] != 200 or match("Euphorix CRM / ERP Cockpit", get_res[http:BODY]) = 0 then
     puts(2, "FEHLER: Cockpit-HTML wurde nicht korrekt ausgeliefert!\n")
@@ -240,7 +240,7 @@ if get_res[http:STATUS] != 200 or match("Euphorix CRM / ERP Cockpit", get_res[ht
 end if
 
 -- Test 2: GET /css/globalblauklein.css (Statischer CSS-Dateiserver)
-sequence css_res = http:get("http://127.0.0.1:8089/css/globalblauklein.css")
+sequence css_res = http:get("http://127.0.0.1:8090/css/globalblauklein.css")
 printf(1, "4. GET /css/globalblauklein.css -> Status %d (CSS-Länge: %d Bytes)\n",
        {css_res[http:STATUS], length(css_res[http:BODY])})
 if css_res[http:STATUS] != 200 or match("--vs-blau", css_res[http:BODY]) = 0 then
@@ -249,7 +249,7 @@ if css_res[http:STATUS] != 200 or match("--vs-blau", css_res[http:BODY]) = 0 the
 end if
 
 -- Test 3: GET /lib2/ldom.js (Statischer ES6-Modulserver)
-sequence js_res = http:get("http://127.0.0.1:8089/lib2/ldom.js")
+sequence js_res = http:get("http://127.0.0.1:8090/lib2/ldom.js")
 printf(1, "5. GET /lib2/ldom.js -> Status %d (JS-Länge: %d Bytes)\n",
        {js_res[http:STATUS], length(js_res[http:BODY])})
 if js_res[http:STATUS] != 200 or match("function _", js_res[http:BODY]) = 0 then
@@ -259,7 +259,7 @@ end if
 
 -- Test 4: POST /__vs_event für Neukunden 'K-1005'
 sequence post_payload = `{"event":"add_kunde","data":{"txt_kdnr":"K-1005","txt_name":"Muster AG","txt_ort":"Düsseldorf","num_umsatz":"75000","cmb_status":"A-Kunde","chk_aktiv":"1"}}`
-sequence post_res = http:post_json("http://127.0.0.1:8089/__vs_event", post_payload)
+sequence post_res = http:post_json("http://127.0.0.1:8090/__vs_event", post_payload)
 printf(1, "6. POST /__vs_event (add_kunde) -> Status %d (JSON: %s)\n",
        {post_res[http:STATUS], post_res[http:BODY][1..min({60, length(post_res[http:BODY])})]})
 if post_res[http:STATUS] != 200 or match("\"type\":\"patch\"", post_res[http:BODY]) = 0 then
@@ -278,7 +278,7 @@ printf(1, "7. SQLite-Verifikation: '%s' in Düsseldorf mit %.2f € erfolgreich 
 
 -- Test 6: POST /__vs_event für Kunde löschen 'K-1003'
 sequence del_payload = `{"event":"button_click","data":{"action":"delete_kunde","kdnr":"K-1003"}}`
-sequence del_res = http:post_json("http://127.0.0.1:8089/__vs_event", del_payload)
+sequence del_res = http:post_json("http://127.0.0.1:8090/__vs_event", del_payload)
 printf(1, "8. POST /__vs_event (delete_kunde) -> Status %d\n", {del_res[http:STATUS]})
 if del_res[http:STATUS] != 200 then
     puts(2, "FEHLER: Löschen via Event-Bridge fehlgeschlagen!\n")

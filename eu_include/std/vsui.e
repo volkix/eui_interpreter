@@ -884,8 +884,8 @@ function internal_route_handler(sequence req)
         sequence app_inst = registered_apps[a]
         sequence static_dir = app_inst[APP_STATIC_DIR]
 
-        -- 1. Check custom page routes (GET)
-        if equal(req_method, "GET") then
+        -- 1. Check custom page routes (GET & HEAD)
+        if equal(req_method, "GET") or equal(req_method, "HEAD") then
             sequence pages = app_inst[APP_PAGES]
             for p = 1 to length(pages) do
                 if equal(pages[p][1], req_path) then
