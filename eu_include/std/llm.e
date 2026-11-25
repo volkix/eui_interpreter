@@ -173,7 +173,63 @@ end function
 
 -- Synthesize a grounded RAG response in mock mode
 function mock_synthesize(sequence prompt)
-    -- Check if prompt contains injected RAG context
+    -- Check if prompt contains multi-source agent context (Live-Datenbank + RAG Richtlinien)
+    integer f1_pos = search:match("=== FAKTEN 1: LIVE-DATENBANK", prompt)
+    integer f2_pos = search:match("=== FAKTEN 2: RICHTLINIEN", prompt)
+
+    if f1_pos > 0 and f2_pos > f1_pos then
+        sequence live_block = ""
+        sequence rag_block  = ""
+        sequence user_q     = ""
+
+        integer q_pos = search:match("Frage des Benutzers:", prompt)
+        if q_pos > f2_pos then
+            live_block = prompt[f1_pos .. q_pos - 1]
+            rag_block  = prompt[f2_pos .. q_pos - 1]
+            user_q     = prompt[q_pos + 20 .. $]
+        else
+            live_block = prompt[f1_pos .. $]
+            rag_block  = prompt[f2_pos .. $]
+        end if
+
+        sequence response = "📊 Zusammenfassender Agenten-Bericht:\n\n"
+        response &= "1. Live-Auftragsstatus & Kundenstamm (Quelle: MCP-Server / SQLite-ERP):\n"
+
+        if search:match("Schulze", live_block) or search:match("K-1001", live_block) then
+            response &= "   • Kunde: Schulze Maschinenbau AG (KdNr: K-1001, Status: A-Kunde, Umsatz: 142.500,00 €)\n"
+            if search:match("In Fertigung", live_block) then
+                response &= "   • Aktueller Auftrag: #1 CNC Drehfräs-Modul X1 (2x zu je 45.000,00 € = 90.000,00 €)\n"
+                response &= "   • Auftragsstatus: In Fertigung\n"
+            else
+                response &= "   • Auftragsstatus: Keine offenen Fertigungsaufträge erfasst.\n"
+            end if
+        else
+            response &= "   • Kundendaten und Auftragsstatus erfolgreich aus dem Live-ERP abgerufen.\n"
+        end if
+
+        response &= "\n2. Zahlungskonditionen & Richtlinien (Quelle: RAG / Vertriebshandbuch 2026):\n"
+        if search:match("A-Kunde", prompt) or search:match("Kundenkategorie A", prompt) then
+            response &= "   • Einstufung: Premium-Partner (Kategorie A)\n"
+            response &= "   • Rabattregelung: 15% Sonderrabatt auf alle Artikelpreise\n"
+            response &= "   • Zahlungsziel: 30 Tage rein netto\n"
+            response &= "   • Skonto: 3% Skonto bei Begleichung innerhalb von 10 Tagen\n"
+            response &= "   • Betreuung & Support: Fester Key-Account Manager & 24/7 Hotline mit 24 Monaten Vollgarantie\n"
+        elsif search:match("B-Kunde", prompt) or search:match("Kundenkategorie B", prompt) then
+            response &= "   • Einstufung: Standard-Kunde (Kategorie B)\n"
+            response &= "   • Zahlungsziel: 14 Tage netto ohne Skontoabzug\n"
+            response &= "   • Lieferbedingungen: Ab Werk (EXW), frachtfrei ab 5.000 € Bestellwert\n"
+        else
+            response &= "   • Relevante Richtlinien wurden ermittelt und entsprechen den hinterlegten Handbuch-Vorgaben.\n"
+        end if
+
+        response &= "\n3. Fazit & Handlungsempfehlung für Vertrieb & Disposition:\n"
+        response &= "   • Der Fertigungsauftrag (2x Drehfräs-Modul X1) befindet sich planmäßig in Produktion.\n"
+        response &= "   • Für die anstehende Fakturierung sind das 30-Tage-Zahlungsziel und die 3% Skonto-Option (binnen 10 Tagen) sowie der 15% A-Kundenrabatt anzuwenden."
+
+        return response
+    end if
+
+    -- Check if prompt contains standard injected RAG context
     integer ctx_start = search:match("=== RELEVANTER KONTEXT AUS DER WISSENSDATENBANK ===", prompt)
     integer ctx_end   = search:match("====================================================", prompt)
 
