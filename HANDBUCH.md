@@ -37,7 +37,7 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 2.5 [Prozeduren, Funktionen & Callbacks](#25-prozeduren-funktionen--callbacks)
    - 2.6 [Bedingte Kompilierung (`ifdef`)](#26-bedingte-kompilierung-ifdef)
    - 2.7 [Alle fest eingebauten Built-in Routinen](#27-alle-fest-eingebauten-built-in-routinen)
-   - 2.8 [Vollständige Referenz aller 74 Include-Dateien & Standardmodule (`std/*.e` & `euphoria/*.e`)](#28-vollständige-referenz-aller-74-include-dateien--standardmodule-stde--euphoriae)
+   - 2.8 [Vollständige Referenz aller 77 Include-Dateien & Standardmodule (`std/*.e` & `euphoria/*.e`)](#28-vollständige-referenz-aller-77-include-dateien--standardmodule-stde--euphoriae)
      - 2.8.1 [Datenstrukturen, Maps & Algorithmen](#281-datenstrukturen-maps--algorithmen)
      - 2.8.2 [I/O, Dateisystem, Konsole & Betriebssystem](#282-io-dateisystem-konsole--betriebssystem)
      - 2.8.3 [Textverarbeitung, Unicode & Lokalisierung](#283-textverarbeitung-unicode--lokalisierung)
@@ -51,6 +51,7 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
      - 2.8.11 [Fehlerbehandlung, Testing & Hilfsprogramme](#2811-fehlerbehandlung-testing--hilfsprogramme)
      - 2.8.12 [Windows-Plattformspezifische Module](#2812-windows-plattformspezifische-module)
      - 2.8.13 [Euphoria Interna, Debugger & Syntax-Tokenizer](#2813-euphoria-interna-debugger--syntax-tokenizer)
+     - 2.8.14 [Künstliche Intelligenz, MCP, LLM & RAG](#2814-künstliche-intelligenz-mcp-llm--rag)
 3. [Java-Interoperabilität & JAR-Integration (`std/java.e`)](#3-java-interoperabilität--jar-integration-stdjavae)
    - 3.1 [Laden externer JAR-Dateien (`java:load_jar`)](#31-laden-externer-jar-dateien-javaload_jar)
    - 3.2 [Klassenauflösung & Objekterzeugung](#32-klassenauflösung--objekterzeugung)
@@ -105,6 +106,13 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 15.7 [Drag & Drop Datei-Upload Dropzone (`vsui:upload`)](#157-drag--drop-datei-upload-dropzone-vsuiupload)
    - 15.8 [Native Responsive SVG-Charts (`vsui:chart`)](#158-native-responsive-svg-charts-vsuichart)
    - 15.9 [Vollständige Anwendungsbeispiele & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)](#159-vollständige-anwendungsbeispiele--demos-demovsui_demoex-examples08_vsui_cockpit_demoex-examples11_vsui_charts_und_upload_demoex)
+16. [Künstliche Intelligenz: Autonome Agenten, Model Context Protocol (MCP), RAG & LLMs (`std/mcp.e`, `std/rag.e`, `std/llm.e`)](#16-künstliche-intelligenz-autonome-agenten-model-context-protocol-mcp-rag--llms-stdmcpe-stdrage-stdllme)
+   - 16.1 [Architektur: Das Zusammenspiel von LLM, MCP und RAG](#161-architektur-das-zusammenspiel-von-llm-mcp-und-rag)
+   - 16.2 [Wann LLM + MCP allein genügen (und wann RAG benötigt wird)](#162-wann-llm--mcp-allein-genügen-und-wann-rag-benötigt-wird)
+   - 16.3 [Model Context Protocol (MCP) – Server & Client (`std/mcp.e`)](#163-model-context-protocol-mcp--server--client-stdmcpe)
+   - 16.4 [Universeller LLM-Client (`std/llm.e`)](#164-universeller-llm-client-stdllme)
+   - 16.5 [Retrieval-Augmented Generation mit SQLite FTS5 & Vektoren (`std/rag.e`)](#165-retrieval-augmented-generation-mit-sqlite-fts5--vektoren-stdrage)
+   - 16.6 [Vollständiger Autonomer KI-Agent (`examples/15_autonomous_agent_mcp_rag_demo.ex`)](#166-vollständiger-autonomer-ki-agent-examples15_autonomous_agent_mcp_rag_demoex)
 
 ---
 
@@ -1903,6 +1911,49 @@ Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek
 
 ---
 
+### 2.8.14 Künstliche Intelligenz, MCP, LLM & RAG
+
+#### `std/mcp.e` (Namespace: `mcp`)
+
+* **Zweck:** Model Context Protocol (MCP, Spezifikation 2024-11-05): Verbindet Euphorix-Programme als MCP-Server mit modernen KI-Assistenten (Claude Desktop, Antigravity, Cursor) oder steuert externe Werkzeuge als autonomer MCP-Client über `stdio` (Subprozesse) oder HTTP mit Server-Sent Events (SSE).
+* **Öffentliche Funktionen & Prozeduren (10):**
+  * `public function server_create(sequence name, sequence version, sequence capabilities = {})`: Erstellt eine neue MCP-Server-Instanz mit Namen, Version und deklarierten Fähigkeiten.
+  * `public function server_register_tool(sequence srv, sequence name, sequence description, sequence parameters, integer routine_id)`: Registriert ein ausführbares Werkzeug inklusive Parameter-JSON-Schema und ausführender Handler-Routine.
+  * `public procedure server_run_stdio(sequence srv)`: Startet den Server im `stdio`-Modus (Standard Input/Output) für die Einbindung in KI-Desktop-Clients und CLI-Agenten.
+  * `public procedure server_run_http(sequence srv, integer port = 8085)`: Startet den MCP-Server als leichtgewichtigen HTTP/SSE-Dienst auf dem angegebenen Port.
+  * `public function client_stdio(sequence command_line)`: Startet einen MCP-Server als Subprozess über `stdio` und liefert das Client-Handle `{1, client}`.
+  * `public function client_http(sequence base_url)`: Verbindet einen MCP-Client über HTTP/SSE mit einem entfernten MCP-Server.
+  * `public function client_init(sequence cli, sequence client_name = "Euphorix-Client", sequence client_version = "1.0.0")`: Führt den Protokoll-Handshake (`initialize` und `notifications/initialized`) mit dem Server durch.
+  * `public function client_list_tools(sequence cli)`: Ruft die Liste aller vom Server bereitgestellten Werkzeuge ab (`{1, tools_list, updated_cli}`).
+  * `public function client_call_tool(sequence cli, sequence name, sequence arguments = {})`: Führt ein registriertes Werkzeug auf dem Server aus und liefert das textuelle Ergebnis (`{1, result_text, raw_json, updated_cli}`).
+  * `public procedure client_close(sequence cli)`: Beendet die Verbindung zum MCP-Server und schließt alle Subprozess-Streams sauber.
+
+#### `std/llm.e` (Namespace: `llm`)
+
+* **Zweck:** Universeller Client für Large Language Models (LLMs) und semantische Vektoreinbettungen. Unterstützt 100% Offline-Betrieb (deterministische Mock-Engine), lokales Ollama (`/api/chat`, `/api/embeddings`), OpenAI (`gpt-4o-mini`, `/chat/completions`) und Anthropic Claude (`/v1/messages`).
+* **Öffentliche Funktionen & Prozeduren (5):**
+  * `public function client(integer provider, sequence options = {})`: Initialisiert einen LLM-Client für `PROVIDER_MOCK`, `PROVIDER_OLLAMA`, `PROVIDER_OPENAI` oder `PROVIDER_ANTHROPIC`.
+  * `public function complete(sequence cli, sequence prompt, sequence options = {})`: Sendet einen Text-Prompt an das Sprachmodell und liefert die generierte Antwort (`{1, text, raw}`).
+  * `public function chat(sequence cli, sequence messages, sequence options = {})`: Führt eine mehrstufige Chat-Konversation (`{role, content}`) mit konfigurierbarer `temperature` und `max_tokens` aus.
+  * `public function embed(sequence cli, sequence text_str, sequence options = {})`: Berechnet einen normalisierten Vektor (64-dim TF-IDF Feature-Vektor im Mock-Modus oder hochdimensionale dichte Embeddings via Ollama/OpenAI).
+  * `public function cosine_similarity(sequence vec_a, sequence vec_b)`: Berechnet die Kosinus-Ähnlichkeit zwischen zwei Vektoren im Bereich von 0.0 (orthogonal/unähnlich) bis 1.0 (identisch).
+
+#### `std/rag.e` (Namespace: `rag`)
+
+* **Zweck:** Retrieval-Augmented Generation (RAG) Engine: Durchsucht Dokumente und Fachhandbücher hybrid über SQLite Full-Text Search (FTS5 / BM25) und Cosine-Vektorähnlichkeit, augmentiert LLM-Prompts mit relevanten Kontextblöcken und generiert quellenbelegte Antworten.
+* **Öffentliche Funktionen & Prozeduren (10):**
+  * `public function create_kb(sequence name, sequence llm_client, sequence db_path = ":memory:")`: Erstellt eine neue RAG-Wissensdatenbank mit SQLite FTS5-Tabellen und Vektorspeicher.
+  * `public procedure close_kb(sequence kb)`: Schließt die Wissensdatenbank und gibt alle SQLite-Ressourcen frei.
+  * `public function chunk_text(sequence text_str, integer target_size = 500, integer overlap = 100)`: Zerlegt Fließtexte intelligent entlang von Absatz- und Satzgrenzen in überlappende Abschnitte.
+  * `public function add_document(sequence kb, sequence doc_id, sequence title, sequence content, sequence metadata = {})`: Zerlegt ein Dokument automatisch in Abschnitte, generiert Embeddings und indiziert es in SQLite FTS5.
+  * `public function add_text(sequence kb, sequence doc_id, sequence title, sequence chunk_text, integer chunk_index, sequence metadata = {})`: Fügt einen einzelnen vorverarbeiteten Textabschnitt in die Wissensbasis ein.
+  * `public function retrieve(sequence kb, sequence query, integer top_k = 3, sequence mode = "hybrid")`: Führt eine hybride Recherche (BM25 + Cosine Similarity via Reciprocal Rank Fusion) durch und liefert die relevantesten Abschnitte.
+  * `public function ask(sequence kb, sequence query, sequence options = {})`: Führt die komplette RAG-Pipeline aus (Retrieval, Prompt-Augmentation, LLM-Generierung und Quellenzuordnung).
+  * `public function answer(sequence rag_result)`: Extrahiert den reinen Antworttext aus einem `ask()`-Ergebnis.
+  * `public function sources(sequence rag_result)`: Extrahiert die Liste aller zitierten Quellen mit Titel, Abschnittsnummer und Relevanzbewertung.
+  * `public function format_sources(sequence rag_result)`: Formatiert die Quellennachweise in eine übersichtliche, lesbare Zitierleiste.
+
+---
 
 ## 3. Java-Interoperabilität & JAR-Integration (`std/java.e`)
 
@@ -2802,6 +2853,277 @@ Euphorix bietet drei abgestimmte Demonstrations- und Testprogramme, die 100% all
      # Im Browser öffnen: http://127.0.0.1:8092/
      ```
 
+---
 
+## 16. Künstliche Intelligenz: Autonome Agenten, Model Context Protocol (MCP), RAG & LLMs (`std/mcp.e`, `std/rag.e`, `std/llm.e`)
 
+Euphorix 1.0 integriert native Enterprise-Schnittstellen für moderne künstliche Intelligenz und autonome Agenten. Über drei aufeinander abgestimmte Module lässt sich jede Euphorix-Anwendung wahlweise als **MCP-Server** für KI-Assistenten (wie Claude Desktop, Antigravity oder Cursor) bereitstellen, als **autonomer Agent mit eigenem MCP-Client** betreiben oder mit **RAG (Retrieval-Augmented Generation)** an unternehmenseigene Wissensbestände anbinden.
 
+### 16.1 Architektur: Das Zusammenspiel von LLM, MCP und RAG
+
+Ein moderner KI-Agent stützt sich auf drei zentrale Säulen:
+
+```
+                      Benutzeranfrage / Task
+                                │
+                                ▼
+         ┌──────────────────────────────────────────────┐
+         │          LLM & AGENTEN-ORCHESTRATOR          │
+         │                 (std/llm.e)                  │
+         │  • Intent-Erkennung & Aktionsplanung         │
+         │  • Multi-Source Synthese & Bericht           │
+         └───────────────┬──────────────┬───────────────┘
+                         │              │
+       MCP-Tool Aufrufe  │              │  RAG-Recherche
+       (Live-Aktionen)   │              │  (Handbuch/Wissen)
+                         ▼              ▼
+         ┌──────────────────────┐ ┌──────────────────────┐
+         │      MCP-CLIENT      │ │      RAG-ENGINE      │
+         │     (std/mcp.e)      │ │     (std/rag.e)      │
+         └──────────┬───────────┘ └──────────┬───────────┘
+                    │ stdio / SSE            │ SQL MATCH
+                    ▼                        ▼
+         ┌──────────────────────┐ ┌──────────────────────┐
+         │      MCP-SERVER      │ │  SQLite FTS5 + BM25  │
+         │     (std/mcp.e)      │ │   + Cosine-Vektoren  │
+         └──────────┬───────────┘ └──────────────────────┘
+                    │ SQL
+                    ▼
+         ┌──────────────────────┐
+         │    LIVE-DATENBANK    │
+         │ (Kunden, Aufträge,   │
+         │  Lager, ERP-Status)  │
+         └──────────────────────┘
+```
+
+1. **LLM (`std/llm.e`) – Das Gehirn:**
+   Interpretiert Benutzeranfragen, entscheidet über den Aufruf externer Werkzeuge und führt am Ende strukturierte Daten und Regeltexte zu einer fundierten Antwort zusammen.
+2. **MCP-Server & Client (`std/mcp.e`) – Die Hände:**
+   Führt kontrollierte Lese- und Schreibaktionen in Live-Systemen aus (z. B. Kunde suchen, Lagerbestand prüfen, Auftrag in SQLite anlegen).
+3. **RAG-Engine (`std/rag.e`) – Das Langzeitgedächtnis:**
+   Durchsucht unstrukturierte Dokumente (Richtlinien, Verträge, Handbücher) per Volltext- (BM25) und Vektorsuche und liefert belegbare Textabschnitte mit Quellenangaben.
+
+---
+
+### 16.2 Wann LLM + MCP allein genügen (und wann RAG benötigt wird)
+
+In der Praxis besteht oft der Irrglaube, dass jedes KI-System zwingend eine RAG-Pipeline benötigt. **Für klassische Datenbank-, ERP- und CRM-Anwendungen reichen LLM + MCP vollkommen aus!**
+
+| Kriterium | LLM + MCP (Direkter Werkzeug-Zugriff) | RAG (Dokumenten-Vektorsuche) |
+| :--- | :--- | :--- |
+| **Primärer Datenbestand** | Strukturierte relationale Daten (Tabellen, Spalten, IDs, Status, Fremdschlüssel). | Unstrukturierte Fließtexte (PDFs, Handbücher, AGBs, E-Mails, Support-Tickets). |
+| **Präzision & Berechnungen** | **100% mathematisch exakt**: SQL-Queries berechnen Summen, Durchschnitte und Zählungen direkt auf der Datenbank. | **Probabilistisch**: Das LLM muss Zahlen aus Textabschnitten extrahieren und schätzen (Halluzinationsgefahr). |
+| **Aktualität** | **Echtzeit (Zero-Latency)**: Jedes Tool liest den sekundengenauen Live-Stand der Datenbank. | **Verzögert**: Dokumente müssen vorab gechunkt, vektorisiert und in Indexen gespeichert werden. |
+| **Aktionen & Write-Operationen** | **Schreibend & Ausführend**: Kann Datensätze anlegen (`INSERT`), ändern (`UPDATE`) oder E-Mails versenden. | **Rein lesend**: Dient ausschließlich der passiven Informationsbeschaffung. |
+| **Empfohlener Einsatz** | **90% aller betrieblichen ERP/CRM-Workflows**: Auftragsstatus, Kundenhistorie, Bestandsabfragen. | **Ergänzung für unstrukturierte Texte**: Richtlinien nachschlagen, Fehlerdiagnose nach Handbuch. |
+
+> [!TIP]
+> **RAG als MCP-Werkzeug:** Sie müssen sich nicht zwischen beiden Ansätzen entscheiden. Wenn Sie Dokumente durchsuchen wollen, implementieren Sie RAG einfach als ein weiteres MCP-Tool (`tool: handbuch_suchen(thema)`). Für das LLM ist RAG dann lediglich ein spezialisiertes Werkzeug unter vielen!
+
+---
+
+### 16.3 Model Context Protocol (MCP) – Server & Client (`std/mcp.e`)
+
+Das Model Context Protocol (MCP, offizielle Spezifikation 2024-11-05) ist der moderne Standard, um KI-Modelle sicher mit lokalen Datenquellen und Programmen zu verbinden.
+
+#### 16.3.1 Einen eigenen MCP-Server für Datenbanken & Werkzeuge erstellen
+
+Ein Euphorix-MCP-Server deklariert Werkzeuge mit JSON-Schema-Parametern und registriert Handler-Routinen:
+
+```euphoria
+include std/mcp.e as mcp
+include std/sqlite.e as sqlite
+
+-- 1. Server-Instanz anlegen
+sequence srv = mcp:server_create("Euphorix-CRM-Server", "1.0.0")
+
+-- 2. Werkzeug-Handler definieren
+function handle_kunden_suche(sequence args)
+    sequence term = ""
+    for i = 1 to length(args) do
+        if equal(args[i][1], "suchbegriff") then term = args[i][2] end if
+    end for
+    
+    -- SQLite-Query ausführen
+    sequence sql = sprintf("SELECT kdnr, name, ort, status FROM kunden WHERE name LIKE '%%%s%%'", {term})
+    sequence res = sqlite:query(db, sql)
+    -- Formatierte Antwort an den Agenten zurückgeben
+    return {1, "Gefundene Kunden: " & sprint(res), {}}
+end function
+
+-- 3. Werkzeug mit Parametern registrieren
+srv = mcp:server_register_tool(srv,
+    "kunden_suchen",
+    "Durchsucht den Kundenstamm im SQLite-ERP nach Namen oder Ort",
+    {
+        {"suchbegriff", "string", "Firmenname oder Suchbegriff", 1}
+    },
+    routine_id("handle_kunden_suche")
+)
+
+-- 4. Server im gewünschten Modus starten
+-- Für Claude Desktop / Subprozesse (stdio):
+mcp:server_run_stdio(srv)
+
+-- Für Web- und Netzwerk-Zugriff via HTTP/SSE:
+-- mcp:server_run_http(srv, 8085)
+```
+
+#### 16.3.2 Der MCP-Client: Werkzeuge dynamisch auflisten und ausführen
+
+Ein Euphorix-Programm kann als autonomer MCP-Client beliebige MCP-Server steuern:
+
+```euphoria
+include std/mcp.e as mcp
+
+-- 1. MCP-Server per stdio als Subprozess starten
+sequence res = mcp:client_stdio("./euphorix examples/12_mcp_server_demo.ex --stdio")
+sequence client = res[2]
+
+-- 2. Handshake initialisieren
+sequence init = mcp:client_init(client, "Euphorix-Agent", "1.0.0")
+client = init[3]
+
+-- 3. Verfügbare Werkzeuge abfragen
+sequence tools_res = mcp:client_list_tools(client)
+client = tools_res[3]
+
+-- 4. Werkzeug gezielt ausführen
+sequence call_res = mcp:client_call_tool(client, "kunden_suchen", {{"suchbegriff", "Schulze"}})
+client = call_res[4]
+puts(1, "Antwort vom Server:
+" & call_res[2] & "
+")
+
+-- 5. Verbindung schließen
+mcp:client_close(client)
+```
+
+---
+
+### 16.4 Universeller LLM-Client (`std/llm.e`)
+
+Das Modul `std/llm.e` bietet eine einheitliche, anbieterunabhängige Schnittstelle für Chat-Completions und Vektor-Embeddings.
+
+#### 16.4.1 Anbindung von lokalem Ollama, OpenAI & Claude
+
+```euphoria
+include std/llm.e as llm
+
+-- 1. 100% Offline-Betrieb (Keine externen Daemons oder Internetverbindung nötig)
+sequence cli_mock = llm:client(llm:PROVIDER_MOCK)
+
+-- 2. Lokales Ollama (z. B. Llama 3, Mistral, Qwen)
+sequence cli_ollama = llm:client(llm:PROVIDER_OLLAMA, {
+    {"model", "llama3:latest"},
+    {"base_url", "http://localhost:11434"}
+})
+
+-- 3. OpenAI Cloud-API
+sequence cli_openai = llm:client(llm:PROVIDER_OPENAI, {
+    {"model", "gpt-4o-mini"},
+    {"api_key", "sk-..."}
+})
+
+-- 4. Anthropic Claude API
+sequence cli_claude = llm:client(llm:PROVIDER_ANTHROPIC, {
+    {"model", "claude-3-5-sonnet-20241022"},
+    {"api_key", "sk-ant-..."}
+})
+```
+
+#### 16.4.2 Text-Generierung & Chat
+
+```euphoria
+-- Einfache Text-Vervollständigung
+sequence reply = llm:complete(cli_ollama, "Fasse die Vorteile von SQLite in 2 Sätzen zusammen.")
+puts(1, reply[2] & "
+")
+
+-- Strukturierter Chat mit Rollen (System, User, Assistant)
+sequence messages = {
+    {"system", "Du bist ein präziser ERP-Berater."},
+    {"user", "Welche Zahlungskonditionen gelten für A-Kunden?"}
+}
+sequence chat_res = llm:chat(cli_ollama, messages, {{"temperature", 0.3}})
+puts(1, chat_res[2] & "
+")
+```
+
+#### 16.4.3 Generierung von Vektor-Embeddings & Ähnlichkeitsberechnung
+
+```euphoria
+-- 64-dimensionaler normalisierter Einbettungsvektor
+sequence v1 = llm:embed(cli_mock, "Kunde bezahlt Rechnung mit Skonto")
+sequence v2 = llm:embed(cli_mock, "Zahlungseingang mit Skontoabzug verbucht")
+
+-- Kosinus-Ähnlichkeit (1.0 = identisch, 0.0 = orthogonal)
+atom sim = llm:cosine_similarity(v1, v2)
+printf(1, "Semantische Ähnlichkeit: %.2f%%
+", {sim * 100.0})
+```
+
+---
+
+### 16.5 Retrieval-Augmented Generation mit SQLite FTS5 & Vektoren (`std/rag.e`)
+
+Die RAG-Engine verbindet SQLite Full-Text Search (FTS5 mit BM25-Ranking) und semantische Vektor-Embeddings zu einem **hybriden Retrieval-System**.
+
+#### 16.5.1 Smart Document Chunking mit Überlappung
+
+```euphoria
+include std/rag.e as rag
+include std/llm.e as llm
+
+-- Wissensdatenbank in Datei oder In-Memory anlegen
+sequence kb = rag:create_kb("unternehmens_wissen", llm_cli, ":memory:")
+
+-- Dokumente mit automatischem Smart-Chunking (Absatz- & Satzgrenzen) indizieren
+integer chunks = rag:add_document(kb, "DOC-01", "Vertriebshandbuch 2026", 
+    "Kundenkategorie A: Erhalten 15% Sonderrabatt. Zahlungsziel 30 Tage netto oder 3% Skonto binnen 10 Tagen.
+
+" &
+    "Kundenkategorie B: Erhalten 5% Rabatt ab 25.000 € Umsatz. Zahlungsziel 14 Tage netto.")
+```
+
+#### 16.5.2 Hybrides Retrieval & Quellenbasierte Antworten (`rag:ask`)
+
+```euphoria
+-- Hybride Suche ausführen und fundierte Antwort mit Zitaten generieren
+sequence result = rag:ask(kb, "Welche Skonto-Regeln gelten für A-Kunden?", {{"top_k", 2}})
+
+-- Generierte Antwort ausgeben
+puts(1, "Antwort:
+" & rag:answer(result) & "
+
+")
+
+-- Quellennachweise formatieren
+puts(1, "Verwendete Quellen:
+" & rag:format_sources(result) & "
+")
+```
+
+---
+
+### 16.6 Vollständiger Autonomer KI-Agent (`examples/15_autonomous_agent_mcp_rag_demo.ex`)
+
+Das Demonstrationsprogramm [examples/15_autonomous_agent_mcp_rag_demo.ex](file:///home/volkix/prj/intpret/examples/15_autonomous_agent_mcp_rag_demo.ex) führt alle Komponenten zu einem vollständigen, praxiserprobten End-to-End-Workflow zusammen:
+
+1. **Agent startet MCP-Server** als Subprozess (`stdio`) und bindet Live-ERP-Werkzeuge an.
+2. **Agent indiziert Handbücher** in SQLite FTS5 via RAG.
+3. **Aufgabe 1 (Lesen & Berichten):** Prüft den Kunden *Schulze Maschinenbau* (liest Live-Fertigungsauftrag über MCP aus SQLite und kombiniert ihn mit Zahlungszielen aus dem RAG-Handbuch zu einem vollständigen Bericht).
+4. **Aufgabe 2 (Schreiben & Regeln):** Legt per MCP-Schreibaktion den Neukunden *Quantum Logistics GmbH* in der SQLite-Datenbank an und ermittelt gleichzeitig die passenden B-Kunden-Frachtbedingungen aus dem Handbuch.
+5. **Sauberes Herunterfahren** aller Subprozesse und Datenbankhandles.
+
+Ausführen mit:
+```bash
+# 100% Offline (deterministische Euphorix-Synthese)
+./euphorix examples/15_autonomous_agent_mcp_rag_demo.ex
+
+# Mit lokalem Ollama
+./euphorix examples/15_autonomous_agent_mcp_rag_demo.ex --ollama
+
+# Mit OpenAI Cloud API
+./euphorix examples/15_autonomous_agent_mcp_rag_demo.ex --openai
+```

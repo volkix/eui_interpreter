@@ -16,8 +16,8 @@ Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`)
 
 ## 📖 Documentation & Tutorials
 
-* 🇩🇪 **[HANDBUCH.md](HANDBUCH.md)** & **[HANDBUCH.pdf](website/downloads/HANDBUCH.pdf)** – Vollständiges deutschsprachiges Handbuch (15 Kapitel, 861 Standardroutinen, Architektur & Tutorials).
-* 🇬🇧 **[MANUAL.md](MANUAL.md)** & **[MANUAL.pdf](website/downloads/MANUAL.pdf)** – Comprehensive English User & Developer Manual (15 chapters, complete standard library reference).
+* 🇩🇪 **[HANDBUCH.md](HANDBUCH.md)** & **[HANDBUCH.pdf](website/downloads/HANDBUCH.pdf)** – Vollständiges deutschsprachiges Handbuch (16 Kapitel, 886 Standardroutinen, KI-Agenten, MCP, RAG, Architektur & Tutorials).
+* 🇬🇧 **[MANUAL.md](MANUAL.md)** & **[MANUAL.pdf](website/downloads/MANUAL.pdf)** – Comprehensive English User & Developer Manual (16 chapters, complete standard library reference, AI agents, MCP & RAG).
 * 📚 **[tutorial/](tutorial/)** & **[website/tutorial.html](website/tutorial.html)** – **12 praxisnahe Kapitel** mit ausführlich erklärten, 100% lauffähigen Codebeispielen für alle Standard-Include-Dateien (`std/*.e`).
 * 🌐 **[website/](website/)** – Statische, produktionsfertige Präsentations- und Dokumentations-Webseite für Webserver (z. B. **lighttpd**), inklusive konfigurierbarem Impressum & DSGVO-Datenschutz (`make website`).
 
