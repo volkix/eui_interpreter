@@ -358,6 +358,28 @@ OpenEuphoria features a clean, hierarchical type system:
 - **`integer`**: 48-bit signed integers in range `[-140737488355328, +140737488355327]`.
 - **`atom`**: Any numerical value—integer or 64-bit IEEE-754 floating-point (`double`).
 - **`sequence`**: Ordered, **1-based** dynamic array (`{}`). Strings are sequences of byte values.
+
+#### Multiline Strings & Raw Strings (Backticks & Triple-Quotes)
+Euphorix supports three convenient string literal styles:
+1. **Classic Strings (`"..."`)**: Standard single-line strings with escape sequences (`\n`, `\t`, `\"`, `\\`).
+2. **Backtick Strings (`` `...` ``)**: Multiline raw strings. Double quotes (`"`) do **not** need escaping. Perfect for JSON, SQL, and HTML:
+   ```euphoria
+   sequence json_doc = `
+   {
+       "name": "Schulze Maschinenbau",
+       "status": "Tier-A",
+       "turnover": 142500.00
+   }
+   `
+   ```
+3. **Triple-Quote Strings (`"""..."""`)**: Multiline raw text blocks (familiar from Python/Kotlin). Line breaks and embedded quotes are preserved literally:
+   ```euphoria
+   sequence query = """
+   SELECT kdnr, name, turnover
+   FROM customers
+   WHERE status = 'Tier-A'
+   """
+   ```
 - **`object`**: Universal type capable of holding an `atom` or a `sequence`.
 
 #### Variables, Constants & Enums

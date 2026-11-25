@@ -359,6 +359,28 @@ OpenEuphoria besitzt ein klares, hierarchisches Typsystem aus vier Grundtypen:
 - **`integer`**: 48-Bit-Ganzzahlen im Wertebereich von `-140737488355328` bis `+140737488355327`.
 - **`atom`**: Jede Zahl – ganze Zahlen oder 64-Bit IEEE-754 Gleitkommazahlen (`double`).
 - **`sequence`**: Beliebig schachtelbare, **1-basierte** Listen (`{}`). Strings sind Sequenzen von Zeichencodes (in UTF-8-Bytes).
+
+#### Mehrzeilige Strings & Raw-Strings (Backticks & Triple-Quotes)
+Euphorix unterstützt drei komfortable Arten von String-Literalen:
+1. **Klassische Strings (`"..."`)**: Einzeilige Zeichenketten mit Escape-Sequenzen (`\n`, `\t`, `\"`, `\\`).
+2. **Backtick-Strings (`` `...` ``)**: Mehrzeilige Raw-Strings. Doppelte Anführungszeichen (`"`) müssen **nicht** maskiert werden. Perfekt für JSON, SQL und HTML:
+   ```euphoria
+   sequence json_doc = `
+   {
+       "name": "Schulze Maschinenbau",
+       "status": "A-Kunde",
+       "umsatz": 142500.00
+   }
+   `
+   ```
+3. **Triple-Quote-Strings (`"""..."""`)**: Mehrzeilige Textblöcke (bekannt aus Python/Kotlin). Auch hier sind Zeilenumbrüche und Quotes frei verwendbar:
+   ```euphoria
+   sequence query = """
+   SELECT kdnr, name, umsatz
+   FROM kunden
+   WHERE status = 'A-Kunde'
+   """
+   ```
 - **`object`**: Universeller Typ, der sowohl `atom` als auch `sequence` aufnehmen kann.
 
 #### Variablen, Konstanten & Aufzählungen
