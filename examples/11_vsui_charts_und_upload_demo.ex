@@ -35,6 +35,15 @@ function render_dashboard(sequence req)
     return vsui:page("Euphorix Intranet", page_content)
 end function
 
+-- Upload Event Handler
+function on_file_upload(sequence ctx)
+    sequence fname = vsui:val(ctx, "filename", "datei.dat")
+    sequence fsize = vsui:val(ctx, "size", "0")
+    return vsui:updates({
+        vsui:toast_show("Datei empfangen: " & fname & " (" & fsize & " Bytes)", vsui:TOAST_SUCCESS, 3500)
+    })
+end function
+
 -- Formular-Validierungs Event Handler
 function on_save_clicked(sequence ctx)
     sequence email = vsui:val(ctx, "txt_mail")
@@ -57,6 +66,8 @@ end function
 
 vsui:page_route(my_app, "/", routine_id("render_dashboard"))
 vsui:on_click(my_app, "btn_save", routine_id("on_save_clicked"))
+vsui:on_event(my_app, "file_upload", routine_id("on_file_upload"))
+vsui:on_event(my_app, "upload_complete", routine_id("on_file_upload"))
 
 -- Hinweis: run() startet den Webserver
 if length(command_line()) > 2 and equal(command_line()[3], "--run") then

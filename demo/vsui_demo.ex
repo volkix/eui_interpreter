@@ -40,6 +40,13 @@ sqlite:exec(db, "CREATE TABLE auftraege (" &
                 "preis REAL, " &
                 "status TEXT);")
 
+sqlite:exec(db, "CREATE TABLE dokumente (" &
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, " &
+                "filename TEXT, " &
+                "groesse INTEGER, " &
+                "mimetype TEXT, " &
+                "uhrzeit TEXT);")
+
 -- Initiale Demodaten: Kunden
 sqlite:exec(db, "INSERT INTO kunden (kdnr, name, ort, email, datum, uhrzeit, umsatz, status, aktiv, notiz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
             {"K-1001", "Schulze Maschinenbau AG", "Frankfurt", "kontakt@schulze-ag.de", "2026-01-15", "09:30", 142500.00, "A-Kunde", 1, "Rahmenvertrag Werkzeugbau bis 2028"})
@@ -59,6 +66,14 @@ sqlite:exec(db, "INSERT INTO auftraege (kdnr, artnr, bezeichnung, menge, preis, 
             {"K-1002", "ART-108", "Schwerlast Transportcontainer", 10, 850.00, "Versendet"})
 sqlite:exec(db, "INSERT INTO auftraege (kdnr, artnr, bezeichnung, menge, preis, status) VALUES (?, ?, ?, ?, ?, ?);",
             {"K-1004", "ART-920", "Windkraft Generatorsteuerung", 1, 115000.00, "Freigegeben"})
+
+-- Initiale Demodaten: Archivierte Dokumente
+sqlite:exec(db, "INSERT INTO dokumente (filename, groesse, mimetype, uhrzeit) VALUES (?, ?, ?, ?);",
+            {"Rechnung_2026_0114.pdf", 148200, "application/pdf", "2026-11-24 09:15"})
+sqlite:exec(db, "INSERT INTO dokumente (filename, groesse, mimetype, uhrzeit) VALUES (?, ?, ?, ?);",
+            {"Lieferschein_LS-4402.pdf", 92100, "application/pdf", "2026-11-24 10:20"})
+sqlite:exec(db, "INSERT INTO dokumente (filename, groesse, mimetype, uhrzeit) VALUES (?, ?, ?, ?);",
+            {"Kundenexport_Q3.csv", 34500, "text/csv", "2026-11-24 11:05"})
 
 -- Hilfsfunktion: DataGrid Kunden
 function render_kunden_grid()
@@ -152,6 +167,50 @@ function render_auftraege_grid()
         {"Status", "110px"}
     }
     return vsui:grid("grd_auftraege", cols, grid_rows)
+end function
+
+-- Hilfsfunktion: DataGrid Dokumente / Belegarchiv
+function render_dokumente_grid()
+    sequence rows = sqlite:query(db, "SELECT id, filename, groesse, mimetype, uhrzeit FROM dokumente ORDER BY id DESC;")
+    sequence grid_rows = {}
+    for i = 1 to length(rows) do
+        sequence r = rows[i]
+        integer doc_id  = r[1]
+        sequence fname  = r[2]
+        integer fsize   = r[3]
+        sequence fmtype = r[4]
+        sequence ftime  = r[5]
+        sequence size_str
+        if fsize < 1024 then
+            size_str = sprintf("%d B", {fsize})
+        elsif fsize < 1048576 then
+            size_str = sprintf("%.1f KB", {fsize / 1024.0})
+        else
+            size_str = sprintf("%.2f MB", {fsize / 1048576.0})
+        end if
+        sequence del_btn = vsui:button(sprintf("btn_deldoc_%d", {doc_id}), "🗑️ Löschen", {
+            {"action", "delete_dokument"},
+            {"style", "background:#c0392b; color:white; font-size:11px; padding:2px 8px;"},
+            {"data-param-docid", sprintf("%d", {doc_id})}
+        })
+        grid_rows = append(grid_rows, {
+            sprintf("#%d", {doc_id}),
+            "📄 <b>" & vsui:escape_html(fname) & "</b>",
+            size_str,
+            fmtype,
+            ftime,
+            del_btn
+        })
+    end for
+    sequence cols = {
+        {"ID", "60px"},
+        {"Dateiname", "250px"},
+        {"Dateigröße", "100px"},
+        {"Format / MIME", "150px"},
+        {"Hochgeladen am", "150px"},
+        {"Aktionen", "110px"}
+    }
+    return vsui:grid("grd_dokumente", cols, grid_rows)
 end function
 
 -- 2. Hauptseite des Enterprise Cockpits
@@ -262,15 +321,18 @@ function render_cockpit_page(sequence req)
         "</div>\n"
     }
 
-    -- Tab 5: Drag & Drop Upload Dropzone
+    -- Tab 5: Drag & Drop Upload Dropzone und Dokumenten-Archiv
     sequence upload_content = {
         vsui:panel("pnl_upload_docs", "Zentraler Dokumenten- & Beleg-Upload", {
-            "<p style=\"font-size:13px; color:#555; margin-top:0;\">Ziehen Sie Ausgangsrechnungen, Lieferscheine oder CSV-Exportdateien direkt in die Dropzone oder klicken Sie zum Auswählen:</p>",
+            "<p style=\"font-size:13px; color:#555; margin-top:0;\">Ziehen Sie Ausgangsrechnungen, Lieferscheine oder CSV-Exportdateien direkt in die Dropzone oder wählen Sie diese manuell per Knopfdruck aus:</p>",
             vsui:upload("drop_belege", "/api/upload", {
-                {"prompt", "Dateien hier ablegen (PDF, CSV, XLSX) oder durchsuchen"},
-                {"accept", ".pdf,.csv,.xlsx"}
+                {"prompt", "Dateien hier ablegen (PDF, CSV, XLSX, Bilder) oder per Knopfdruck auswählen"},
+                {"accept", ".pdf,.csv,.xlsx,.txt,.png,.jpg"}
             }),
-            "<div style=\"margin-top:12px; font-size:11px; color:#777;\">Die Dropzone nutzt die native ES6-Upload-Engine mit Drag & Drop, Dateiauswahldialog und animiertem Upload-Fortschrittsbalken.</div>"
+            "<div style=\"margin-top:10px; font-size:11px; color:#777;\">Die Dropzone nutzt die native ES6-Upload-Engine mit Drag & Drop, nativem Dateiauswahldialog und animiertem Fortschrittsbalken.</div>"
+        }),
+        vsui:panel("pnl_archive_docs", "Archivierte Belege & Dokumente (SQLite)", {
+            "<div id=\"docs_grid_box\">" & render_dokumente_grid() & "</div>"
         })
     }
 
@@ -435,6 +497,39 @@ function on_update_charts(sequence ctx)
     })
 end function
 
+function on_file_upload(sequence ctx)
+    sequence fname = vsui:val(ctx, "filename", "unbenannt.dat")
+    sequence fsize_str = vsui:val(ctx, "size", "0")
+    sequence fmtype = vsui:val(ctx, "type", "application/octet-stream")
+    integer fsize = 0
+    object num = conv:to_number(fsize_str)
+    if sequence(num) and length(num) = 2 and num[1] = 0 then
+        fsize = floor(num[2])
+    elsif atom(num) then
+        fsize = floor(num)
+    end if
+
+    sequence ts = "2026-11-25 11:50"
+    sqlite:exec(db, "INSERT INTO dokumente (filename, groesse, mimetype, uhrzeit) VALUES (?, ?, ?, ?);",
+                {fname, fsize, fmtype, ts})
+
+    return vsui:updates({
+        vsui:patch("docs_grid_box", render_dokumente_grid()),
+        vsui:toast_show(sprintf("Dokument '%s' erfolgreich hochgeladen und archiviert!", {fname}), vsui:TOAST_SUCCESS, 3500)
+    })
+end function
+
+function on_delete_dokument(sequence ctx)
+    sequence docid_s = vsui:val(ctx, "docid", "")
+    if length(docid_s) > 0 then
+        sqlite:exec(db, "DELETE FROM dokumente WHERE id = ?;", {docid_s})
+    end if
+    return vsui:updates({
+        vsui:patch("docs_grid_box", render_dokumente_grid()),
+        vsui:toast_show("Dokument gelöscht.", vsui:TOAST_INFO, 2500)
+    })
+end function
+
 function on_open_info(sequence ctx)
     return vsui:updates({
         vsui:modal_open("modal_sysinfo")
@@ -447,6 +542,9 @@ vsui:page_route(app, "/", routine_id("render_cockpit_page"))
 vsui:on_event(app, "add_kunde", routine_id("on_add_kunde"))
 vsui:on_event(app, "delete_kunde", routine_id("on_delete_kunde"))
 vsui:on_event(app, "clear_form", routine_id("on_clear_form"))
+vsui:on_event(app, "file_upload", routine_id("on_file_upload"))
+vsui:on_event(app, "upload_complete", routine_id("on_file_upload"))
+vsui:on_event(app, "delete_dokument", routine_id("on_delete_dokument"))
 vsui:on_event(app, "update_charts", routine_id("on_update_charts"))
 vsui:on_event(app, "open_info_modal", routine_id("on_open_info"))
 

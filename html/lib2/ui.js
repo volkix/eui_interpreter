@@ -14,8 +14,6 @@ export { vstimeinput } from "./components/vstimeinput.js";
 export { vsmodal } from "./components/vsmodal.js";
 export { vspanel } from "./components/vspanel.js";
 export { vsgrid } from "./components/vsgrid.js";
-export { vsgenericcockpit } from "./components/vsgenericcockpit.js";
-export { vsschemaform } from "./components/vsschemaform.js";
 export { vstreeview } from "./components/vstreeview.js";
 export { vschart } from "./components/vschart.js";
 export { vstabs } from "./components/vstabs.js";

@@ -171,12 +171,147 @@ window._vs_n = n;
 window._vs_ui = ui;
 window._vs_vsevent = vsevent;
 
+// Apply reactive DOM patches received from Euphorix backend
+window.applyVsPatches = function(patches) {
+  if (!patches) return;
+  if (!Array.isArray(patches)) patches = [patches];
+  patches.forEach(function(p) {
+    if (!p || !p.type) return;
+    if (p.type === 'patch') {
+      var target = document.getElementById(p.id);
+      if (target) target.innerHTML = p.html;
+    } else if (p.type === 'append') {
+      var target = document.getElementById(p.id);
+      if (target) target.insertAdjacentHTML('beforeend', p.html);
+    } else if (p.type === 'setValue') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.value = p.val;
+        if (typeof target.setValue === 'function') target.setValue(p.val);
+      }
+    } else if (p.type === 'setFocus') {
+      var target = document.getElementById(p.id);
+      if (target && typeof target.focus === 'function') target.focus();
+    } else if (p.type === 'setEnabled') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.disabled = !p.enabled;
+        if (p.enabled) target.removeAttribute('disabled');
+        else target.setAttribute('disabled', 'disabled');
+      }
+    } else if (p.type === 'setVisible') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.style.display = p.visible ? '' : 'none';
+      }
+    } else if (p.type === 'setCss') {
+      var target = document.getElementById(p.id);
+      if (target && target.style) {
+        target.style[p.prop] = p.val;
+      }
+    } else if (p.type === 'setClass') {
+      var target = document.getElementById(p.id);
+      if (target && target.classList) {
+        if (p.action === 'remove') target.classList.remove(p.cls);
+        else if (p.action === 'toggle') target.classList.toggle(p.cls);
+        else target.classList.add(p.cls);
+      }
+    } else if (p.type === 'fieldError') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.classList.add('vs-field-error');
+        var errEl = document.getElementById(p.id + '_error');
+        if (!errEl) {
+          errEl = document.createElement('div');
+          errEl.id = p.id + '_error';
+          errEl.className = 'vs-error-tip';
+          target.parentNode.insertBefore(errEl, target.nextSibling);
+        }
+        errEl.textContent = p.msg;
+        errEl.style.display = 'block';
+      }
+    } else if (p.type === 'fieldClearError') {
+      var target = document.getElementById(p.id);
+      if (target) target.classList.remove('vs-field-error');
+      var errEl = document.getElementById(p.id + '_error');
+      if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+    } else if (p.type === 'clearForm') {
+      var container = (p.id && p.id.length > 0) ? document.getElementById(p.id) : document;
+      if (container) {
+        container.querySelectorAll('input, select, textarea').forEach(function(el) {
+          if (typeof el.setValue === 'function') {
+            el.setValue('');
+          } else if (el.type === 'checkbox' || el.type === 'radio') {
+            el.checked = false;
+          } else {
+            el.value = '';
+          }
+        });
+      }
+    } else if (p.type === 'gridSetData') {
+      var grid = document.getElementById(p.id);
+      if (grid && typeof grid.setData === 'function') {
+        grid.setData(p.data);
+      } else {
+        var targetTable = document.getElementById(p.id + '_data') || (grid && grid.querySelector('table.vs-table')) || grid;
+        if (targetTable) {
+          var tbody = targetTable.querySelector('tbody') || targetTable;
+          var html = '';
+          var rows = Array.isArray(p.data) ? p.data : [];
+          for (var r = 0; r < rows.length; r++) {
+            var row = rows[r];
+            var trCls = (r % 2 === 0) ? 'vs-tbody-tr even' : 'vs-tbody-tr odd';
+            html += '<tr class="' + trCls + '">';
+            if (Array.isArray(row)) {
+              for (var c = 0; c < row.length; c++) {
+                var cellVal = (row[c] !== null && row[c] !== undefined) ? row[c] : '';
+                var th = document.querySelector('#' + p.id + '_head th:nth-child(' + (c + 1) + ')');
+                var lbl = th ? th.textContent.trim() : '';
+                html += '<td class="vs-tbody-td"' + (lbl ? ' data-label="' + lbl + '"' : '') + '>' + cellVal + '</td>';
+              }
+            } else if (typeof row === 'object' && row !== null) {
+              var keys = Object.keys(row);
+              for (var c = 0; c < keys.length; c++) {
+                var cellVal = (row[keys[c]] !== null && row[keys[c]] !== undefined) ? row[keys[c]] : '';
+                html += '<td class="vs-tbody-td" data-label="' + keys[c] + '">' + cellVal + '</td>';
+              }
+            }
+            html += '</tr>';
+          }
+          tbody.innerHTML = html;
+        }
+      }
+    } else if (p.type === 'toast') {
+      if (window._vs_ui && typeof window._vs_ui.vstoast === 'function') {
+        window._vs_ui.vstoast(p.text, p.toast_type || 'info', p.duration || 3000);
+      } else {
+        var t = document.createElement('div');
+        t.className = 'vs-toast vs-toast-' + (p.toast_type || 'info') + ' show';
+        t.textContent = p.text;
+        document.body.appendChild(t);
+        setTimeout(function() { t.remove(); }, p.duration || 3000);
+      }
+    } else if (p.type === 'modalOpen') {
+      var m = document.getElementById(p.id);
+      if (m) m.style.display = 'flex';
+    } else if (p.type === 'modalClose') {
+      var m = document.getElementById(p.id);
+      if (m) m.style.display = 'none';
+    } else if (p.type === 'chartSetData') {
+      var ch = document.getElementById(p.id + '_chart');
+      if (ch && p.svg) ch.outerHTML = p.svg;
+    } else if (p.type === 'redirect') {
+      window.location.href = p.url;
+    }
+  });
+};
+
 // Dispatch event from frontend to Euphorix backend
 window.sendVsEvent = function(eventName, eventData) {
   var data = Object.assign({}, eventData || {});
   
-  // Collect input values (utilizing getValue() if component supports it)
-  document.querySelectorAll('input.vs-input, input.vs-check, select.vs-combo, textarea.vs-textarea').forEach(function(el) {
+  // Collect input values
+  document.querySelectorAll('input, select, textarea').forEach(function(el) {
     if (el.id) {
       if (typeof el.getValue === 'function') {
         data[el.id] = el.getValue();
@@ -195,142 +330,29 @@ window.sendVsEvent = function(eventName, eventData) {
   })
   .then(function(res) { return res.json(); })
   .then(function(patches) {
-    if (!Array.isArray(patches)) patches = [patches];
-    patches.forEach(function(p) {
-      if (!p || !p.type) return;
-      if (p.type === 'patch') {
-        var target = document.getElementById(p.id);
-        if (target) target.innerHTML = p.html;
-      } else if (p.type === 'append') {
-        var target = document.getElementById(p.id);
-        if (target) target.insertAdjacentHTML('beforeend', p.html);
-      } else if (p.type === 'setValue') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.value = p.val;
-          if (typeof target.setValue === 'function') target.setValue(p.val);
-        }
-      } else if (p.type === 'setFocus') {
-        var target = document.getElementById(p.id);
-        if (target && typeof target.focus === 'function') target.focus();
-      } else if (p.type === 'setEnabled') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.disabled = !p.enabled;
-          if (p.enabled) target.removeAttribute('disabled');
-          else target.setAttribute('disabled', 'disabled');
-        }
-      } else if (p.type === 'setVisible') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.style.display = p.visible ? '' : 'none';
-        }
-      } else if (p.type === 'setCss') {
-        var target = document.getElementById(p.id);
-        if (target && target.style) {
-          target.style[p.prop] = p.val;
-        }
-      } else if (p.type === 'setClass') {
-        var target = document.getElementById(p.id);
-        if (target && target.classList) {
-          if (p.action === 'remove') target.classList.remove(p.cls);
-          else if (p.action === 'toggle') target.classList.toggle(p.cls);
-          else target.classList.add(p.cls);
-        }
-      } else if (p.type === 'fieldError') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.classList.add('vs-field-error');
-          var errEl = document.getElementById(p.id + '_error');
-          if (!errEl) {
-            errEl = document.createElement('div');
-            errEl.id = p.id + '_error';
-            errEl.className = 'vs-error-tip';
-            target.parentNode.insertBefore(errEl, target.nextSibling);
-          }
-          errEl.textContent = p.msg;
-          errEl.style.display = 'block';
-        }
-      } else if (p.type === 'fieldClearError') {
-        var target = document.getElementById(p.id);
-        if (target) target.classList.remove('vs-field-error');
-        var errEl = document.getElementById(p.id + '_error');
-        if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
-      } else if (p.type === 'clearForm') {
-        var container = (p.id && p.id.length > 0) ? document.getElementById(p.id) : document;
-        if (container) {
-          container.querySelectorAll('input.vs-input, input.vs-check, select.vs-combo, textarea.vs-textarea').forEach(function(el) {
-            if (typeof el.setValue === 'function') {
-              el.setValue('');
-            } else if (el.type === 'checkbox' || el.type === 'radio') {
-              el.checked = false;
-            } else {
-              el.value = '';
-            }
-          });
-        }
-      } else if (p.type === 'gridSetData') {
-        var grid = document.getElementById(p.id);
-        if (grid && typeof grid.setData === 'function') {
-          grid.setData(p.data);
-        } else {
-          var targetTable = document.getElementById(p.id + '_data') || (grid && grid.querySelector('table.vs-table')) || grid;
-          if (targetTable) {
-            var tbody = targetTable.querySelector('tbody') || targetTable;
-            var html = '';
-            var rows = Array.isArray(p.data) ? p.data : [];
-            for (var r = 0; r < rows.length; r++) {
-              var row = rows[r];
-              var trCls = (r % 2 === 0) ? 'vs-tbody-tr even' : 'vs-tbody-tr odd';
-              html += '<tr class="' + trCls + '">';
-              if (Array.isArray(row)) {
-                for (var c = 0; c < row.length; c++) {
-                  var cellVal = (row[c] !== null && row[c] !== undefined) ? row[c] : '';
-                  var th = document.querySelector('#' + p.id + '_head th:nth-child(' + (c + 1) + ')');
-                  var lbl = th ? th.textContent.trim() : '';
-                  html += '<td class="vs-tbody-td"' + (lbl ? ' data-label="' + lbl + '"' : '') + '>' + cellVal + '</td>';
-                }
-              } else if (typeof row === 'object' && row !== null) {
-                var keys = Object.keys(row);
-                for (var c = 0; c < keys.length; c++) {
-                  var cellVal = (row[keys[c]] !== null && row[keys[c]] !== undefined) ? row[keys[c]] : '';
-                  html += '<td class="vs-tbody-td" data-label="' + keys[c] + '">' + cellVal + '</td>';
-                }
-              }
-              html += '</tr>';
-            }
-            tbody.innerHTML = html;
-          }
-        }
-      } else if (p.type === 'toast') {
-        if (typeof ui.vstoast === 'function') {
-          ui.vstoast(p.text, p.toast_type || 'info', p.duration || 3000);
-        } else {
-          var t = document.createElement('div');
-          t.className = 'vs-toast vs-toast-' + (p.toast_type || 'info') + ' show';
-          t.textContent = p.text;
-          document.body.appendChild(t);
-          setTimeout(function() { t.remove(); }, p.duration || 3000);
-        }
-      } else if (p.type === 'modalOpen') {
-        var m = document.getElementById(p.id);
-        if (m) m.style.display = 'flex';
-      } else if (p.type === 'modalClose') {
-        var m = document.getElementById(p.id);
-        if (m) m.style.display = 'none';
-      } else if (p.type === 'redirect') {
-        window.location.href = p.url;
-      }
-    });
+    window.applyVsPatches(patches);
   })
-  .catch(function(err) { console.error('Euphorix VS-UI Bridge Error:', err); });
+  .catch(function(err) {
+    console.error('Euphorix VS-UI Bridge Error:', err);
+  });
 };
 
 // Wire up global click on .vs-button elements
 document.addEventListener('click', function(ev) {
+  var closeBtn = ev.target.closest('[data-vs-close]');
+  if (closeBtn) {
+    var modalId = closeBtn.getAttribute('data-vs-close');
+    var m = document.getElementById(modalId);
+    if (m) m.style.display = 'none';
+  }
+
   var btn = ev.target.closest('.vs-button, [data-vs-click]');
   if (btn) {
+    if (btn.closest('.vs-upload-dropzone') && !btn.hasAttribute('data-vs-click')) {
+      return;
+    }
     var clickAction = btn.getAttribute('data-vs-click') || btn.id;
+    if (!clickAction && !btn.id) return;
     var params = { id: btn.id, action: clickAction };
     for (var i = 0; i < btn.attributes.length; i++) {
       var a = btn.attributes[i];
@@ -340,18 +362,11 @@ document.addEventListener('click', function(ev) {
     }
     window.sendVsEvent('button_click', params);
   }
-
-  var closeBtn = ev.target.closest('[data-vs-close]');
-  if (closeBtn) {
-    var modalId = closeBtn.getAttribute('data-vs-close');
-    var m = document.getElementById(modalId);
-    if (m) m.style.display = 'none';
-  }
 });
 
-// Wire up change on input and combo
+// Wire up change on input, select, textarea
 document.addEventListener('change', function(ev) {
-  var inp = ev.target.closest('.vs-input, .vs-check, .vs-combo');
+  var inp = ev.target.closest('.vs-input, .vs-check, .vs-combo, select, textarea');
   if (inp && inp.id) {
     window.sendVsEvent('changevalue', { id: inp.id, value: inp.value });
   }
@@ -373,23 +388,56 @@ window.initVsUpload = function(dropzoneId, uploadUrl) {
   function handleFiles(files) {
     if (!files || files.length === 0) return;
     var file = files[0];
-    if (preview) preview.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
-    var formData = new FormData();
-    formData.append('file', file);
+    if (preview) preview.textContent = 'Lade hoch: ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)...';
     if (progress) progress.style.width = '35%';
-    fetch(uploadUrl, { method: 'POST', body: formData })
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var contentData = e.target.result;
+      var payload = {
+        id: dropzoneId,
+        filename: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        lastModified: file.lastModified,
+        data: contentData
+      };
+      if (progress) progress.style.width = '70%';
+
+      fetch(uploadUrl || '/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(payload)
+      })
       .then(function(res) {
         if (progress) progress.style.width = '100%';
-        if (typeof window.sendVsEvent === 'function') {
-          window.sendVsEvent('upload_complete', { id: dropzoneId, filename: file.name, size: file.size, status: res.status });
+        return res.json().catch(function() { return []; });
+      })
+      .then(function(result) {
+        if (preview) preview.textContent = '✓ Erfolgreich übertragen: ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+        if (window.applyVsPatches && Array.isArray(result) && result.length > 0) {
+          window.applyVsPatches(result);
         }
+        if (typeof window.sendVsEvent === 'function') {
+          window.sendVsEvent('upload_complete', {
+            id: dropzoneId,
+            filename: file.name,
+            size: file.size,
+            status: 200
+          });
+        }
+        setTimeout(function() {
+          if (progress) progress.style.width = '0%';
+        }, 3000);
       })
       .catch(function(err) {
         if (preview) preview.textContent = 'Upload-Fehler: ' + err;
+        if (progress) progress.style.width = '0%';
       });
+    };
+    reader.readAsDataURL(file);
   }
 
-  zone.onclick = function() { if (fileInput) fileInput.click(); };
   zone.ondragover = function(e) { e.preventDefault(); zone.classList.add('vs-upload-active'); };
   zone.ondragleave = function(e) { zone.classList.remove('vs-upload-active'); };
   zone.ondrop = function(e) {
@@ -397,8 +445,33 @@ window.initVsUpload = function(dropzoneId, uploadUrl) {
     zone.classList.remove('vs-upload-active');
     handleFiles(e.dataTransfer.files);
   };
-  if (fileInput) fileInput.onchange = function() { handleFiles(fileInput.files); };
+  if (fileInput) {
+    fileInput.addEventListener('click', function(e) { e.stopPropagation(); });
+    fileInput.addEventListener('change', function() { handleFiles(fileInput.files); });
+  }
 };
+
+// Automatic dropzone discovery and initialization
+function initAllUploadDropzones() {
+  document.querySelectorAll('.vs-upload-dropzone').forEach(function(zone) {
+    if (zone.dataset.initialized) return;
+    zone.dataset.initialized = 'true';
+    var uploadUrl = zone.getAttribute('data-upload-url') || '/api/upload';
+    window.initVsUpload(zone.id, uploadUrl);
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAllUploadDropzones);
+} else {
+  initAllUploadDropzones();
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.vs-tab-btn')) {
+    setTimeout(initAllUploadDropzones, 50);
+  }
+});
 </script>`
 end function
 
@@ -950,6 +1023,55 @@ function internal_route_handler(sequence req)
                 return http:response_json(200, `[]`)
             end if
             return http:response_json(400, `{"error":"invalid json"}`)
+        elsif equal(req_method, "POST") and equal(req_path, "/api/upload") then
+            sequence body_str = req[http:REQ_BODY]
+            sequence data_list = {}
+            object parsed = json:parse(body_str)
+            if sequence(parsed) and length(parsed) = 2 and parsed[1] = 1 then
+                object doc = parsed[2]
+                if json:is_object(doc) then
+                    sequence pairs = doc[2]
+                    for k = 1 to length(pairs) do
+                        sequence pair = pairs[k]
+                        if sequence(pair) and length(pair) = 2 and sequence(pair[1]) then
+                            sequence v_str = ""
+                            object unwrapped_val = json:unwrap(pair[2])
+                            if sequence(unwrapped_val) then
+                                v_str = unwrapped_val
+                            elsif atom(unwrapped_val) then
+                                v_str = sprintf("%g", unwrapped_val)
+                            end if
+                            data_list = append(data_list, {pair[1], v_str})
+                        end if
+                    end for
+                end if
+            else
+                data_list = {{"filename", "hochgeladene_datei"}, {"size", sprintf("%d", length(body_str))}, {"id", "drop_belege"}}
+            end if
+
+            sequence upload_id = val(data_list, "id", "drop_belege")
+            sequence events = app_inst[APP_EVENTS]
+            for x = 1 to length(events) do
+                sequence ev_key = events[x][1]
+                if equal(ev_key, "file_upload") or equal(ev_key, "upload") or equal(ev_key, upload_id) then
+                    integer ev_rid = events[x][2]
+                    object res = call_func(ev_rid, {data_list})
+                    if sequence(res) and length(res) >= 3 and integer(res[1]) then
+                        return res
+                    end if
+                    return http:response_json(200, res)
+                end if
+            end for
+            sequence default_name = val(data_list, "filename", "Datei")
+            sequence default_size = val(data_list, "size", "")
+            return http:response_json(200, {
+                {json:JSON_OBJECT, {
+                    {"type", "toast"},
+                    {"text", "Datei '" & default_name & "' (" & default_size & " Bytes) erfolgreich empfangen."},
+                    {"toast_type", "success"},
+                    {"duration", 3000}
+                }}
+            })
         end if
     end for
 
@@ -1025,16 +1147,19 @@ end function
 --**
 -- Create a modern drag-and-drop file upload dropzone.
 public function upload(sequence id, sequence target_url = "/api/upload", sequence options = {})
-    sequence prompt = get_opt(options, "prompt", "Datei hierher ziehen oder durchsuchen")
+    sequence prompt = get_opt(options, "prompt", "Datei hierher ziehen oder manuell auswählen")
     sequence accept = get_opt(options, "accept", "*/*")
     
-    sequence html = sprintf(`<div id="%s" class="vs-upload-dropzone">` & "\n", {id})
-    html &= sprintf(`  <input type="file" accept="%s" style="display:none;" />` & "\n", {accept})
-    html &= `  <div class="vs-upload-icon">&#8682;</div>` & "\n"
-    html &= sprintf(`  <div class="vs-upload-text">%s</div>` & "\n", {escape_html(prompt)})
-    html &= `  <div class="vs-upload-preview"></div>` & "\n"
+    sequence html = sprintf(`<div id="%s" class="vs-upload-dropzone" data-upload-url="%s">` & "\n", {id, target_url})
+    html &= sprintf(`  <input type="file" id="%s_file" accept="%s" style="display:none;" />` & "\n", {id, accept})
+    html &= sprintf(`  <label for="%s_file" style="display:block; cursor:pointer; width:100%%; margin:0; padding:12px 0;">` & "\n", {id})
+    html &= `    <div class="vs-upload-icon" style="font-size:36px; line-height:1; pointer-events:none;">&#8682;</div>` & "\n"
+    html &= sprintf(`    <div class="vs-upload-text" style="font-weight:bold; margin-top:6px; pointer-events:none;">%s</div>` & "\n", {escape_html(prompt)})
+    html &= `    <div style="margin-top:10px;"><span class="vs-button" style="pointer-events:none; display:inline-block; font-size:12px; padding:5px 14px; background:var(--vs-blau,#41518b); color:white; border-radius:3px;">📁 Datei manuell auswählen...</span></div>` & "\n"
+    html &= `  </label>` & "\n"
+    html &= `  <div class="vs-upload-preview" style="font-size:12px; margin-top:8px; font-weight:bold; color:var(--vs-blau,#41518b);"></div>` & "\n"
     html &= `  <div class="vs-upload-progress"><div class="vs-upload-progress-bar"></div></div>` & "\n"
-    html &= sprintf(`  <script>if(window.initVsUpload) window.initVsUpload("%s", "%s");</script>` & "\n", {id, target_url})
+    html &= sprintf(`  <script>if(typeof window.initVsUpload === 'function') window.initVsUpload("%s", "%s");</script>` & "\n", {id, target_url})
     html &= `</div>` & "\n"
     return html
 end function
