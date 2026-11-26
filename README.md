@@ -3,14 +3,32 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Java 25](https://img.shields.io/badge/Java-25%20(Loom%20%7C%20FFM)-orange.svg)](https://openjdk.org/)
 [![Language: OpenEuphoria](https://img.shields.io/badge/Language-OpenEuphoria%20(Procedural)-indigo.svg)](https://openeuphoria.org)
+[![AI: MCP & RAG & LLM](https://img.shields.io/badge/AI-MCP%20%7C%20RAG%20%7C%20LLM-blueviolet.svg)](#-enterprise-superpowers--ai)
+[![LSP: 3.17 Protocol](https://img.shields.io/badge/LSP-3.17%20(NetBeans%20%26%20VS%20Code)-success.svg)](#4-ide-integration--language-server-protocol-lsp)
+[![IP Protection: Bytecode & Runtime](https://img.shields.io/badge/IP%20Protection-AOT%20Bytecode%20%26%20Runtime-red.svg)](#5-ahead-of-time-bytecode--dedicated-micro-runtime-ip-protection)
 [![Platform](https://img.shields.io/badge/Platform-Linux%2064--bit%20%7C%20Windows-green.svg)]()
 [![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen.svg)]()
 
 > **About the Language:** [OpenEuphoria](https://openeuphoria.org) is an elegant, purely **procedural programming language with a remarkably simple, intuitive syntax** and powerful dynamic *sequences* as its core data structure. Without the cognitive overhead and boilerplate of complex object-oriented hierarchies, programs remain readable, predictable, and exceptionally fast to write.
 >
-> **About Euphorix:** **Euphorix** is an independent, clean-room high-performance Virtual Machine written in Java 25. It natively interprets the OpenEuphoria 4.x language and standard libraries, while seamlessly incorporating modern enterprise capabilities: millions of **Java 25 Loom Virtual Threads**, lock-free **Go-style CSP Channels**, an integrated **High-Density Web-UI framework (VS-UI)**, native **SQLite 3 & PostgreSQL** database drivers, **RFC 9535 JSONPath**, **W3C XPath 1.0**, and zero-overhead Java interop.
+> **About Euphorix:** **Euphorix** is an independent, clean-room high-performance Virtual Machine written in Java 25. It natively interprets the OpenEuphoria 4.x language and standard libraries, while seamlessly incorporating modern enterprise superpowers: **Autonomous AI Agents (MCP Server & Client, Universal LLM, Vector RAG)**, **LSP 3.17 Language Server**, **Commercial IP-Protection (AOT Bytecode & Stripped Runtime)**, millions of **Java 25 Loom Virtual Threads**, lock-free **Go-style CSP Channels**, an integrated **High-Density Web-UI framework (VS-UI)**, and native **SQLite 3 & PostgreSQL** database drivers.
 
 Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`) and a **completely self-contained 53 MB single-binary** (`euphorix-standalone`) requiring no pre-installed Java or external runtime.
+
+---
+
+## ⚡ Enterprise Superpowers & AI
+
+Euphorix combines the simplicity of procedural programming with modern enterprise and AI capabilities:
+
+| Superpower | Module / Tool | Key Capabilities |
+|---|---|---|
+| **Model Context Protocol (MCP)** | `std/mcp.e` | Voller **MCP Server & Client** über Stdio JSON-RPC. Schreibt deklarative Tools & Ressourcen für Claude Desktop, Cursor, Copilot und autonome Agenten. |
+| **Universal LLM Client** | `std/llm.e` | Direkte Inferenz & Embeddings für **Ollama** (lokal), OpenAI, Anthropic & DeepSeek mit automatischem Streaming und JSON-Output. |
+| **Hybrid RAG & Vector Search** | `std/rag.e` | Ultraschnelle semantische Vektorsuche kombiniert mit SQLite FTS5 Volltextsuche für Retrieval-Augmented Generation im Speicher. |
+| **Language Server Protocol (LSP 3.17)** | `euphorix --lsp` | Vollwertige IDE-Unterstützung für **Apache NetBeans** & **VS Code**: Live-Syntaxdiagnostik (Fehleranzeige), Autovervollständigung mit Snippets, Hover-Dokumentation, Go-to-Definition und Document Outline. |
+| **Quellcode-Schutz (IP-Protection)** | `euphorix --compile`<br>`euphorix-rt` | **AOT-Bytecode-Kompilierung** (`.exb`), Executable Binding (`--bind`) und dedizierte Micro-Runtime (`runtime.jar` / `euphorix-rt` ohne Compiler): Auslieferung kommerzieller Software **ohne Quellcode-Weitergabe**! |
+| **High-Density Web-UI (VS-UI)** | `std/vsui.e` | Zero-Build Hypermedia Suite (22 Komponenten, DIN 5008 Zahlenformatierung, DataGrid, Modals, Tabs, Splitters, reaktive DOM-Patches) – keine Node/npm-Buildsteps! |
 
 ---
 
@@ -31,9 +49,13 @@ Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`)
 * **Clean-Room Register-Based VM**:
   * 65,536 virtual registers with Copy-on-Write (CoW) memory semantics.
   * Tagged values with 48-bit fast integers and 64-bit IEEE-754 floating point numbers.
-* **High-Density Web-UI Framework (`std/vsui.e`)**:
-  * Integrated, self-contained business web framework with local assets (`./html/`).
-  * Sticky table headers, responsive mobile card view, interactive modals, tabs, splitters, and flicker-free reactive JSON patches (`vsui:updates()`) without full page reloads.
+* **High-Density Web-UI Framework (`std/vsui.e`) — The Fusion of HTMX & Vaadin**:
+  * **Zero-Build, Pure Hypermedia (HTMX-Style)**: No React, Vue, Node.js, npm, Webpack, or external CDNs required. 100% self-contained local assets (`./html/`). The browser stays fast and lightweight.
+  * **Backend-Centric Component Model (Vaadin-Style)**: Write your entire UI in clean, procedural OpenEuphoria. Event handlers (`routine_id`) run directly on the server next to your databases (SQLite, PostgreSQL, EDS) without writing manual REST endpoints, DTOs, or fetch glue code.
+  * **Full 22-Component Enterprise Suite**: DataGrid with sticky headers, live fulltext filter, and automatic mobile card view (`vsgrid`), hierarchical Treeviews (`vstreeview`), Modals, Tabs, Splitters, Collapsibles, Floating Tooltips, and Right-Click Context Menus.
+  * **Commercial Accounting Precision**: Localized number inputs (`vsnuminput.js` / `vsnumber.js`) with configurable decimal places (`nk`), German thousand separators (`50.000,00 €`), right-aligned monospace styling, and automatic blur-formatting.
+  * **Pixel-Exact Absolute Layouts & Centering**: Built-in coordinate positioning (`setXYWH`, `opt_xywh(x, y, w, h)`) and automatic window/parent centering (`centerWinX`, `centerWinY` via `ldom.js`).
+  * **Reactive Partial DOM Patches**: Smooth, flicker-free updates (`vsui:updates()`) pushing targeted changes (`patch`, `setValue`, `setXYWH`, `toast`) without full page reloads.
   * Enterprise alternative: SAP UI5 Web Components 2.29 (`std/ui5.e`).
 * **Java 25 Loom Concurrency**:
   * **Virtual Threads**: Non-blocking concurrency across CPU cores via Java 25 (`thread:spawn`, `thread:async`, `thread:await`).
@@ -75,22 +97,48 @@ Available as both a lightweight executable wrapper (`euphorix` / `euphorix.jar`)
 euphorix.cmd my_script.ex
 ```
 
-### 3. Run the Complete Tutorial Suite (12 Chapters)
+### 3. Ahead-of-Time Bytecode & Minimized Runtime (IP Protection & 10x Startup)
+```bash
+# A. Ahead-of-Time compile to bytecode (.exb)
+./euphorix --compile my_script.ex -o my_script.exb
+
+# B. Execute with minimized runtime (NO compiler, NO source code)
+java -jar runtime.jar my_script.exb
+# or shorthand launcher:
+./euphorix-rt my_script.exb
+
+# C. Bind into self-executing executable binary
+./euphorix --bind my_script.ex -o my_script
+
+# D. Self-contained standalone single-binary (bundles mini-JRE, runtime.jar & web assets)
+./tools/build_standalone.sh --app my_script.ex -o my_script-standalone
+```
+
+### 4. Run the Complete Tutorial Suite (12 Chapters)
 ```bash
 ./euphorix tutorial/alle_beispiele_ausfuehren.ex
 ```
 
-### 4. Run the High-Density Web-UI Demo
+### 5. Run the High-Density Web-UI Demo
 ```bash
 ./euphorix demo/vsui_demo.ex
 # Open in browser: http://localhost:8089/
 ```
 
-### 5. Build the Documentation Website & PDFs
+### 6. Build the Documentation Website & PDFs
 ```bash
 make website
 # Generates website/ ready to be copied to lighttpd:
 # scp -r website/* user@server:/var/www/html/
+```
+
+### 7. IDE Support: Apache NetBeans & VS Code (Language Server Protocol)
+```bash
+# Configure Apache NetBeans with one command:
+./tools/setup_netbeans_lsp.sh
+
+# Or start the LSP server manually over stdio:
+./euphorix --lsp
 ```
 
 ---
@@ -104,12 +152,13 @@ include std/vsui.e as vsui
 integer app = vsui:app("ERP Cockpit", 8089)
 
 function on_speichern(sequence ctx)
-    sequence kdnr = vsui:val(ctx, "txt_kdnr")
-    sequence firma = vsui:val(ctx, "txt_firma")
+    sequence kdnr   = vsui:val(ctx, "txt_kdnr")
+    sequence firma  = vsui:val(ctx, "txt_firma")
+    atom umsatz     = vsui:val_num(ctx, "num_umsatz") -- Auto-parsed from German format "50.000,00"
 
-    -- Reactive patch: updates UI without full page reload
+    -- Reactive patch (Vaadin/HTMX style): updates UI without full page reload
     return vsui:updates({
-        vsui:grid_set_data("grid_kunden", {{kdnr, firma, "Aktiv"}}),
+        vsui:grid_set_data("grid_kunden", {{kdnr, firma, vsui:format_num_de(umsatz, 2) & " €", "Aktiv"}}),
         vsui:clear_form("form_kunden"),
         vsui:toast_show("Kunde erfolgreich angelegt!", vsui:TOAST_SUCCESS)
     })

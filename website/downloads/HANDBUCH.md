@@ -26,9 +26,12 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 1.4 [Voraussetzungen & Maven-Build](#14-voraussetzungen--maven-build)
    - 1.5 [Externe Java-Bibliotheken verwalten & einbinden via pom.xml](#15-externe-java-bibliotheken-verwalten--einbinden-via-pomxml)
    - 1.6 [Autarkes Single-Binary mit integrierter Minimal-JRE (`./euphorix-standalone`)](#16-autarkes-single-binary-mit-integrierter-minimal-jre-euphorix-standalone)
-   - 1.7 [Plattformunabhängigkeit & Windows-Unterstützung (`euphorix.cmd` / `euphorix.bat`)](#17-plattformunabhängigkeit--windows-unterstützung-euphorixcmd--euphorixbat)
-   - 1.8 [Entwickler-Workflow mit Hot-Reload File-Watcher (`--watch` / `-w`)](#18-entwickler-workflow-mit-hot-reload-file-watcher---watch---w)
-   - 1.9 [Linux-Dauerbetrieb & Systemd-Dienste (`tools/make_service.ex`)](#19-linux-dauerbetrieb--systemd-dienste-toolsmake_serviceex)
+   - 1.7 [Ahead-of-Time Bytecode-Kompilierung (`.exb`), Standalone-Binding & Dedizierte Runtime (`runtime.jar` / `euphorix-rt`)](#17-ahead-of-time-bytecode-kompilierung-exb-standalone-binding--dedizierte-runtime-runtimejar--euphorix-rt)
+   - 1.8 [Plattformunabhängigkeit & Windows-Unterstützung (`euphorix.cmd` / `euphorix.bat`)](#18-plattformunabhängigkeit--windows-unterstützung-euphorixcmd--euphorixbat)
+   - 1.9 [Entwickler-Workflow mit Hot-Reload File-Watcher (`--watch` / `-w`)](#19-entwickler-workflow-mit-hot-reload-file-watcher---watch---w)
+   - 1.10 [Linux-Dauerbetrieb & Systemd-Dienste (`tools/make_service.ex`)](#110-linux-dauerbetrieb--systemd-dienste-toolsmake_serviceex)
+   - 1.11 [Reverse-Proxy-Betrieb (lighttpd, Nginx, Caddy)](#111-reverse-proxy-betrieb-lighttpd-nginx-caddy)
+   - 1.12 [IDE-Integration & Language Server Protocol (LSP) für Apache NetBeans & VS Code](#112-ide-integration--language-server-protocol-lsp-für-apache-netbeans--vs-code)
 2. [Vollständige Sprach-, Syntax- & Standard-Referenz](#2-vollständige-sprach--syntax---standard-referenz)
    - 2.1 [Datentypen & Typsystem](#21-datentypen--typsystem)
    - 2.2 [Sichtbarkeiten, Namespaces & Includes](#22-sichtbarkeiten-namespaces--includes)
@@ -70,14 +73,21 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 4.7 [Standard-Dialoge (Message, Input, Confirm, FileDialog)](#47-standard-dialoge-message-input-confirm-filedialog)
    - 4.8 [Vollständiges Demo-Programm (`demo/gui_demo.ex`)](#48-vollständiges-demo-programm-demogui_demoex)
 5. [UTF-8 String-Verarbeitung (`std/utf8.e` & VM-Engine)](#5-utf-8-string-verarbeitung-stdutf8e--vm-engine)
+   - 5.1 [Vollständige UTF-8-Integration im Java 25 Interpreter](#51-vollständige-utf-8-integration-im-java-25-interpreter)
+   - 5.2 [Zeichengenaue Unicode-Operationen (`std/utf8.e`)](#52-zeichengenaue-unicode-operationen-stdutf8e)
 6. [JSON & RFC 9535 JSONPath (`std/json.e`)](#6-json--rfc-9535-jsonpath-stdjsone)
+   - 6.1 [JSON-Parsing & Serialisierung (`std/json.e`)](#61-json-parsing--serialisierung-stdjsone)
+   - 6.2 [RFC 9535 JSONPath Engine mit Pfadabfragen](#62-rfc-9535-jsonpath-engine-mit-pfadabfragen)
 7. [JSON-Schema Draft 2020-12 (`std/json_schema.e`)](#7-json-schema-draft-2020-12-stdjson_schemae)
+   - 7.1 [Deklarative Schema-Validierung nach Draft 2020-12](#71-deklarative-schema-validierung-nach-draft-2020-12)
 8. [Dokumenten- & Tabellenformate: XML, CSV, Excel & PDF (`std/xml.e`, `std/csv.e`, `std/excel.e`, `std/pdf_report.e`)](#8-dokumenten--tabellenformate-xml-csv-excel--pdf-stdxmle-stdcsve-stdexcele-stdpdf_reporte)
    - 8.1 [XML DOM, W3C XPath 1.0 & XSD-Validierung (`std/xml.e`)](#81-xml-dom-w3c-xpath-10--xsd-validierung-stdxmle)
    - 8.2 [RFC 4180 High-Performance CSV-Engine (`std/csv.e`)](#82-rfc-4180-high-performance-csv-engine-stdcsve)
    - 8.3 [Native Microsoft Excel OpenXML-Engine (`std/excel.e`)](#83-native-microsoft-excel-openxml-engine-stdexcele)
    - 8.4 [Standard PDF 1.4 Business-Report Generator (`std/pdf_report.e`)](#84-standard-pdf-14-business-report-generator-stdpdf_reporte)
 9. [SQL-Datenbanken: SQLite 3 (`std/sqlite.e`) & PostgreSQL (`std/pgsql.e`)](#9-sql-datenbanken-sqlite-3-stdsqlitee--postgresql-stdpgsqle)
+   - 9.1 [Eingebettete SQLite 3 Datenbank (`std/sqlite.e`)](#91-eingebettete-sqlite-3-datenbank-stdsqlitee)
+   - 9.2 [Enterprise PostgreSQL Datenbank (`std/pgsql.e`)](#92-enterprise-postgresql-datenbank-stdpgsqle)
 10. [Web-Server, Microservices, Sicherheit & Realtime (`std/http.e`, `std/auth.e`, `std/session.e`, `std/sse.e`)](#10-web-server-microservices-sicherheit--realtime-stdhttpe-stdauthe-stdsessione-stdssee)
    - 10.1 [HTTP- & HTTPS-Client (`std/http.e`)](#101-http--https-client-stdhttpe)
    - 10.2 [Integrierter Web-Server & REST-Routing (`std/http.e`)](#102-integrierter-web-server--rest-routing-stdhttpe)
@@ -85,7 +95,11 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 10.4 [HTTP Session- & Cookie-Management (`std/session.e`)](#104-http-session---cookie-management-stdsessione)
    - 10.5 [Realtime Server-Sent Events (SSE) Push (`std/sse.e`)](#105-realtime-server-sent-events-sse-push-stdssee)
 11. [Dual-Stack Netzwerk & Sockets (`std/socket.e` & `std/net/dns.e`)](#11-dual-stack-netzwerk--sockets-stdsockete--stdnetdnse)
+   - 11.1 [Dual-Stack IPv4 & IPv6 Sockets (`std/socket.e`)](#111-dual-stack-ipv4--ipv6-sockets-stdsockete)
+   - 11.2 [DNS-Namensauflösung & URLs (`std/net/dns.e`, `std/net/url.e`)](#112-dns-namensauflösung--urls-stdnetdnse-stdneturle)
 12. [Demos, Beispiele & Ausführung](#12-demos-beispiele--ausführung)
+   - 12.1 [Praxisbeispiele & Demos im Überblick](#121-praxisbeispiele--demos-im-überblick)
+   - 12.2 [Ausführen der Demonstrationsprogramme](#122-ausführen-der-demonstrationsprogramme)
 13. [Moderne Nebenläufigkeit: Virtual Threads, Async/Await & Channels (`std/thread.e`, `std/channel.e`, `std/task.e`, `std/cron.e`)](#13-moderne-nebenläufigkeit-virtual-threads-asyncawait--channels-stdthreade-stdchannele-stdtaske-stdcrone)
    - 13.1 [Weg 1: Klassische Tasks mit Virtual Threads (`task:create_thread`)](#131-weg-1-klassische-tasks-mit-virtual-threads-taskcreate_thread)
    - 13.2 [Weg 2: Channels / Go-Style Concurrency (`std/channel.e`)](#132-weg-2-channels--go-style-concurrency-stdchannele)
@@ -97,15 +111,17 @@ Die Laufzeitumgebung kombiniert die schlanke, intuitive Syntax von OpenEuphoria 
    - 14.3 [Reaktive Euphorix-Bridge & Live DOM-Updates](#143-reaktive-euphorix-bridge--live-dom-updates)
    - 14.4 [Vollständiges Anwendungsbeispiel (`examples/07_sapui5_webcomponents_demo.ex`)](#144-vollständiges-anwendungsbeispiel-examples07_sapui5_webcomponents_demoex)
 15. [Autarke High-Density Web-UI Suite (`std/vsui.e`)](#15-autarke-high-density-web-ui-suite-stdvsuie)
-   - 15.1 [Architektur & Vorteile der integrierten VS-UI Suite (`html/`)](#151-architektur--vorteile-der-integrierten-vs-ui-suite-html)
-   - 15.2 [Komponenten-Suite (High-Density Controls, vsgrid, Formulare, Dialoge, Upload, Charts)](#152-komponenten-suite-high-density-controls-vsgrid-formulare-dialoge-upload-charts)
-   - 15.3 [Integrierter Asset-Server (/lib2/*, /css/*, /img/*)](#153-integrierter-asset-server-lib2-css-img)
-   - 15.4 [Reaktive Event-Bridge mit vsevent & DOM-Patches](#154-reaktive-event-bridge-mit-vsevent--dom-patches)
-   - 15.5 [Mobile Responsiveness & Touch-Ergonomie (`vs-mobile.css`)](#155-mobile-responsiveness--touch-ergonomie-vs-mobilecss)
-   - 15.6 [Formularvalidierung & Fehlertooltips (`vsui:field_error`)](#156-formularvalidierung--fehlertooltips-vsuifield_error)
-   - 15.7 [Drag & Drop Datei-Upload Dropzone (`vsui:upload`)](#157-drag--drop-datei-upload-dropzone-vsuiupload)
-   - 15.8 [Native Responsive SVG-Charts (`vsui:chart`)](#158-native-responsive-svg-charts-vsuichart)
-   - 15.9 [Vollständige Anwendungsbeispiele & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)](#159-vollständige-anwendungsbeispiele--demos-demovsui_demoex-examples08_vsui_cockpit_demoex-examples11_vsui_charts_und_upload_demoex)
+   - 15.1 [Architektur & Philosophie: Die Symbiose aus HTMX und Vaadin](#151-architektur--philosophie-die-symbiose-aus-htmx-und-vaadin)
+   - 15.2 [Vollständige 22-Komponenten-Suite (`html/lib2/components/`)](#152-vollständige-22-komponenten-suite-htmllib2components)
+   - 15.3 [Integrierter Asset-Server (`/lib2/*`, `/css/*`, `/img/*`)](#153-integrierter-asset-server-lib2-css-img)
+   - 15.4 [Reaktive Event-Bridge mit `vsevent` & DOM-Patches](#154-reaktive-event-bridge-mit-vsevent--dom-patches)
+   - 15.5 [Pixelgenaue Positionierung & Fensterzentrierung (`ldom.setXYWH`, `opt_xywh`)](#155-pixelgenaue-positionierung--fensterzentrierung-ldomsetxywh-opt_xywh)
+   - 15.6 [Kaufmännische Präzision & Deutsche Zahlenformatierung (`vsnumber.js`)](#156-kaufmännische-präzision--deutsche-zahlenformatierung-vsnumberjs)
+   - 15.7 [Mobile Responsiveness & Touch-Ergonomie (`vs-mobile.css`)](#157-mobile-responsiveness--touch-ergonomie-vs-mobilecss)
+   - 15.8 [Formularvalidierung & Fehlertooltips (`vsui:field_error`)](#158-formularvalidierung--fehlertooltips-vsuifield_error)
+   - 15.9 [Drag & Drop Datei-Upload Dropzone (`vsui:upload`)](#159-drag--drop-datei-upload-dropzone-vsuiupload)
+   - 15.10 [Native Responsive SVG-Charts (`vsui:chart`)](#1510-native-responsive-svg-charts-vsuichart)
+   - 15.11 [Vollständige Anwendungsbeispiele & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)](#1511-vollständige-anwendungsbeispiele--demos-demovsui_demoex-examples08_vsui_cockpit_demoex-examples11_vsui_charts_und_upload_demoex)
 16. [Künstliche Intelligenz: Autonome Agenten, Model Context Protocol (MCP), RAG & LLMs (`std/mcp.e`, `std/rag.e`, `std/llm.e`)](#16-künstliche-intelligenz-autonome-agenten-model-context-protocol-mcp-rag--llms-stdmcpe-stdrage-stdllme)
    - 16.1 [Architektur: Das Zusammenspiel von LLM, MCP und RAG](#161-architektur-das-zusammenspiel-von-llm-mcp-und-rag)
    - 16.2 [Wann LLM + MCP allein genügen (und wann RAG benötigt wird)](#162-wann-llm--mcp-allein-genügen-und-wann-rag-benötigt-wird)
@@ -285,7 +301,83 @@ make standalone
    - Beim ersten Start entpackt sich das Bundle automatisch nach `~/.cache/euphorix/java25-runtime/<hash>/`. Alle nachfolgenden Aufrufe starten sofort aus dem Cache.
    - **Vorteil gegenüber GraalVM**: Volle Unterstützung für dynamisches Nachladen von JARs (`java:load_jar`), Swing & GTK+ Desktop-GUIs, Virtual Threads und JIT-Optimierung ohne Closed-World-Einschränkungen!
 
-### 1.7 Plattformunabhängigkeit & Windows-Unterstützung (`euphorix.cmd` / `euphorix.bat`)
+### 1.7 Ahead-of-Time Bytecode-Kompilierung (`.exb`), Standalone-Binding & Dedizierte Runtime (`runtime.jar` / `euphorix-rt`)
+
+Für Unternehmen und Entwickler, die ihren **Euphoria-Quellcode (`.ex`, `.e`) schützen und nicht im Klartext weitergeben** möchten, oder maximale Startperformance benötigen, bietet Euphorix ein vollständiges Ahead-of-Time (AOT) Bytecode- und Runtime-Ökosystem:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            ENTWICKLUNGS-WORKFLOW                             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Quellcode (.ex)  ──[ euphorix --compile ]──>  Kompakter Bytecode (.exb)     │
+│        │                                                      │              │
+│        └──[ euphorix --bind ]──>  Ausführbare Binärdatei      │              │
+│                                           │                   │              │
+├───────────────────────────────────────────┼───────────────────┼──────────────┤
+│               PRODUKTION / KUNDENSYSTEME  ▼                   ▼              │
+│                                     ┌─────────────┐     ┌──────────────────┐ │
+│                                     │ myapp (ELF) │     │   runtime.jar    │ │
+│                                     └─────────────┘     │  (euphorix-rt)   │ │
+│                                                         └──────────────────┘ │
+│                                                         OHNE Compiler        │
+│                                                         OHNE Lexer           │
+│                                                         OHNE Quellcode       │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1. Ahead-of-Time Bytecode-Kompilierung (`-b` / `--compile`)
+Kompiliert eine `.ex`-Quelldatei inklusive aller aufgelösten `include`-Bibliotheken in eine eigenständige, binäre Bytecode-Datei (`.exb`):
+```bash
+# Kompiliert app.ex zu app.exb:
+./euphorix --compile app.ex -o app.exb
+# oder kurz:
+./euphorix -b app.ex -o app.exb
+```
+* **Dateiformat:** Binäres, komprimiertes GZIP-Format mit Magic Header `EXB1` (`0x45584231`). Enthält alle serialisierten Konstanten, Register-Instruktionen, Routinen-Signaturen und Metadaten.
+* **Schutz des geistigen Eigentums:** Auf Kundensystemen wird keinerlei `.ex`- oder `.e`-Quellcode mehr benötigt.
+
+#### 2. Die dedizierte Bytecode-Runtime (`runtime.jar` / `./euphorix-rt`)
+Zusätzlich zum vollständigen Interpreter-JAR (`euphorix.jar`) erzeugt der Build-Prozess (`make runtime` bzw. `make java`) eine eigens minimierte Laufzeitumgebung:
+```bash
+# Ausführung einer .exb-Datei mit der schlanken Runtime:
+java -jar runtime.jar app.exb [parameter...]
+
+# Oder direkt über das CLI-Script:
+./euphorix-rt app.exb [parameter...]
+# bzw. symlink:
+./runtime app.exb
+```
+* **Komplett Compiler- und Quellcode-frei:** `runtime.jar` schließt `Compiler*.class`, `Lexer*.class`, `Token*.class`, `TokenType*.class` und den gesamten Quellcode-Baum `/eu_include/**` vollständig aus.
+* **Sicherheit:** Endanwender können auf dem Zielsystem keine unautorisierten Skripte kompilieren oder verändern.
+* **Klare Fehlerdiagnose:** Wird versehentlich eine Quellcode-Datei (`.ex`) an die Runtime übergeben, weist sie diese mit einer klaren Meldung ab.
+
+#### 3. Startup-Benchmark-Vergleich (`--time` / `-t`)
+Die Vorkompilierung eliminiert das Einlesen von Quelltexten, Tokenizing, AST-Generierung und Include-Resolution vollständig:
+| Modus | Befehl | Startup-Zeit (Load) | VM-Ausführung | Gesamtlaufzeit |
+| :--- | :--- | :--- | :--- | :--- |
+| **Interpreter (`.ex`)** | `./euphorix -t tutorial/10_web_und_gui.ex` | **285 – 419 ms** | ~280 ms | ~570 – 700 ms |
+| **Bytecode (`.exb`)** | `java -jar runtime.jar -t tutorial/10_web_und_gui.exb` | **24 – 41 ms** | ~240 ms | **~270 – 290 ms** |
+> 🚀 **Ergebnis:** Das Laden des Bytecodes ist **7x bis 10x schneller**; die Gesamtausführungszeit sinkt um über **50%**.
+
+#### 4. Selbst-ausführende Binärdateien (`--bind`)
+Erzeugt eine direkt ausführbare Linux-Binärdatei mit eingebettetem Bytecode-Payload:
+```bash
+./euphorix --bind mein_server.ex -o mein_server
+chmod +x mein_server
+./mein_server --port 8080
+```
+Die Binärdatei enthält einen schlanken POSIX-Boot-Stub, der automatisch nach `euphorix-rt`, `runtime.jar` oder `euphorix` im Pfad oder Cache sucht und den angehängten Bytecode direkt im Arbeitsspeicher ausführt.
+
+#### 5. Autarkes Standalone-Bundle mit Mini-JRE (`tools/build_standalone.sh --app`)
+Das "Königsmodell" für maximale Unabhängigkeit:
+```bash
+# Bündelt Anwendung, Mini-JRE (60 MB), runtime.jar und statische Web-Assets (html/):
+./tools/build_standalone.sh --app mein_projekt.ex -o mein_projekt-standalone
+```
+* Das fertige Executable benötigt **weder Java noch eine installierte Runtime**.
+* Es enthält **keinen Quellcode**, sondern nur den vorkompilierten Bytecode (`app.exb`), die `runtime.jar` und alle statischen VS-UI Webkomponenten.
+
+### 1.8 Plattformunabhängigkeit & Windows-Unterstützung (`euphorix.cmd` / `euphorix.bat`)
 
 Dank des reinen Java-25-Bytecode-Kerns läuft `euphorix.jar` ohne jegliche Modifikation direkt unter **Microsoft Windows** (10, 11, Server) und **macOS**:
 
@@ -297,7 +389,7 @@ Dank des reinen Java-25-Bytecode-Kerns läuft `euphorix.jar` ohne jegliche Modif
   euphorix.cmd mein_skript.ex
   ```
 
-### 1.8 Entwickler-Workflow mit Hot-Reload File-Watcher (`--watch` / `-w`)
+### 1.9 Entwickler-Workflow mit Hot-Reload File-Watcher (`--watch` / `-w`)
 
 Beim Entwickeln von Web-APIs, Servern oder Desktop-UIs entfällt das manuelle Neustarten nach jeder Codeänderung. Mit dem Parameter `--watch` (oder kurz `-w`) überwacht Euphorix das Skriptverzeichnis und alle Projektdateien kontinuierlich auf Änderungen:
 
@@ -313,7 +405,7 @@ Beim Entwickeln von Web-APIs, Servern oder Desktop-UIs entfällt das manuelle Ne
 * **Intelligentes Debouncing:** Schnelle aufeinanderfolgende Änderungen (z. B. beim Speichern mehrerer Dateien im Editor) werden mit einem 200ms Debounce-Intervall zusammengefasst, um Mehrfachstarts zu verhindern.
 * **Automatischer Neustart:** Sobald eine Änderung erkannt wird, beendet Euphorix den laufenden Kindprozess geordnet und startet das Skript mit aktuellem Quellcode neu.
 
-### 1.9 Linux-Dauerbetrieb & Systemd-Dienste (`tools/make_service.ex`)
+### 1.10 Linux-Dauerbetrieb & Systemd-Dienste (`tools/make_service.ex`)
 
 Für den Produktivbetrieb unter Linux generiert das integrierte Werkzeug `tools/make_service.ex` vorkonfigurierte, gehärtete `systemd`-Service-Dateien:
 
@@ -338,6 +430,139 @@ sudo cp euphorix-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now euphorix-api
 sudo journalctl -u euphorix-api -f
+```
+
+### 1.11 Reverse-Proxy-Betrieb (lighttpd, Nginx, Caddy)
+
+Für den Produktiveinsatz von Webanwendungen und Dashboards ([std/vsui.e](file:///home/volkix/prj/intpret/eu_include/std/vsui.e)) empfiehlt sich der Betrieb des Euphorix-Dienstes hinter einem leichtgewichtigen Reverse-Proxy. 
+
+> [!TIP]
+> **Vollständig autark:** Bei Verwendung des 52 MB Single-Binaries (`tools/build_standalone.sh --app app.ex`) sind der integrierte Webserver, alle 22 VS-UI-Webkomponenten, CSS- und JS-Dateien **fest im Binary eingebettet**. Es müssen auf dem Server keine separaten Dateien oder Ordner abgelegt werden!
+
+#### lighttpd Konfiguration (`/etc/lighttpd/conf-available/99-euphorix.conf`)
+```lighttpd
+server.modules += ( "mod_proxy" )
+
+$HTTP["host"] == "cockpit.meine-firma.de" {
+    # Dynamische Requests und alle Web-Assets an Euphorix weiterleiten:
+    proxy.server = ( "" => (
+        ( "host" => "127.0.0.1", "port" => 8089 )
+    ))
+    proxy.header = (
+        "map-host-request" => ( "-" => "$0" )
+    )
+}
+```
+
+#### Nginx Konfiguration (`/etc/nginx/sites-available/euphorix.conf`)
+```nginx
+server {
+    listen 80;
+    server_name cockpit.meine-firma.de;
+
+    location / {
+        proxy_pass http://127.0.0.1:8089;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off; # Wichtig für reaktive VS-UI-Events und Server-Sent Events (SSE)
+    }
+}
+```
+
+---
+
+### 1.12 IDE-Integration & Language Server Protocol (LSP) für Apache NetBeans & VS Code
+
+Für komfortables, fehlerfreies Entwickeln mit OpenEuphoria in modernen Entwicklungsumgebungen (IDEs) bringt Euphorix einen vollwertigen **Language Server** gemäß der offiziellen **LSP 3.17-Spezifikation** mit:
+
+```bash
+./euphorix --lsp
+```
+
+Der Sprachserver kommuniziert über Standard-I/O (JSON-RPC 2.0) direkt mit Ihrer bevorzugten IDE.
+
+#### Unterstützte Fähigkeiten (LSP Capabilities)
+
+1. **Echtzeit-Diagnose (Diagnostics & Syntax-Checking):**
+   * Bei jeder Code-Änderung im Editor führt der Compiler eine In-Memory-Synthese und lexikalische Validierung durch.
+   * Syntaxfehler werden sofort mit exakter Zeilennummer, Spalte und deutscher Fehlermeldung rot im Editor unterstrichen.
+   * Sobald der Fehler behoben ist, verschwinden die Warnhinweise automatisch.
+2. **Intelligente Code-Vervollständigung (IntelliSense & Snippets):**
+   * **Keywords & Snippets:** Tippen von `if`, `for`, `while`, `function`, `procedure`, `switch` etc. schlägt fertige Codegerüste mit Tabstopps vor.
+   * **Eingebaute Standardfunktionen:** Alle Built-ins (`puts`, `printf`, `length`, `append`, `match`, etc.) mit Parameterhinweisen.
+   * **Modul-Namespaces:** Durch Eingabe des Doppelpunkts (`vsui:`, `map:`, `json:`, `sequence:`, `io:`, `math:`, `sqlite:`, `http:`) werden direkt alle exportierten Modulroutinen samt Signaturen aufgelistet.
+   * **Lokale Symbole:** Alle im Dokument definierten Funktionen, Prozeduren, Typen und Konstanten stehen sofort zur Autovervollständigung bereit.
+3. **Hover-Dokumentation (Mauszeiger-Hilfe):**
+   * Zeigen Sie mit der Maus auf Schlüsselwörter, Built-ins oder Standardroutinen (`vsui:numinput`, `map:put`, etc.), um formatierte Markdown-Kurzhilfen mit Parametern und Typbeschreibungen zu sehen.
+4. **Gehe zu Definition (`F12` / `Strg + Klick`):**
+   * Direkter Sprung an die Deklarationsstelle von Prozeduren, Funktionen und Typen im Code.
+5. **Dokument-Gliederung (Outline / Document Symbols):**
+   * Hierarchische Übersicht aller im aktuellen Quelltext deklarierten Prozeduren, Funktionen und Datentypen in der Symbolleiste der IDE.
+
+---
+
+#### Apache NetBeans Integration (NetBeans 12, 19, 25, 31+)
+
+Apache NetBeans bringt native Unterstützung für generische Language Server (`org-netbeans-modules-lsp-client.jar`) mit.
+
+##### Automatisches Setup (Empfohlen)
+
+Führen Sie im Projektverzeichnis einfach das mitgelieferte Einrichtungsskript aus:
+
+```bash
+./tools/setup_netbeans_lsp.sh
+```
+
+Das Skript trägt den Euphorix-LSP-Server automatisch in Ihre NetBeans-Konfiguration ein (`~/.netbeans/<version>/config/Preferences/org/netbeans/modules/lsp/client.properties`).
+
+##### Manuelle Konfiguration in der NetBeans-Benutzeroberfläche
+
+Alternativ können Sie den Sprachserver direkt im NetBeans-Menü einrichten:
+1. Öffnen Sie **Tools** -> **Options** -> **Editor** -> Reiter **Language Servers**.
+2. Klicken Sie auf **Add...** und tragen Sie folgende Werte ein:
+   * **Name:** `Euphorix (OpenEuphoria)`
+   * **File Extensions:** `ex, e, ew, eu`
+   * **MIME-Type:** `text/x-euphoria`
+   * **Server Command:** `/home/volkix/prj/intpret/euphorix --lsp`
+3. Bestätigen Sie mit **Apply** und **OK**.
+
+Beim Öffnen einer beliebigen Euphoria-Datei (`.ex`, `.e`) startet NetBeans automatisch den Sprachserver im Hintergrund.
+
+---
+
+#### Visual Studio Code (VS Code) Integration
+
+Für VS Code steht die Erweiterung im Verzeichnis [editors/vscode/](file:///home/volkix/prj/intpret/editors/vscode/) bereit.
+
+##### Option A: Installation des VS Code Plugins
+
+Kopieren Sie den Ordner direkt in das VS Code Erweiterungsverzeichnis:
+
+```bash
+# Unter Linux / macOS:
+cp -r editors/vscode ~/.vscode/extensions/euphorix-lsp
+
+# Unter Windows:
+xcopy /E /I editors\vscode %USERPROFILE%\.vscode\extensions\euphorix-lsp
+```
+
+Nach einem Neustart von VS Code wird die Euphoria-Sprachunterstützung mitsamt TextMate-Syntax-Highlighting und LSP-Features automatisch aktiviert.
+
+##### Option B: Über Generic LSP Client Extension
+
+Falls Sie das Plugin **Generic LSP Client** (oder **glspc**) in VS Code installiert haben, ergänzen Sie einfach Ihre `settings.json`:
+
+```json
+{
+  "generic-lsp.server": {
+    "command": "/home/volkix/prj/intpret/euphorix",
+    "args": ["--lsp"],
+    "languages": ["euphoria"]
+  }
+}
 ```
 
 ---
@@ -554,7 +779,7 @@ Vordefinierte Symbole in Euphorix (`./euphorix`): `EU4`, `EU4_0`, `EU4_1`, `EU4_
 
 ---
 
-### 2.8 Vollständige Referenz aller 74 Include-Dateien & Standardmodule (`std/*.e` & `euphoria/*.e`)
+### 2.8 Vollständige Referenz aller 77 Include-Dateien & Standardmodule (`std/*.e` & `euphoria/*.e`)
 
 Dieser Abschnitt dokumentiert jede einzelne Include-Datei der Standardbibliothek von Euphorix, ihren Zweck sowie ausnahmslos alle enthaltenen öffentlichen Prozeduren (`public procedure`) und Funktionen (`public function`).
 
@@ -2296,33 +2521,38 @@ gui:wait_window(win)
 
 ## 5. UTF-8 String-Verarbeitung (`std/utf8.e` & VM-Engine)
 
-### Vollständige UTF-8-Integration im Java 25 Interpreter
+### 5.1 Vollständige UTF-8-Integration im Java 25 Interpreter
 1. **String-Literale im Quellcode**:
    Der Lexer liest Quellcodedateien im UTF-8-Format ein. Zeichen `> 127` (z. B. `ä`, `ö`, `ü`, `ß`, `€`) werden als echte UTF-8-Multi-Byte-Sequenzen in die Bytecode-Konstantentabelle eingetragen (`"ü"` $\rightarrow$ `{195, 188}`).
 2. **Robuste Konvertierung in `Value.toUtf8String()`**:
    Beim Übertragen an Java (Swing-GUI, JDBC, HTTP, JSON) decodiert die VM die Bytesequenzen verlustfrei. Sollten unvollständige Einzelbytes vorliegen, greift ein automatischer Fallback auf ISO-8859-1, sodass niemals fehlerhafte Zeichen (`\uFFFD`) im GUI oder in der Ausgabe entstehen.
-3. **Zeichengenaue Operationen (`std/utf8.e`)**:
-   * `utf8:len(s)`: Anzahl der tatsächlichen Unicode-Zeichen (Codepoints).
-   * `utf8:slice(s, start_cp, end_cp)`: Schneidet nach Zeichenposition statt Byte-Index.
-   * `utf8:upper(s)` / `utf8:lower(s)`: Echte Unicode-Groß-/Kleinschreibung für alle Alphabete und Umlaute.
-   * `utf8:to_codepoints(s)` / `utf8:from_codepoints(cps)`: Umwandlung in 32-Bit-Unicode-Zahlen (z. B. `'€'` $\rightarrow$ `8364`).
+
+### 5.2 Zeichengenaue Unicode-Operationen (`std/utf8.e`)
+* `utf8:len(s)`: Anzahl der tatsächlichen Unicode-Zeichen (Codepoints).
+* `utf8:slice(s, start_cp, end_cp)`: Schneidet nach Zeichenposition statt Byte-Index.
+* `utf8:upper(s)` / `utf8:lower(s)`: Echte Unicode-Groß-/Kleinschreibung für alle Alphabete und Umlaute.
+* `utf8:to_codepoints(s)` / `utf8:from_codepoints(cps)`: Umwandlung in 32-Bit-Unicode-Zahlen (z. B. `'€'` $\rightarrow$ `8364`).
 
 ---
 
 ## 6. JSON & RFC 9535 JSONPath (`std/json.e`)
 
+### 6.1 JSON-Parsing & Serialisierung (`std/json.e`)
 Das Modul `std/json.e` nutzt intern **Jackson Databind**:
 * Schnelles Parsen und Pretty-Printing (`json:parse`, `json:stringify`, `json:pretty`).
+* Direkte Kompatibilität mit Datenbank-Ergebnissen (`sqlite:query_assoc`, `pgsql:query_assoc`).
+
+### 6.2 RFC 9535 JSONPath Engine mit Pfadabfragen
 * **RFC 9535 JSONPath**: Direkte Auswertung komplexer Pfadausdrücke mit Filtern:
   ```euphoria
   sequence r = json:path_query(doc, "$.store.book[?(@.price < 10)].title")
   ```
-* Direkte Kompatibilität mit Datenbank-Ergebnissen (`sqlite:query_assoc`, `pgsql:query_assoc`).
 
 ---
 
 ## 7. JSON-Schema Draft 2020-12 (`std/json_schema.e`)
 
+### 7.1 Deklarative Schema-Validierung nach Draft 2020-12
 Validiert JSON-Datenstrukturen gegen den aktuellen Standard **Draft 2020-12**:
 * `json_schema:validate(data, schema) -> sequence`: Gibt `{valid, error_list}` zurück.
 * `json_schema:is_valid(data, schema) -> integer`: Schnelle boolesche Prüfung (`1` oder `0`).
@@ -2391,6 +2621,12 @@ Das vollständige Anwendungsbeispiel zum Zusammenspiel von CSV, Excel und PDF-Re
 ---
 
 ## 9. SQL-Datenbanken: SQLite 3 (`std/sqlite.e`) & PostgreSQL (`std/pgsql.e`)
+
+### 9.1 Eingebettete SQLite 3 Datenbank (`std/sqlite.e`)
+Die SQLite-Engine ist autark über JDBC eingebunden und unterstützt dateibasierte Datenbanken sowie `:memory:`-Instanzen.
+
+### 9.2 Enterprise PostgreSQL Datenbank (`std/pgsql.e`)
+Der PostgreSQL-Treiber bietet hochskalierbaren Enterprise-Zugriff inklusive Connection Pooling und SSL.
 
 Beide Module bieten eine **identische, einheitliche API** über JDBC:
 
@@ -2470,18 +2706,25 @@ Server-Sent Events ermöglichen das unidirektionale Streamen von Live-Daten, Sta
 
 ## 11. Dual-Stack Netzwerk & Sockets (`std/socket.e` & `std/net/dns.e`)
 
-NIO-Socketkanäle für IPv4- und IPv6-Netzwerkverbindungen:
+### 11.1 Dual-Stack IPv4 & IPv6 Sockets (`std/socket.e`)
+NIO-Socketkanäle für performante IPv4- und IPv6-Netzwerkverbindungen:
 * `sockets:tcp_connect(host, port, timeout_ms)`
 * `sockets:tcp_listen(port, bind_addr, backlog)`
 * `sockets:tcp_accept(srv_sock, timeout_ms)`
 * `sockets:send_all(sock, data)`
 * `sockets:recv_line(sock)`
 
+### 11.2 DNS-Namensauflösung & URLs (`std/net/dns.e`, `std/net/url.e`)
+Auflösung von Hostnamen in IP-Adressen und Parsing von URLs nach RFC 3986.
+
 ---
 
 ## 12. Demos, Beispiele & Ausführung
 
-Alle Beispielprogramme befinden sich in `demo/` und `examples/` und können direkt gestartet werden:
+### 12.1 Praxisbeispiele & Demos im Überblick
+Alle Beispielprogramme befinden sich in `demo/` und `examples/` und können direkt ausgeführt werden.
+
+### 12.2 Ausführen der Demonstrationsprogramme
 
 ```bash
 # 1. Interaktive Desktop-GUI starten (Swing / FlatLaf)
@@ -2704,51 +2947,91 @@ Das vollständige, lauffähige Anwendungsbeispiel eines Fiori Horizon Enterprise
 
 ## 15. Autarke High-Density Web-UI Suite (`std/vsui.e`)
 
-Als leichtgewichtige, autarke Alternative zu SAP UI5 Web Components integriert Euphorix mit `std/vsui.e` ein Enterprise-taugliches Web-Framework mit lokalen Assets direkt im Projektverzeichnis `html/`.
+Als leichtgewichtige, autarke Alternative zu monolithischen Frontend-Frameworks integriert Euphorix mit `std/vsui.e` ein vollwertiges Enterprise-Webframework. Es verbindet zwei der produktivsten Architekturmodelle der Web-Entwicklung zu einer homogenen Einheit: die **hypermedia-getriebene Einfachheit von HTMX** und das **serverseitige, typisierte Komponentenmodell von Vaadin**.
 
-### 15.1 Architektur & Vorteile der integrierten VS-UI Suite (`html/`)
+### 15.1 Architektur & Philosophie: Die Symbiose aus HTMX und Vaadin
 
-* **100% Autark & Offline-fähig**: Keine externen CDNs, kein Internetzugriff erforderlich. Alle JavaScript-Module (`ldom.js`, `vsevent.js`, `vsgrid.js`) und Stylesheets (`globalblauklein.css`, `vs.css`, `vs-mobile.css`) sind direkt im Projekt unter `html/` gebündelt und versioniert.
-* **High-Density Enterprise Design**: Die Farbpalette (`--vs-blau: #41518b`, `--vs-gruen: #3e8548`) und kompakte Zeilenhöhen sind speziell auf datenintensive kaufmännische Anwendungen (ERP, CRM, Lager, Disposition) optimiert.
-* **Reine ES6-Module**: Basiert auf modernem nativem JavaScript und Hyperscript (`ldom.js` mit `e()`, `_()`, `n()`) sowie dem flexiblen Event-Bus `vsevent.js`.
+Moderne Enterprise-Webanwendungen leiden häufig unter immenser Build-Komplexität (Node.js, Webpack/Vite, npm-Abhängigkeiten) und redundanten REST/DTO-Abstraktionsschichten. `std/vsui.e` eliminiert diesen Overhead vollständig, indem es die Stärken zweier bewährter Ansätze vereint:
 
-### 15.2 Komponenten-Suite (High-Density Controls, vsgrid, Formulare, Dialoge, Upload, Charts)
+```
+┌──────────────────────────────────────────────────────────────────┐
+│              BROWSER / CLIENT (Zero-Build ES6 UI)                │
+│  - Reine native ES6-Module (html/lib2/) & CSS (html/css/)        │
+│  - High-Density Enterprise Styling (globalblauklein.css)         │
+│  - Lokale Komponenten (vsgrid, vsnuminput, vstreeview, etc.)     │
+└──────────────────┬───────────────────────────▲───────────────────┘
+                   │                           │
+                   │ POST /__vs_event          │ Reactive Patches (JSON)
+                   │ (Button-Klicks, Change,   │ (patch, setValue,
+                   │  Formular-Werte)          │  setXYWH, toast...)
+                   │                           │
+┌──────────────────▼───────────────────────────┴───────────────────┐
+│              EUPHORIX SERVER (Backend / OpenEuphoria)            │
+│  - std/vsui.e (Autarker HTTP-Server auf Basis von std/http.e)    │
+│  - Serverseitiges Komponenten-Rendering (SSR) in reinem Euphoria │
+│  - Event-Handler (routine_id) führen Geschäftslogik direkt aus   │
+│  - Direkter In-Memory-Zugriff auf SQLite, PostgreSQL und EDS     │
+└──────────────────────────────────────────────────────────────────┘
+```
 
-`std/vsui.e` stellt fertige Euphorix-Konstruktoren bereit:
+#### Was es mit HTMX teilt:
+* **Hypermedia / Server-Driven UI**: Der Server liefert fertiges HTML und behält die Hoheit über Geschäftslogik, Validierung und Statusübergänge.
+* **Kein SPA-Build-Overhead**: Völliger Verzicht auf Node.js, npm, Webpack, Vite, React oder Vue sowie riesige `node_modules`-Verzeichnisse. Der Browser lädt sauberes HTML5 und native ES6-Module.
+* **Flackerfreie Partial DOM-Updates**: Nutzeraktionen lösen keine Full-Page-Reloads (`F5`) aus. Stattdessen sendet der Server zielgerichtete JSON-Patches (`vsui:updates`), die gezielt betroffene DOM-Knoten im Browser austauschen oder manipulieren (`vsui:patch`, `vsui:set_val`).
+
+#### Was es mit Vaadin teilt:
+* **Backend-Zentriertes Komponentenmodell**: Die gesamte Benutzeroberfläche wird deklarativ in der Hauptprogrammiersprache (reines OpenEuphoria statt Java) deklariert: `vsui:button()`, `vsui:grid()`, `vsui:tabs()`, `vsui:splitter()`, `vsui:numinput()`.
+* **Kein REST-API / DTO Glue-Code**: Entwickler müssen keine manuellen REST-Endpunkte, DTO-Serialisierer, Validierungs-Pipelines und Frontend-Fetch-Aufrufe schreiben, nur um einen Button mit einer Datenbankaktion zu verknüpfen. Events rufen direkt Backend-Handler (`routine_id`) auf.
+* **Direkte Datenbank- & Thread-Nähe**: Event-Handler laufen direkt auf dem Server unmittelbar neben transaktionalen Datenbanken (SQLite, PostgreSQL, EDS) und Java 25 Loom Virtual Threads. Datenänderungen werden atomar ausgeführt und die UI sofort aktualisiert.
+
+#### Der Euphorix-Enterprise-Vorteil:
+1. **Kompakte High-Density Arbeitsplatz-Ergonomie**: Im Gegensatz zu Consumer-Frameworks mit weitläufigen Weißräumen bieten [globalblauklein.css](file:///home/volkix/prj/intpret/html/css/globalblauklein.css) und [vs.css](file:///home/volkix/prj/intpret/html/css/vs.css) kompakte, monospace-optimierte Layouts für datenintensive ERP-, CRM-, Lager- und Dispositionssysteme.
+2. **Kaufmännische Präzision**: Lokalisierte Zahlenformatierung ([vsnumber.js](file:///home/volkix/prj/intpret/html/lib2/vsnumber.js) & `vsnuminput.js`) mit konfigurierbaren Nachkommastellen (`nk`), deutscher DIN 5008 Formatierung (`50.000,00 €`), rechtsbündigen Monospace-Ziffern und automatischer Blur-Formatierung.
+3. **Pixelgenaue Positionierung**: Desktop-artige Koordinatenplatzierung (`setXYWH`, `opt_xywh(x, y, w, h)`) und automatische Fenster- bzw. Parent-Zentrierung (`centerWinX`, `centerWinY` via [ldom.js](file:///home/volkix/prj/intpret/html/lib2/ldom.js)).
+4. **100% Autark & Offline-fähig**: Sämtliche Assets liegen lokal im Verzeichnis `html/`. Keine externen CDNs, keine Telemetrie, kein Internetzugriff erforderlich.
+
+### 15.2 Vollständige 22-Komponenten-Suite (`html/lib2/components/`)
+
+`std/vsui.e` bietet Euphorix-Konstruktoren für ausnahmslos alle Komponenten der `lib2`-Bibliothek:
 
 | Komponente | Euphorix-Funktion | Beschreibung / Feature |
 | :--- | :--- | :--- |
-| **Button** | `vsui:button(id, text, opts)` | Native `.vs-button` mit Klick-Event-Forwarding und `data-param-*` Attributen |
-| **Textfeld** | `vsui:input(id, val, opts)` | Standard-Eingabefeld `.vs-input` |
-| **Zahlenfeld** | `vsui:numinput(id, val, opts)` | Numerisches Eingabefeld (`type="number"`) |
-| **Datumsfeld** | `vsui:dateinput(id, val, opts)` | HTML5 Datumsselektor (`type="date"`) |
-| **Zeitfeld** | `vsui:timeinput(id, val, opts)` | Zeitauswahl (`type="time"`) |
-| **Checkbox** | `vsui:check(id, label, checked, opts)` | Checkbox mit Textlabel `.vs-check` |
-| **Textarea** | `vsui:textarea(id, val, rows, opts)` | Mehrzeiliges Eingabefeld `.vs-input` |
-| **Dropdown** | `vsui:combo(id, items, selected, opts)` | Select-Box `.vs-combo` |
-| **Label** | `vsui:ui_label(text, for_id, opts)` | Beschriftung `.vs-label` |
-| **Fieldset** | `vsui:group(legend, content, opts)` | Gruppierungsrahmen `.vs-group` mit Titel |
+| **Button** | `vsui:button(id, text, opts)` | Nativer `.vs-button` mit Klick-Event-Weiterleitung & Aktions-Dispatch |
+| **Input** | `vsui:input(id, val, opts)` | Standard-Texteingabefeld `.vs-input` |
+| **Zahlenfeld** | `vsui:numinput(id, val, nk, opts)` | Kaufmännisches Zahlenfeld (`vs-number`) mit `nk` Nachkommastellen und `vsnumber.js`-Formatierung |
+| **Datumsfeld** | `vsui:dateinput(id, val, opts)` | HTML5 Datumsselektor `.vs-date` mit zentrierter Ausrichtung |
+| **Zeitfeld** | `vsui:timeinput(id, val, opts)` | HTML5 Zeitauswahl `.vs-time` |
+| **Checkbox** | `vsui:check(id, label, checked, opts)` | Checkbox mit Textbeschriftung `.vs-check` |
+| **Textarea** | `vsui:textarea(id, val, rows, opts)` | Mehrzeiliges Texteingabefeld `.vs-input` |
+| **Dropdown** | `vsui:combo(id, items, selected, opts)` | Dropdown-Auswahlbox `.vs-combo` |
+| **Label** | `vsui:ui_label(text, for_id, opts)` | Feldbeschriftung `.vs-label` |
+| **Fieldset** | `vsui:group(legend, content, opts)` | Gruppierungsrahmen `.vs-group` mit Titellegende |
 | **Panel** | `vsui:panel(id, title, content, opts)` | Karte/Container `.vs-panel` mit blauem Header |
 | **Collapse** | `vsui:collapse(id, sections, open_first, opts)` | Klappbare Abschnitte (`<details>` / `<summary>`) |
 | **DataGrid** | `vsui:grid(id, cols, rows, opts)` | Tabellenkomponente mit **Sticky-Header**, **Client-Live-Suche** und automatischem **Mobile-Card-View** |
 | **Tabs** | `vsui:tabs(id, tabs_list, opts)` | Reiter-Navigation mit dynamischer Umschaltung und horizontalem Mobile-Swipe |
 | **Modal** | `vsui:modal(id, title, content, footer, opts)` | Zentrierter Popup-Dialog mit Abdunklungs-Overlay (mobil Vollbild) |
-| **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-Spalten-Container mit anpassbarer Breitenaufteilung (mobil vertikal) |
-| **Datei-Upload** | `vsui:upload(id, target_url, opts)` | Drag & Drop Dropzone mit Fortschrittsbalken und Dateiauswahldialog |
-| **SVG-Charts** | `vsui:chart(id, type, lbls, data, opts)` | Server-gerenderte responsive Vektordiagramme (Bar, Line, Pie, Doughnut) |
+| **Splitter** | `vsui:splitter(id, left, right, pct, opts)` | 2-Spalten-Container mit anpassbarer Breitenaufteilung |
+| **Blocker** | `vsui:blocker(id, zindex, opts)` | Vollflächiger UI-Overlay-Sperrbildschirm (`div.blocker`) mit dynamischem Z-Index |
+| **Treeview** | `vsui:treeview(id, nodes, opts)` | Hierarchische Baumstruktur (`ul.vs-treeview`) mit aufklappbaren Knoten (`▼`) |
+| **Kontextmenü** | `vsui:with_contextmenu(html, items)` | Rechtsklick-Kontextmenü mit Aktions-Triggern und Trennlinien |
+| **Tooltip** | `vsui:with_tooltip(html, text)` | Schwebender Hinweistext mittig über dem Zielelement |
+| **Datei-Upload** | `vsui:upload(id, target_url, opts)` | Drag & Drop Dropzone mit Fortschrittsanzeige und Dateidialog |
+| **SVG-Charts** | `vsui:chart(id, type, lbls, data, opts)` | Server-gerenderte responsive Vektordiagramme (`bar`, `line`, `pie`, `doughnut`) |
 
 ### 15.3 Integrierter Asset-Server (`/lib2/*`, `/css/*`, `/img/*`)
 
 Der integrierte Server in `std/vsui.e` bedient Anfragen für statische Dateien automatisch direkt aus dem lokalen `html/`-Verzeichnis des Projekts:
 * `/css/globalblauklein.css`, `/css/vs.css` und `/css/vs-mobile.css`
-* `/lib2/ldom.js`, `/lib2/vsevent.js`, `/lib2/ui.js`, `/lib2/vsgrid.js`
+* `/lib2/ldom.js`, `/lib2/vsevent.js`, `/lib2/ui.js`, `/lib2/vsgrid.js`, `/lib2/vsnumber.js`
+* `/lib2/components/*` (sämtliche 22 Modulkomponenten)
 * `/img/*` (Logos, Icons) und `/app/*`
 
 Die MIME-Types werden anhand der Dateiendung automatisch ermittelt (`application/javascript`, `text/css`, `image/png`, `font/woff2`, etc.).
 
 ### 15.4 Reaktive Event-Bridge mit `vsevent` & DOM-Patches
 
-Das Frontend sammelt bei Nutzerinteraktionen (`button_click`, `changevalue`) alle Formularwerte ein und sendet sie per POST an `/__vs_event`. Dabei nutzt der Bridge intelligent die komponentenspezifische Methode `.getValue()`, wodurch z. B. formatierte Zahlen oder standardisierte Daten fehlerfrei übertragen werden.
+Das Frontend sammelt bei Nutzerinteraktionen (`button_click`, `changevalue`) alle Formularwerte ein und sendet sie per POST an `/__vs_event`. Dabei nutzt die Bridge intelligent die komponentenspezifische Methode `.getValue()`, wodurch formatierte Zahlen oder standardisierte Datumsangaben fehlerfrei typisiert übertragen werden.
 
 Der Euphorix-Server antwortet mit einer Liste reaktiver Patches (`vsui:updates({...})`):
 
@@ -2758,7 +3041,7 @@ Der Euphorix-Server antwortet mit einer Liste reaktiver Patches (`vsui:updates({
 | `vsui:append_html(id, html)` | `id, html` | Hängt HTML am Ende des Elements an (`beforeend`) |
 | `vsui:set_val(id, val)` | `id, val` | Setzt den Wert und ruft `.setValue(val)` auf |
 | `vsui:grid_set_data(id, data)` | `id, data` | **Neu:** Aktualisiert DataGrid-Zeilen direkt per JSON ohne HTML-Neuaufbau |
-| `vsui:set_focus(id)` | `id` | **Neu:** Setzt den Cursor direkt in das Zielfeld |
+| `vsui:set_focus(id)` | `id` | **Neu:** Setzt den Tastaturfokus direkt in das Zielfeld |
 | `vsui:set_enabled(id, bool)` | `id, 0/1` | **Neu:** Aktiviert oder sperrt Eingabefelder und Buttons |
 | `vsui:set_visible(id, bool)` | `id, 0/1` | **Neu:** Blendet Elemente ein oder aus (`display: none` / `''`) |
 | `vsui:set_css(id, prop, val)` | `id, prop, val` | **Neu:** Dynamisches Inline-Styling (z. B. rote Rahmen bei Validierung) |
@@ -2772,12 +3055,13 @@ Der Euphorix-Server antwortet mit einer Liste reaktiver Patches (`vsui:updates({
 function on_save_kunde(sequence ctx)
     sequence name = vsui:val(ctx, "txt_name")
     sequence kdnr = vsui:val(ctx, "txt_kdnr")
+    atom     umsatz = vsui:val_num(ctx, "num_umsatz")
     
     -- In SQLite speichern...
-    sqlite:exec(db, "INSERT INTO kunden (kdnr, name) VALUES (?, ?);", {kdnr, name})
+    sqlite:exec(db, "INSERT INTO kunden (kdnr, name, umsatz) VALUES (?, ?, ?);", {kdnr, name, umsatz})
     
     -- Frische Kundenzeilen holen
-    sequence frische_kunden = sqlite:query_all(db, "SELECT kdnr, name FROM kunden ORDER BY kdnr DESC;")
+    sequence frische_kunden = sqlite:query_all(db, "SELECT kdnr, name, umsatz FROM kunden ORDER BY kdnr DESC;")
     
     return vsui:updates({
         vsui:grid_set_data("grid_kunden", frische_kunden),
@@ -2788,7 +3072,37 @@ function on_save_kunde(sequence ctx)
 end function
 ```
 
-### 15.5 Mobile Responsiveness & Touch-Ergonomie (`vs-mobile.css`)
+### 15.5 Pixelgenaue Positionierung & Fensterzentrierung (`ldom.setXYWH`, `opt_xywh`)
+
+Im Unterschied zu herkömmlichen Web-Frameworks, die Entwickler bei Desktop-ähnlichen Dialogen zu komplexen CSS-Regeln zwingen, integriert `std/vsui.e` eine direkte pixelgenaue Koordinatensteuerung über das [ldom.js](file:///home/volkix/prj/intpret/html/lib2/ldom.js)-Koordinatensystem:
+
+* **In Euphoria-Komponenten-Deklarationen (`opt_xywh`)**:
+  Jeder Komponenten-Konstruktor akzeptiert `vsui:opt_xywh(x, y, w, h)`:
+  ```euphoria
+  -- Button bei X=100, Y=250 mit Breite 180px und Höhe 36px positionieren:
+  sequence btn = vsui:button("btn_save", "Speichern", {vsui:opt_xywh(100, 250, 180, 36)})
+
+  -- DataGrid in einem festen Workspace-Bereich platzieren:
+  sequence grid = vsui:grid("grd_kunden", cols, rows, {vsui:opt_xywh(20, 80, 900, 500)})
+  ```
+* **Dynamische serverseitige Patches**:
+  * `vsui:set_xywh(id, x, y, w, h)`: Positioniert und skaliert beliebige DOM-Elemente zur Laufzeit via `ldom: setXYWH`.
+  * `vsui:center_win(id, axis = "both")`: Zentriert ein Element horizontal und/oder vertikal im Browserfenster (`centerWinX`, `centerWinY`).
+  * `vsui:center_parent(id, axis = "both")`: Zentriert ein Element relativ zu seinem übergeordneten Parent-Container (`centerX`, `centerY`).
+
+### 15.6 Kaufmännische Präzision & Deutsche Zahlenformatierung (`vsnumber.js`)
+
+Das Standard-HTML5 `<input type="number">` erzwingt den internationalen Punkt als Dezimaltrennzeichen und unterstützt keine Tausendertrennpunkte – für deutsche ERP- und Finanzsoftware unbrauchbar. `std/vsui.e` löst dieses Problem über die integrierte [vsnumber.js](file:///home/volkix/prj/intpret/html/lib2/vsnumber.js)-Engine:
+
+* **Konfigurierbare Nachkommastellen (`nk`)**: `vsui:numinput(id, value, nk, options)` setzt die gewünschte Genauigkeit (`nk = 2` für Euro-Beträge, `0` für Ganzzahlen, `4` für Umrechnungskurse).
+* **Automatische Blur-Formatierung**: Benutzer können `1234,5` oder `1234.5` eintippen; beim Verlassen des Feldes (`blur`) formatiert der Browser den Wert automatisch zu `1.234,50` via `vsnumber.fz(val, nk)`.
+* **Kaufmännisches High-Density Styling**: Formatierte Felder erhalten die CSS-Klasse `.vs-number` aus `globalblauklein.css`, wodurch Zahlen rechtsbündig in einer lesefreundlichen Monospace-Schrift dargestellt werden.
+* **Bidirektionale Konvertierung in Euphoria**:
+  * `vsui:format_num_de(val, nk)`: Formatiert numerische Atoms in lokalisierte Strings (z. B. `50000.5` -> `"50.000,50"`).
+  * `vsui:parse_num_de(str)`: Parst sowohl deutsche (`"1.234,56"`) als auch internationale (`"1234.56"`) Formatstrings robust in rohe Euphoria-Atoms.
+  * `vsui:val_num(ctx, id)`: Komfortfunktion, die übertragene Formularwerte direkt als Zahl ausliest und typisiert zurückgibt.
+
+### 15.7 Mobile Responsiveness & Touch-Ergonomie (`vs-mobile.css`)
 
 Über das automatisch eingebundene Stylesheet `/css/vs-mobile.css` passt sich die gesamte `vsui`-Suite nahtlos an Smartphones und Tablets (Breakpoints `<= 768px`) an, ohne die Desktop-Bedienung zu verändern:
 
@@ -2798,7 +3112,7 @@ end function
 * **Horizontales Wischen für Tabs**: `.vs-tabs` unterstützen flüssiges horizontales Swipen mit Touch-Momentum, ohne die Kopfleiste vertikal umzubrechen.
 * **Splitter & Modale**: `.vs-splitter-container` stapelt Seitenbereiche vertikal untereinander, und Modaldialoge passen sich als Vollbild-Dialoge mit flüssigem Scrollbereich an.
 
-### 15.6 Formularvalidierung & Fehlertooltips (`vsui:field_error`)
+### 15.8 Formularvalidierung & Fehlertooltips (`vsui:field_error`)
 
 Für robuste Formulareingaben bietet `std/vsui.e` eine direkte reaktive Fehler-Feedback-Bridge zwischen Server und Browser. Wenn eine serverseitige Validierung fehlschlägt, kann das entsprechende Eingabefeld rot markiert und mit einem erklärenden Tooltip versehen werden:
 
@@ -2823,7 +3137,7 @@ function on_submit_form(sequence ctx)
 end function
 ```
 
-### 15.7 Drag & Drop Datei-Upload Dropzone (`vsui:upload`)
+### 15.9 Drag & Drop Datei-Upload Dropzone (`vsui:upload`)
 
 Mit `vsui:upload` steht eine einsatzbereite Datei-Upload-Komponente zur Verfügung, die Drag-and-Drop, Dateidialog-Auswahl und Fortschrittsanzeige nativ unterstützt:
 
@@ -2839,7 +3153,7 @@ sequence upload_box = vsui:upload("my_dropzone", "/api/upload", {
 })
 ```
 
-### 15.8 Native Responsive SVG-Charts (`vsui:chart`)
+### 15.10 Native Responsive SVG-Charts (`vsui:chart`)
 
 Euphorix enthält eine vollständig autarke SVG-Diagramm-Engine. Charts werden direkt auf dem Server als leichtgewichtiges, responsives SVG (`viewBox="0 0 600 300"`) gerendert – ganz ohne externe JavaScript-Bibliotheken (kein Chart.js, D3 oder Canvas):
 
@@ -2850,7 +3164,7 @@ Euphorix enthält eine vollständig autarke SVG-Diagramm-Engine. Charts werden d
   * `options`: Zusätzliche Optionen wie `{"title", "Monatsumsatz 2026"}`.
 * `vsui:chart_set_data(id, chart_type, labels, datasets)`: Erzeugt einen Live-Patch, um ein bestehendes Diagramm per SSE oder Event-Bridge ohne Seiten-Reload in Echtzeit zu aktualisieren.
 
-### 15.9 Vollständige Anwendungsbeispiele & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)
+### 15.11 Vollständige Anwendungsbeispiele & Demos (`demo/vsui_demo.ex`, `examples/08_vsui_cockpit_demo.ex`, `examples/11_vsui_charts_und_upload_demo.ex`)
 
 Euphorix bietet drei abgestimmte Demonstrations- und Testprogramme, die 100% aller Komponenten und Funktionen aus Kapitel 15 abdecken:
 

@@ -84,7 +84,9 @@
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.6.0</version>
                 <executions>
+                    <!-- 1. Full fat-JAR (Compiler, Lexer, Tokens, Stdlib Sources, VM) -->
                     <execution>
+                        <id>shade-euphorix</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
@@ -108,6 +110,43 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>eu.Main</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+
+                    <!-- 2. Minimized Runtime-only fat-JAR (VM & Bytecode Runner, NO Compiler, NO Lexer, NO eu_include sources) -->
+                    <execution>
+                        <id>shade-runtime</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <outputFile>${project.basedir}/runtime.jar</outputFile>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/versions/**/module-info.class</exclude>
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>eu/Compiler*.class</exclude>
+                                        <exclude>eu/Lexer*.class</exclude>
+                                        <exclude>eu/Token*.class</exclude>
+                                        <exclude>eu/TokenType*.class</exclude>
+                                        <exclude>eu/Main*.class</exclude>
+                                        <exclude>eu_include/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>eu.RuntimeMain</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

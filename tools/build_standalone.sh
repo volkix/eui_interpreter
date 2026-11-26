@@ -10,10 +10,43 @@ set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 JDK25="${JDK25_HOME:-/home/volkix/prg/jdk25}"
-OUTPUT="${1:-$DIR/euphorix-standalone}"
+OUTPUT=""
+APP_SRC=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --app)
+            APP_SRC="$2"
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT="$2"
+            shift 2
+            ;;
+        *)
+            if [ -z "$OUTPUT" ]; then
+                OUTPUT="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [ -z "$OUTPUT" ]; then
+    if [ -n "$APP_SRC" ]; then
+        BASE_APP="$(basename "$APP_SRC")"
+        OUTPUT="$DIR/${BASE_APP%.*}-standalone"
+    else
+        OUTPUT="$DIR/euphorix-standalone"
+    fi
+fi
+
 BUILD_TMP="/tmp/euphorix-standalone-build-$$"
 
 echo "=== Erstelle autarkes Single-Binary: $OUTPUT ==="
+if [ -n "$APP_SRC" ]; then
+    echo "    Gebündelte Anwendung: $APP_SRC (Precompiled Bytecode)"
+fi
 echo "1. Prüfe Voraussetzungen..."
 if [ ! -x "$JDK25/bin/jlink" ]; then
     echo "Fehler: jlink nicht gefunden unter $JDK25/bin/jlink" >&2
@@ -36,19 +69,47 @@ echo "3. Erstelle minimales Java-25-JRE mit jlink (ca. 60 MB)..."
     --compress=zip-6 \
     --output "$BUILD_TMP/jre"
 
-echo "4. Kopiere euphorix.jar..."
+echo "4. Kopiere JAR, Web-Assets (html/) & Anwendung..."
 JAR_SRC="$DIR/euphorix.jar"
 if [ ! -f "$JAR_SRC" ]; then JAR_SRC="$DIR/eui.jar"; fi
-cp "$JAR_SRC" "$BUILD_TMP/euphorix.jar"
+
+# Falls eine Anwendung angegeben wurde: zu Bytecode kompilieren
+if [ -n "$APP_SRC" ]; then
+    if [[ "$APP_SRC" == *.exb ]]; then
+        cp "$APP_SRC" "$BUILD_TMP/app.exb"
+    else
+        echo "   Kompiliere $APP_SRC -> Bytecode (app.exb)..."
+        "$JDK25/bin/java" -jar "$JAR_SRC" --compile "$APP_SRC" -o "$BUILD_TMP/app.exb"
+    fi
+fi
+
+# Für Anwendungs-Bundles bevorzugen wir die schlanke runtime.jar ohne Compiler/Quellcode
+if [ -n "$APP_SRC" ] && [ -f "$DIR/runtime.jar" ]; then
+    cp "$DIR/runtime.jar" "$BUILD_TMP/runtime.jar"
+    PAYLOAD_ITEMS="jre runtime.jar"
+else
+    cp "$JAR_SRC" "$BUILD_TMP/euphorix.jar"
+    PAYLOAD_ITEMS="jre euphorix.jar"
+fi
+
+# Statische Web-Assets für VS-UI einbinden
+if [ -d "$DIR/html" ]; then
+    cp -r "$DIR/html" "$BUILD_TMP/html"
+    PAYLOAD_ITEMS="$PAYLOAD_ITEMS html"
+fi
+
+if [ -n "$APP_SRC" ]; then
+    PAYLOAD_ITEMS="$PAYLOAD_ITEMS app.exb"
+fi
 
 echo "5. Komprimiere Runtime & Fat-JAR (xz)..."
-(cd "$BUILD_TMP" && tar -cf - jre euphorix.jar | xz -T0 -6 > payload.tar.xz)
+(cd "$BUILD_TMP" && tar -cf - $PAYLOAD_ITEMS | xz -T0 -6 > payload.tar.xz)
 
 echo "6. Assembliere Single-Binary Executable..."
 cat << 'EOF' > "$BUILD_TMP/stub.sh"
 #!/bin/sh
 set -e
-# Euphorix Standalone Single-Binary (Bundled Java 25 JRE - OpenEuphoria Syntax)
+# Euphorix Standalone Single-Binary (Bundled Java 25 JRE & Assets)
 CACHE_BASE="${XDG_CACHE_HOME:-$HOME/.cache}/euphorix/java25-runtime"
 EXE_HASH="$(sha256sum "$0" 2>/dev/null | awk '{print substr($1,1,16)}')"
 TARGET_DIR="$CACHE_BASE/$EXE_HASH"
@@ -59,14 +120,45 @@ if [ ! -d "$TARGET_DIR" ] || [ ! -x "$TARGET_DIR/jre/bin/java" ]; then
     tail -n +"$ARCHIVE_LINE" "$0" | tar -xJ -C "$TARGET_DIR"
 fi
 
-exec "$TARGET_DIR/jre/bin/java" \
-    --enable-native-access=ALL-UNNAMED \
-    -Dfile.encoding=UTF-8 \
-    -Dawt.useSystemAAFontSettings=lcd \
-    -Dswing.aatext=true \
-    -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine \
-    -Djdk.internal.httpclient.disableHostnameVerification=true \
-    -jar "$TARGET_DIR/euphorix.jar" "$@"
+export VSUI_STATIC_DIR="$TARGET_DIR/html"
+export EUPHORIX_HTML="$TARGET_DIR/html"
+
+RUNNER_JAR="$TARGET_DIR/runtime.jar"
+if [ ! -f "$RUNNER_JAR" ]; then RUNNER_JAR="$TARGET_DIR/euphorix.jar"; fi
+
+if [ -f "$TARGET_DIR/app.exb" ]; then
+    if [ $# -eq 0 ]; then
+        exec "$TARGET_DIR/jre/bin/java" \
+            --enable-native-access=ALL-UNNAMED \
+            -Dfile.encoding=UTF-8 \
+            -Dvsui.static.dir="$TARGET_DIR/html" \
+            -Dawt.useSystemAAFontSettings=lcd \
+            -Dswing.aatext=true \
+            -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine \
+            -Djdk.internal.httpclient.disableHostnameVerification=true \
+            -jar "$RUNNER_JAR" "$TARGET_DIR/app.exb"
+    else
+        exec "$TARGET_DIR/jre/bin/java" \
+            --enable-native-access=ALL-UNNAMED \
+            -Dfile.encoding=UTF-8 \
+            -Dvsui.static.dir="$TARGET_DIR/html" \
+            -Dawt.useSystemAAFontSettings=lcd \
+            -Dswing.aatext=true \
+            -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine \
+            -Djdk.internal.httpclient.disableHostnameVerification=true \
+            -jar "$RUNNER_JAR" "$TARGET_DIR/app.exb" "$@"
+    fi
+else
+    exec "$TARGET_DIR/jre/bin/java" \
+        --enable-native-access=ALL-UNNAMED \
+        -Dfile.encoding=UTF-8 \
+        -Dvsui.static.dir="$TARGET_DIR/html" \
+        -Dawt.useSystemAAFontSettings=lcd \
+        -Dswing.aatext=true \
+        -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine \
+        -Djdk.internal.httpclient.disableHostnameVerification=true \
+        -jar "$RUNNER_JAR" "$@"
+fi
 
 __PAYLOAD_BELOW__
 EOF

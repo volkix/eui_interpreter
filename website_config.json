@@ -28,6 +28,15 @@
       "description": "Portables Bytecode-Paket für Linux, Windows und macOS. Benötigt eine installierte Java 25+ Laufzeitumgebung.",
       "cmd_install": "java -jar euphorix.jar"
     },
+    "runtime": {
+      "filename": "runtime.jar",
+      "source_path": "runtime.jar",
+      "title": "Euphorix Bytecode-Runtime",
+      "badge": "Reine Laufzeit",
+      "size": "19 MB",
+      "description": "Reine Bytecode-Runtime (ohne Compiler/Quellcode) für geschützte Deployments und 10x schnelleren Start.",
+      "cmd_install": "java -jar runtime.jar app.exb"
+    },
     "handbuch_pdf": {
       "filename": "HANDBUCH.pdf",
       "source_path": "website/downloads/HANDBUCH.pdf",

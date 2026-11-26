@@ -2,6 +2,7 @@ package eu;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -258,7 +259,23 @@ public final class Compiler {
     public Compiler(String source, String filePath) {
         this.lexer = new Lexer(source);
         this.initialSource = source;
-        this.currentFile = filePath != null ? filePath : "<main>";
+        if (filePath != null && filePath.startsWith("file:")) {
+            try {
+                this.currentFile = Path.of(URI.create(filePath)).toAbsolutePath().toString();
+            } catch (Exception e) {
+                String s = filePath;
+                if (s.startsWith("file:///")) s = s.substring(7);
+                else if (s.startsWith("file://")) s = s.substring(6);
+                else if (s.startsWith("file:")) s = s.substring(5);
+                try {
+                    this.currentFile = Paths.get(s).toAbsolutePath().toString();
+                } catch (Exception ex) {
+                    this.currentFile = s;
+                }
+            }
+        } else {
+            this.currentFile = filePath != null ? filePath : "<main>";
+        }
 
         definedSymbols.add("EU4");
         definedSymbols.add("EU4_1");
@@ -289,6 +306,23 @@ public final class Compiler {
 
         includeDirs.add(".");
         includeDirs.add("eu_include");
+        if (!"<main>".equals(this.currentFile)) {
+            try {
+                Path p = Paths.get(this.currentFile).getParent();
+                if (p != null) {
+                    includeDirs.add(p.toString());
+                    Path cur = p;
+                    while (cur != null) {
+                        Path inc = cur.resolve("eu_include");
+                        if (Files.exists(inc) && Files.isDirectory(inc)) {
+                            includeDirs.add(inc.toRealPath().toString());
+                            break;
+                        }
+                        cur = cur.getParent();
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
         try {
             var codeSource = Compiler.class.getProtectionDomain().getCodeSource();
             if (codeSource != null && codeSource.getLocation() != null) {
@@ -363,11 +397,20 @@ public final class Compiler {
         errorAt(curr, msg);
     }
 
+    public int errorLine = 0;
+    public int errorCol = 0;
+    public String errorFile = "";
+    public String errorRaw = "";
+
     private void errorAt(Token tok, String msg) {
         if (hadError) return;
         hadError = true;
         int line = tok != null ? tok.line : 0;
         int col = tok != null ? tok.col : 0;
+        this.errorLine = line;
+        this.errorCol = col;
+        this.errorFile = currentFile;
+        this.errorRaw = msg;
         String lex = tok != null ? tok.lexeme : "";
         errorMsg = String.format("[%s:%d:%d] Syntaxfehler bei '%s': %s",
                 currentFile, line, col, lex, msg);

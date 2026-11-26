@@ -784,6 +784,21 @@ footer {
   border-color: var(--primary);
   box-shadow: 0 2px 8px rgba(65, 81, 139, 0.25);
 }
+.filter-pill .pill-num {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-right: 2px;
+}
+.filter-pill.active .pill-num {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
 .runner-banner {
   display: inline-flex;
   align-items: center;
@@ -845,73 +860,225 @@ footer {
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-light);
 }
+/* --- Global Anchor Scroll Offset & Smooth Scrolling --- */
+html {
+  scroll-behavior: smooth;
+}
+.tutorial-chapter-section,
+.chapter-banner,
+.tutorial-card,
+[id^="kapitel-"],
+[id^="mod-"],
+#features,
+#libraries,
+#code,
+#downloads {
+  scroll-margin-top: 85px;
+}
+
 .sidebar-chap-group {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f8fafc;
+}
+.sidebar-chap-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 .sidebar-chap-link {
-  display: block;
-  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--dark);
   text-decoration: none;
-  margin-bottom: 6px;
-  transition: color 0.15s;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
 }
-.sidebar-chap-link:hover { color: var(--primary); }
+.sidebar-chap-link:hover {
+  background: #f1f5f9;
+  color: var(--primary);
+}
+.sidebar-chap-badge {
+  display: inline-block;
+  background: #eff6ff;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #bfdbfe;
+  flex-shrink: 0;
+}
+.sidebar-chap-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-chap-count {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
 .sidebar-sublist {
   list-style: none;
-  padding-left: 12px;
-  border-left: 2px solid var(--border-light);
+  padding-left: 20px;
+  margin: 4px 0 0;
+  border-left: 2px solid #e2e8f0;
+  margin-left: 14px;
 }
-.sidebar-sublist li { margin-bottom: 4px; }
+.sidebar-sublist li {
+  margin-bottom: 3px;
+}
 .sidebar-mod-link {
-  font-size: 0.82rem;
-  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #64748b;
   text-decoration: none;
-  transition: color 0.15s;
+  display: block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
 }
-.sidebar-mod-link:hover { color: var(--primary); }
+.sidebar-mod-link:hover {
+  color: var(--primary);
+  background: #f8fafc;
+  padding-left: 10px;
+}
 
+/* --- Chapter Banners in Content Area --- */
 .tutorial-chapter-section {
   margin-bottom: 48px;
-  padding-top: 10px;
 }
-.chapter-badge {
-  display: inline-block;
+.chapter-banner {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid var(--primary);
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+}
+.chapter-banner-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.chapter-badge-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chap-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--primary);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.cat-pill {
+  background: #e0e7ff;
+  color: #4338ca;
   font-size: 0.75rem;
   font-weight: 700;
-  text-transform: uppercase;
-  color: var(--primary);
-  background: var(--primary-light);
-  padding: 2px 8px;
-  border-radius: 4px;
-  margin-bottom: 8px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  border: 1px solid #c7d2fe;
 }
-.tutorial-chapter-section h2 {
-  font-size: 1.8rem;
-  color: var(--dark);
-  margin-bottom: 10px;
+.count-pill {
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  border: 1px solid #bbf7d0;
 }
-.chapter-desc {
-  font-size: 1.05rem;
-  color: var(--text-muted);
-  margin-bottom: 12px;
-  line-height: 1.5;
+.mod-count-pill {
+  background: #fdf2f8;
+  color: #9d174d;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  border: 1px solid #fbcfe8;
 }
-.chapter-file-badge {
+.file-pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.85rem;
-  color: #64748b;
-  background: #f1f5f9;
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   padding: 4px 10px;
-  border-radius: 4px;
-  margin-bottom: 24px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.15s ease;
 }
-.chapter-file-badge code {
+.file-pill:hover {
+  background: #f8fafc;
+  border-color: var(--primary);
   color: var(--primary);
+}
+.chapter-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--dark);
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+.chapter-desc {
+  font-size: 0.96rem;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+.chapter-modules-nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+.chap-nav-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-right: 4px;
+}
+.chap-mod-chip {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  background: white;
+  color: #1e3a8a;
+  border: 1px solid #bfdbfe;
+  padding: 3px 9px;
+  border-radius: 6px;
+  text-decoration: none;
   font-weight: 600;
+  transition: all 0.15s ease;
+}
+.chap-mod-chip:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
 .tutorial-card {
@@ -1033,6 +1200,192 @@ footer {
   color: #38bdf8;
   line-height: 1.45;
   overflow-x: auto;
+}
+
+/* --- API Function Reference Tables --- */
+.api-table-wrapper {
+  margin: 18px 0 20px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.api-table-header {
+  background: #f8fafc;
+  padding: 10px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.api-table th {
+  background: #f1f5f9;
+  padding: 9px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: var(--dark);
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--border-light);
+}
+.api-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+  line-height: 1.5;
+}
+.api-table tr:last-child td {
+  border-bottom: none;
+}
+.api-table tr:hover td {
+  background: #f8fafc;
+}
+.fn-sig {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  color: #1e3a8a;
+  font-weight: 600;
+  word-break: break-word;
+}
+.type-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.type-badge.sequence { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.type-badge.atom { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.type-badge.integer { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+.type-badge.object { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+.type-badge.procedure { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.type-badge.boolean { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+
+/* --- Chapter Directory on Landing Page (index.html) --- */
+.chap-dir-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+@media (max-width: 640px) {
+  .chap-dir-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.chap-dir-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 16px 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.chap-dir-item:hover {
+  border-color: var(--primary);
+  background: #f8fafc;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37,99,235,0.08);
+}
+.chap-dir-badge {
+  width: 44px;
+  height: 44px;
+  background: #eff6ff;
+  color: var(--primary);
+  border: 1.5px solid #bfdbfe;
+  border-radius: 10px;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.chap-dir-item:hover .chap-dir-badge {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+.chap-dir-info {
+  flex: 1;
+  min-width: 0;
+}
+.chap-dir-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chap-dir-desc {
+  font-size: 0.82rem;
+  color: #64748b;
+  line-height: 1.4;
+  margin-bottom: 8px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.chap-dir-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.chap-dir-tags span {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+.chap-dir-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  padding-left: 8px;
+}
+.chap-dir-fns {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+.chap-dir-arrow {
+  font-size: 1.1rem;
+  color: #94a3b8;
+  font-weight: 700;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.chap-dir-item:hover .chap-dir-arrow {
+  color: var(--primary);
+  transform: translateX(4px);
 }
 
 @media (max-width: 992px) {
@@ -1200,7 +1553,8 @@ function copySnippet(btn) {
       <button class="mobile-toggle" aria-label="Menü öffnen">☰</button>
       <ul class="nav-links">
         <li><a href="#features">Features</a></li>
-        <li><a href="tutorial.html">Tutorial &amp; Bibliotheken</a></li>
+        <li><a href="#libraries">Bibliotheken</a></li>
+        <li><a href="tutorial.html">Tutorial &amp; API-Explorer</a></li>
         <li><a href="#code">Code-Vorschau</a></li>
         <li><a href="#downloads">Downloads</a></li>
         <li><a href="%s" target="_blank" rel="noopener">OpenEuphoria.org</a></li>
@@ -1326,8 +1680,8 @@ puts(<span class="token-num">1</span>, json_str)</pre>
           <div class="feature-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
           </div>
-          <h3>65.536-Register-VM</h3>
-          <p>Clean-Room Register-Interpreter mit Copy-on-Write-Speicherverwaltung, 48-Bit Fast-Integers und hochoptimiertem Bytecode-Dispatch.</p>
+          <h3>Register-VM &amp; AOT-Bytecode (.exb)</h3>
+          <p>Clean-Room Register-VM mit Ahead-of-Time Bytecode-Kompilierung: 10x schnellere Startzeit (24 ms), voller Quellcode-Schutz (IP-Protection) und dedizierte, minimierte <code>runtime.jar</code> ohne Compiler.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -1341,22 +1695,283 @@ puts(<span class="token-num">1</span>, json_str)</pre>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </div>
           <h3>High-Density Web-UI (VS-UI)</h3>
-          <p>Autarkes, reaktives Webframework mit lokalen Assets (html/). Sticky-Header DataGrid, flackerfreie JSON-Patches und automatischer Mobile-Card-View.</p>
+          <p>Autarkes Webframework (HTMX &amp; Vaadin Fusion): 22 Komponenten in <code>html/lib2/</code>, kaufmännische NumInputs (DIN 5008), Sticky-Header DataGrid und flackerfreie Partial-Updates.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </div>
-          <h3>SQLite 3.47 & PostgreSQL</h3>
-          <p>Integrierte Enterprise-Treiber für relationale Datenbanken, Transaktionen, Prepared Statements und direkten JSON/CSV-Export.</p>
+          <h3>52 MB Autarkes Single-Binary</h3>
+          <p>Zero-Dependency Linux-Executable: Bettet Mini-JRE, runtime.jar, Webserver und alle 22 VS-UI-Assets fest ein. Kein Java nötig, läuft sofort – ideal hinter <strong>lighttpd</strong> oder Nginx.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
           </div>
-          <h3>861 Standard-Routinen</h3>
-          <p>74 vollständige Standard-Include-Dateien mit nativer Unterstützung für UTF-8 Unicode, RFC 9535 JSONPath, XML/XPath und HTTP/REST.</p>
+          <h3>Enterprise-DB &amp; 861 Routinen</h3>
+          <p>SQLite 3.47 &amp; PostgreSQL (JDBC), UTF-8 Unicode, RFC 9535 JSONPath, XML DOM/XPath, Swing-Desktop-GUI und 74 vollständige Standard-Module.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Standard-Bibliotheken & API-Explorer Section -->
+  <section id="libraries" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="pill pill-primary" style="margin-bottom: 12px; display: inline-block;">📚 49 Module &bull; Über 320 Funktionen mit leicht verständlichen Erklärungen</span>
+        <h2>Umfassende Standardbibliothek &amp; API-Explorer</h2>
+        <p>Euphorix liefert eine vollständige, praxiserprobte Standardbibliothek für anspruchsvolle Unternehmenssoftware. Zu jeder einzelnen Funktion finden Sie verständliche Erklärungen auf Deutsch, präzise Typsignaturen und sofort lauffähige Code-Beispiele.</p>
+      </div>
+
+      <div class="chap-dir-grid">
+        <!-- 01. Collections -->
+        <a href="tutorial.html#kapitel-1" class="chap-dir-item">
+          <div class="chap-dir-badge">01</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Sequenzen, Maps &amp; Collections</div>
+            <div class="chap-dir-desc">Dynamische 1-basierte Listen, O(1) Hash-Maps, LIFO-Stacks, Sortierung &amp; binäre Serialisierung</div>
+            <div class="chap-dir-tags">
+              <span>sequence.e</span>
+              <span>map.e</span>
+              <span>stack.e</span>
+              <span>sort.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">33 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 02. Text & Regex -->
+        <a href="tutorial.html#kapitel-2" class="chap-dir-item">
+          <div class="chap-dir-badge">02</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Strings, Text, Regex &amp; Unicode</div>
+            <div class="chap-dir-desc">Textmanipulation, PCRE reguläre Ausdrücke, RFC 3629 UTF-8, Base64-Transfer &amp; Typkonvertierung</div>
+            <div class="chap-dir-tags">
+              <span>text.e</span>
+              <span>regex.e</span>
+              <span>utf8.e</span>
+              <span>base64.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">28 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 03. I/O & OS -->
+        <a href="tutorial.html#kapitel-3" class="chap-dir-item">
+          <div class="chap-dir-badge">03</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Dateisystem, I/O &amp; Externe Prozesse</div>
+            <div class="chap-dir-desc">Gepufferte Datei-I/O, Dateisystem-Operationen, bidirektionale Prozess-Pipes, CLI-Parser &amp; OS-PIDs</div>
+            <div class="chap-dir-tags">
+              <span>io.e</span>
+              <span>filesys.e</span>
+              <span>pipeio.e</span>
+              <span>console.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">36 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 04. Mathe & Stats -->
+        <a href="tutorial.html#kapitel-4" class="chap-dir-item">
+          <div class="chap-dir-badge">04</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Mathematik, Statistik &amp; Zufall</div>
+            <div class="chap-dir-desc">Hochpräzise Arithmetik, Rundung, deskriptive Statistik, Primzahlengenerator &amp; Zufallsverteilungen</div>
+            <div class="chap-dir-tags">
+              <span>math.e</span>
+              <span>stats.e</span>
+              <span>rand.e</span>
+              <span>primes.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">24 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 05. Datum & Zeit -->
+        <a href="tutorial.html#kapitel-5" class="chap-dir-item">
+          <div class="chap-dir-badge">05</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Datum, Uhrzeit &amp; Kalender</div>
+            <div class="chap-dir-desc">Kalenderberechnungen, ISO 8601 Formatierung, Zeitdifferenzen, Schaltjahrprüfungen &amp; Zahlungsfristen</div>
+            <div class="chap-dir-tags">
+              <span>datetime.e</span>
+              <span>ISO 8601</span>
+              <span>Schaltjahre</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">11 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 06. JSON & XML -->
+        <a href="tutorial.html#kapitel-6" class="chap-dir-item">
+          <div class="chap-dir-badge">06</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Strukturierte Daten: JSON &amp; XML</div>
+            <div class="chap-dir-desc">RFC 8259 JSON, RFC 9535 JSONPath Filterung, JSON-Schema Validierung (Draft 7) &amp; XML DOM/XPath</div>
+            <div class="chap-dir-tags">
+              <span>json.e</span>
+              <span>json_schema.e</span>
+              <span>xml.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">12 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 07. Datenbanken -->
+        <a href="tutorial.html#kapitel-7" class="chap-dir-item">
+          <div class="chap-dir-badge">07</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Relationale &amp; NoSQL Datenbanken</div>
+            <div class="chap-dir-desc">SQLite 3.47 ACID Transaktionen, PostgreSQL Enterprise Cluster, NoSQL JSON-DB &amp; native B-Tree EDS</div>
+            <div class="chap-dir-tags">
+              <span>sqlite.e</span>
+              <span>pgsql.e</span>
+              <span>jsondb.e</span>
+              <span>eds.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">33 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 08. Office & PDF -->
+        <a href="tutorial.html#kapitel-8" class="chap-dir-item">
+          <div class="chap-dir-badge">08</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Office, Excel, CSV &amp; PDF-Reporting</div>
+            <div class="chap-dir-desc">Automatisierte Berichte: RFC 4180 CSV, native Excel-Arbeitsmappen (.xlsx) und DIN A4 PDF-Reports</div>
+            <div class="chap-dir-tags">
+              <span>csv.e</span>
+              <span>excel.e</span>
+              <span>pdf_report.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">16 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 09. Netzwerk & Auth -->
+        <a href="tutorial.html#kapitel-9" class="chap-dir-item">
+          <div class="chap-dir-badge">09</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Netzwerk, HTTP, SSE &amp; Auth</div>
+            <div class="chap-dir-desc">HTTP/1.1 REST Server &amp; Client, Server-Sent Events (SSE) Live-Streams, BSD-Sockets &amp; JWT/PBKDF2</div>
+            <div class="chap-dir-tags">
+              <span>http.e</span>
+              <span>sse.e</span>
+              <span>socket.e</span>
+              <span>auth.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">23 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 10. Frontends -->
+        <a href="tutorial.html#kapitel-10" class="chap-dir-item">
+          <div class="chap-dir-badge">10</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Web- &amp; Desktop-Frontends (VS-UI, Swing, UI5)</div>
+            <div class="chap-dir-desc">Autarkes High-Density Web-UI mit NumInputs &amp; DataGrid, SAP OpenUI5 / Fiori und Java Swing Desktop</div>
+            <div class="chap-dir-tags">
+              <span>vsui.e</span>
+              <span>ui5.e</span>
+              <span>gui.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">36 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 11. Concurrency -->
+        <a href="tutorial.html#kapitel-11" class="chap-dir-item">
+          <div class="chap-dir-badge">11</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Nebenläufigkeit, Threads &amp; Scheduler</div>
+            <div class="chap-dir-desc">Java 25 Loom Virtual Threads, Async/Await Patterns, CSP Message-Passing Channels &amp; Cron-Scheduler</div>
+            <div class="chap-dir-tags">
+              <span>thread.e</span>
+              <span>channel.e</span>
+              <span>cron.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">20 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 12. KI, MCP, RAG -->
+        <a href="tutorial.html#kapitel-12" class="chap-dir-item">
+          <div class="chap-dir-badge">12</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Künstliche Intelligenz (MCP, RAG, LLM)</div>
+            <div class="chap-dir-desc">Model Context Protocol Server &amp; Client (MCP 2024-11-05), Vektor-Wissensbasis mit Cosinus-Ähnlichkeit &amp; LLMs</div>
+            <div class="chap-dir-tags">
+              <span>mcp.e</span>
+              <span>rag.e</span>
+              <span>llm.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">23 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+
+        <!-- 13. Tooling & Compiler -->
+        <a href="tutorial.html#kapitel-13" class="chap-dir-item">
+          <div class="chap-dir-badge">13</div>
+          <div class="chap-dir-info">
+            <div class="chap-dir-title">Tooling, LSP, Compiler &amp; Unittest</div>
+            <div class="chap-dir-desc">Language Server (LSP 3.17) für VS Code &amp; NetBeans, AOT-Bytecode (.exb), IP-Schutz &amp; Unit-Test Suite</div>
+            <div class="chap-dir-tags">
+              <span>LSP Daemon</span>
+              <span>AOT-Compiler</span>
+              <span>unittest.e</span>
+              <span>error.e</span>
+            </div>
+          </div>
+          <div class="chap-dir-meta">
+            <span class="chap-dir-fns">18 Fns</span>
+            <span class="chap-dir-arrow">→</span>
+          </div>
+        </a>
+      </div>
+
+      <div style="text-align: center; margin-top: 36px;">
+        <a href="tutorial.html" class="btn btn-primary" style="font-size: 1.05rem; padding: 14px 32px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Zum interaktiven Handbuch &amp; Tutorial mit Live-Suche (320+ Funktionen) →
+        </a>
       </div>
     </div>
   </section>

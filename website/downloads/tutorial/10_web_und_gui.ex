@@ -14,24 +14,29 @@ puts(1, "=====================================================================\n
 
 -- -----------------------------------------------------------------------------
 -- 1. std/vsui.e - High-Density Web-UI Suite (html/)
--- Autarkes, reaktives Webframework für ERP-Cockpits, Formulare & DataGrids.
+-- Autarkes, reaktives Webframework (HTMX & Vaadin Fusion) für ERP-Cockpits.
 -- -----------------------------------------------------------------------------
-puts(1, "--- 1. std/vsui.e ---\n")
+puts(1, "--- 1. std/vsui.e (HTMX & Vaadin Fusion) ---\n")
 
--- Formular-Elemente generieren
-sequence fld_kdnr = vsui:input("txt_kdnr", "10042", "Kundennummer...")
-sequence fld_name = vsui:input("txt_name", "Alpha GmbH", "Firmenname...")
-sequence btn_save = vsui:button("btn_save", "Speichern", "on_save", "width: 140px;")
+-- Formular-Elemente generieren (mit opt_xywh Positionierung und kaufmännischem numinput)
+sequence fld_kdnr   = vsui:input("txt_kdnr", "10042", "Kundennummer...")
+sequence fld_umsatz = vsui:numinput("num_umsatz", 50000.0, 2, {vsui:opt_xywh(10, 50, 160, 28)})
+sequence btn_save   = vsui:button("btn_save", "Speichern", "on_save", "width: 140px;")
 
-printf(1, "Generiertes Input-HTML:  %s\n", {fld_kdnr})
-printf(1, "Generierter Button-HTML: %s\n", {btn_save})
+printf(1, "Generiertes Input-HTML:    %s\n", {fld_kdnr})
+printf(1, "Kaufm. NumInput-HTML:      %s\n", {fld_umsatz})
+printf(1, "Generierter Button-HTML:   %s\n", {btn_save})
 
--- Dynamischer Client-Patch ohne Seiten-Reload
+-- Kaufmännische Zahlenformatierung (DIN 5008)
+printf(1, "Formatierte Zahl (2 NK):   %s €\n", {vsui:format_num_de(50000.0, 2)})
+
+-- Dynamischer Client-Patch ohne Seiten-Reload (HTMX-Hypermedia-Prinzip)
 sequence patch_antw = vsui:updates({
     vsui:set_val("txt_kdnr", "10043"),
+    vsui:set_xywh("win_detail", 100, 150, 500, 400),
     vsui:toast_show("Kunde erfolgreich angelegt!", vsui:TOAST_SUCCESS)
 })
-printf(1, "Reaktiver JSON-Patch:    %s\n\n", {patch_antw[2]})
+printf(1, "Reaktiver JSON-Patch:      %s\n\n", {patch_antw[2]})
 
 
 -- -----------------------------------------------------------------------------
@@ -51,4 +56,13 @@ printf(1, "UI5 Web Component Input:  %s\n\n", {ui5_inp})
 -- -----------------------------------------------------------------------------
 puts(1, "--- 3. std/gui.e ---\n")
 puts(1, "Plattformunabhängige Desktop-UIs mit gui:window(), gui:button() und Events.\n")
-puts(1, "Läuft nativ auf Linux (X11/Wayland), macOS und Windows ohne externe Treiber.\n")
+puts(1, "Läuft nativ auf Linux (X11/Wayland), macOS und Windows ohne externe Treiber.\n\n")
+
+-- -----------------------------------------------------------------------------
+-- 4. Deployment & Standalone: AOT-Bytecode (.exb) & Single-Binary (52 MB)
+-- -----------------------------------------------------------------------------
+puts(1, "--- 4. Deployment & Standalone-Bundling ---\n")
+puts(1, "Bytecode-Kompilierung: ./euphorix --compile app.ex -o app.exb (10x schnellerer Start)\n")
+puts(1, "Reine Runtime:         java -jar runtime.jar app.exb (ohne Compiler/Quellcode)\n")
+puts(1, "52 MB Single-Binary:   ./tools/build_standalone.sh --app app.ex (Zero-Dependency)\n")
+puts(1, "Enthält Webserver & alle 22 VS-UI-Assets eingebettet – ideal hinter lighttpd/Nginx.\n")

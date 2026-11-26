@@ -3,7 +3,9 @@
 /home/volkix/prj/intpret/java/src/main/java/eu/DataEngines.java
 /home/volkix/prj/intpret/java/src/main/java/eu/JavaInterop.java
 /home/volkix/prj/intpret/java/src/main/java/eu/Lexer.java
+/home/volkix/prj/intpret/java/src/main/java/eu/LspServer.java
 /home/volkix/prj/intpret/java/src/main/java/eu/Main.java
+/home/volkix/prj/intpret/java/src/main/java/eu/RuntimeMain.java
 /home/volkix/prj/intpret/java/src/main/java/eu/Sequence.java
 /home/volkix/prj/intpret/java/src/main/java/eu/Token.java
 /home/volkix/prj/intpret/java/src/main/java/eu/TokenType.java

@@ -52,7 +52,8 @@ procedure get_ch()
 			ch = GET_EOF
 		end if
 	else
-		ch = getc(input_file)
+               
+                ch = getc(input_file)
 		if ch = GET_EOF then
 			string_next += 1
 		end if

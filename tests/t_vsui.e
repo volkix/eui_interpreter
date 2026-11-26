@@ -63,8 +63,19 @@ test_true("input placeholder", match("placeholder=\"Kundenname...\"", inp) > 0)
 test_true("input readonly", match("readonly", inp) > 0)
 
 sequence num = vsui:numinput("num_preis", 49.95)
-test_true("numinput type number", match("type=\"number\"", num) > 0)
-test_true("numinput value", match("value=\"49.95\"", num) > 0)
+test_true("numinput class vs-number", match("class=\"vs-input vs-number\"", num) > 0)
+test_true("numinput data-vs-type vsnuminput", match("data-vs-type=\"vsnuminput\"", num) > 0)
+test_true("numinput data-nk 2", match("data-nk=\"2\"", num) > 0)
+test_true("numinput formatted German value", match("value=\"49,95\"", num) > 0)
+
+sequence num_native = vsui:numinput("num_preis2", 49.95, {{"type", "number"}})
+test_true("numinput type number", match("type=\"number\"", num_native) > 0)
+test_true("numinput native value", match("value=\"49.95\"", num_native) > 0)
+
+test_equal("format_num_de currency", vsui:format_num_de(50000.5, 2), "50.000,50")
+test_equal("format_num_de zero decimal", vsui:format_num_de(1250, 0), "1.250")
+test_equal("parse_num_de German format", vsui:parse_num_de("50.000,50"), 50000.5)
+test_equal("parse_num_de int format", vsui:parse_num_de("1234.56"), 1234.56)
 
 sequence dinp = vsui:dateinput("dat_faellig", "2026-11-30")
 test_true("dateinput type date", match("type=\"date\"", dinp) > 0)

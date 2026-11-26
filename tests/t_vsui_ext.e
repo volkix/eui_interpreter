@@ -70,4 +70,66 @@ test_equal("chart_set_data type is patch", "patch", chart_patch[1][2])
 test_equal("chart_set_data target id", "umsatz_chart_chart", chart_patch[2][2])
 test_true("chart_set_data html not empty", length(chart_patch[3][2]) > 100)
 
+-- 5. Test Treeview (vstreeview)
+sequence tree_nodes = {
+    {"Hauptordner 1", {
+        {"Unterordner A", {}, 0},
+        {"Unterordner B", {{"Datei 1.txt", {}, 0}}, 1}
+    }, 1},
+    {"Hauptordner 2", {}, 0}
+}
+sequence tree_html = vsui:treeview("tree_katalog", tree_nodes)
+test_true("treeview contains id", match("id=\"tree_katalog\"", tree_html) > 0)
+test_true("treeview class", match("class=\"vs-treeview\"", tree_html) > 0)
+test_true("treeview node 1", match("Hauptordner 1", tree_html) > 0)
+test_true("treeview toggle empty for leaf", match("vs-treeview-toggle empty", tree_html) > 0)
+test_true("treeview subnode Datei 1.txt", match("Datei 1.txt", tree_html) > 0)
+
+-- 6. Test Blocker (vsblocker)
+sequence blk_html = vsui:blocker("blk_loading", 8888)
+test_true("blocker id", match("id=\"blk_loading\"", blk_html) > 0)
+test_true("blocker class", match("class=\"blocker\"", blk_html) > 0)
+test_true("blocker z-index", match("z-index: 8888", blk_html) > 0)
+
+sequence p_blk_show = vsui:blocker_show("blk_busy", 9999)
+test_equal("blockerShow type", "blockerShow", p_blk_show[1][2])
+test_equal("blockerShow id", "blk_busy", p_blk_show[2][2])
+
+sequence p_blk_hide = vsui:blocker_hide("blk_busy")
+test_equal("blockerHide type", "blockerHide", p_blk_hide[1][2])
+
+-- 7. Test Tooltip & Contextmenu Helpers (vstooltip & vscontextmenu)
+sequence btn_with_tip = vsui:with_tooltip("<button id=\"btn_help\">Hilfe</button>", "Klicken für Hilfe")
+test_true("with_tooltip data-vs-tooltip", match("data-vs-tooltip=\"Klicken für Hilfe\"", btn_with_tip) > 0)
+
+sequence row_with_ctx = vsui:with_contextmenu("<tr id=\"row_1\"><td>Daten</td></tr>", {
+    {"Bearbeiten", "edit_item"},
+    {"-"},
+    {"Löschen", "del_item"}
+})
+test_true("with_contextmenu data-vs-contextmenu", match("data-vs-contextmenu='[", row_with_ctx) > 0)
+test_true("with_contextmenu contains edit", match("Bearbeiten", row_with_ctx) > 0)
+test_true("with_contextmenu contains divider", match("\"divider\":true", row_with_ctx) > 0)
+
+-- 8. Test Positioning & setXYWH (ldom integration)
+sequence btn_xywh = vsui:button("btn_pos", "Verschieben", {vsui:opt_xywh(100, 250, 180, 36)})
+test_true("button has position absolute", match("position:absolute", btn_xywh) > 0)
+test_true("button left 100px", match("left:100px", btn_xywh) > 0)
+test_true("button top 250px", match("top:250px", btn_xywh) > 0)
+test_true("button width 180px", match("width:180px", btn_xywh) > 0)
+test_true("button height 36px", match("height:36px", btn_xywh) > 0)
+
+sequence p_xywh = vsui:set_xywh("grd_kunden", 20, 80, 800, 500)
+test_equal("set_xywh patch type", "setXYWH", p_xywh[1][2])
+test_equal("set_xywh patch id", "grd_kunden", p_xywh[2][2])
+test_equal("set_xywh patch x", 20, p_xywh[3][2])
+test_equal("set_xywh patch y", 80, p_xywh[4][2])
+
+sequence p_cwin = vsui:center_win("mdl_dialog", "both")
+test_equal("center_win patch type", "centerWin", p_cwin[1][2])
+test_equal("center_win patch axis", "both", p_cwin[3][2])
+
+sequence p_cpar = vsui:center_parent("btn_pos", "x")
+test_equal("center_parent patch type", "centerParent", p_cpar[1][2])
+
 test_report()

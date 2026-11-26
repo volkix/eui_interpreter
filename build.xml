@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="euphorix-project" default="run" basedir=".">
+    <description>NetBeans Integration für Euphorix (Run &amp; Compile)</description>
+
+    <!-- Führt das Hauptskript aus (F6) -->
+    <target name="run" description="Startet das Hauptskript">
+        <exec executable="${basedir}/euphorix" failonerror="true">
+            <arg file="${basedir}/examples/hello.ex"/>
+        </exec>
+    </target>
+
+    <!-- Führt die aktuell markierte Datei aus (Shift + F6) -->
+    <target name="run-single" description="Führt die aktuelle Euphoria-Datei aus">
+        <fail unless="file" message="Keine Datei ausgewählt! Bitte eine .ex-Datei markieren."/>
+        <exec executable="${basedir}/euphorix" failonerror="true">
+            <arg file="${file}"/>
+        </exec>
+    </target>
+
+    <!-- Kompiliert die aktuell markierte Datei zu Bytecode (F9) -->
+    <target name="compile-single" description="Kompiliert die aktuelle Euphoria-Datei zu Bytecode (.exb)">
+        <fail unless="file" message="Keine Datei ausgewählt! Bitte eine .ex-Datei markieren."/>
+        <exec executable="${basedir}/euphorix" failonerror="true">
+            <arg value="--compile"/>
+            <arg file="${file}"/>
+        </exec>
+    </target>
+
+    <!-- Baut das gesamte Euphorix Java-Projekt (F11 / Build Project) -->
+    <target name="build" description="Baut die Euphorix VM (Maven)">
+        <exec executable="make" failonerror="true">
+            <arg value="java"/>
+        </exec>
+    </target>
+
+    <!-- Bereinigt das Projekt (Clean) -->
+    <target name="clean" description="Clean">
+        <exec executable="make" failonerror="true">
+            <arg value="clean"/>
+        </exec>
+    </target>
+</project>

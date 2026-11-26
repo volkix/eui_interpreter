@@ -8,26 +8,39 @@ MVN            := JAVA_HOME=$(JDK25_HOME) mvn
 JAVA_SRCS      := $(wildcard java/src/main/java/eu/*.java)
 JAVA_JAR       := euphorix.jar
 JAVA_BIN       := euphorix
+JAVA_RT_JAR    := runtime.jar
+JAVA_RT_BIN    := euphorix-rt
 STANDALONE_BIN := euphorix-standalone
 EU_STDLIB      := $(wildcard eu_include/std/*.e eu_include/std/*/*.e eu_include/euphoria/*.e)
 
-.PHONY: all java fatjar standalone test test-java test-standalone website clean
+.PHONY: all java fatjar runtime standalone test test-java test-standalone website clean
 
-all: java standalone
+all: java runtime standalone
 
-java: $(JAVA_JAR) $(JAVA_BIN)
+java: $(JAVA_JAR) $(JAVA_BIN) $(JAVA_RT_JAR) $(JAVA_RT_BIN)
 
-fatjar: $(JAVA_JAR)
+fatjar: $(JAVA_JAR) $(JAVA_RT_JAR)
+
+runtime: $(JAVA_RT_JAR) $(JAVA_RT_BIN)
 
 $(JAVA_JAR): pom.xml $(JAVA_SRCS) $(EU_STDLIB)
 	$(MVN) package -DskipTests
 	@ln -sf $(JAVA_JAR) eui.jar
+
+$(JAVA_RT_JAR): $(JAVA_JAR)
+	@ln -sf $(JAVA_RT_JAR) euphorix-rt.jar
 
 $(JAVA_BIN): $(JAVA_JAR)
 	@printf '#!/usr/bin/env bash\nDIR="$$(cd "$$(dirname "$${BASH_SOURCE[0]}")" && pwd)"\nexec $(JAVA) --enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 -Dawt.useSystemAAFontSettings=lcd -Dswing.aatext=true -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine -Djdk.internal.httpclient.disableHostnameVerification=true -jar "$$DIR/$(JAVA_JAR)" "$$@"\n' > $(JAVA_BIN)
 	@chmod +x $(JAVA_BIN)
 	@ln -sf $(JAVA_BIN) eui-java
 	@ln -sf $(JAVA_BIN) eux
+
+$(JAVA_RT_BIN): $(JAVA_RT_JAR)
+	@printf '#!/usr/bin/env bash\nDIR="$$(cd "$$(dirname "$${BASH_SOURCE[0]}")" && pwd)"\nexec $(JAVA) --enable-native-access=ALL-UNNAMED -Dfile.encoding=UTF-8 -Dawt.useSystemAAFontSettings=lcd -Dswing.aatext=true -Dsun.java2d.renderer=sun.java2d.marlin.MarlinRenderingEngine -Djdk.internal.httpclient.disableHostnameVerification=true -jar "$$DIR/$(JAVA_RT_JAR)" "$$@"\n' > $(JAVA_RT_BIN)
+	@chmod +x $(JAVA_RT_BIN)
+	@ln -sf $(JAVA_RT_BIN) runtime
+	@ln -sf $(JAVA_RT_BIN) eui-rt
 
 standalone: $(STANDALONE_BIN)
 
@@ -66,6 +79,8 @@ test-java: $(JAVA_BIN)
 	./$(JAVA_BIN) tests/t_cron_sse.e
 	./$(JAVA_BIN) tests/t_java_interop.e
 	./$(JAVA_BIN) tests/t_concurrency.ex
+	./$(JAVA_BIN) tests/t_bytecode.e
+	./$(JAVA_BIN) tests/t_lsp.e
 
 test-standalone: $(STANDALONE_BIN)
 	./$(STANDALONE_BIN) examples/hello.ex
@@ -100,4 +115,4 @@ website: $(JAVA_BIN)
 	./$(JAVA_BIN) tools/build_website.ex
 
 clean:
-	rm -rf java/target $(JAVA_JAR) eui.jar $(JAVA_BIN) eui-java eux $(STANDALONE_BIN) eui-standalone eux-standalone
+	rm -rf java/target $(JAVA_JAR) eui.jar $(JAVA_BIN) eui-java eux $(STANDALONE_BIN) eui-standalone eux-standalone $(JAVA_RT_JAR) euphorix-rt.jar $(JAVA_RT_BIN) runtime eui-rt

@@ -1,0 +1,179 @@
+{
+  "Function Declaration": {
+    "prefix": "func",
+    "body": [
+      "public function ${1:name}(${2:params})",
+      "\t${0}",
+      "\treturn 0",
+      "end function"
+    ],
+    "description": "Erstellt eine neue Funktion mit Rückgabewert"
+  },
+  "Procedure Declaration": {
+    "prefix": "proc",
+    "body": [
+      "public procedure ${1:name}(${2:params})",
+      "\t${0}",
+      "end procedure"
+    ],
+    "description": "Erstellt eine neue Prozedur ohne Rückgabewert"
+  },
+  "Custom Type": {
+    "prefix": "type",
+    "body": [
+      "public type ${1:name}(object x)",
+      "\treturn ${0:integer(x) and x >= 0}",
+      "end type"
+    ],
+    "description": "Erstellt einen benutzerdefinierten Typ (Prädikatfunktion)"
+  },
+  "Constant Declaration": {
+    "prefix": "const",
+    "body": [
+      "public constant ${1:NAME} = ${2:value}"
+    ],
+    "description": "Deklariert eine Konstante"
+  },
+  "Enum Declaration": {
+    "prefix": "enum",
+    "body": [
+      "public enum",
+      "\t${1:ITEM_A},",
+      "\t${2:ITEM_B},",
+      "\t${3:ITEM_C}"
+    ],
+    "description": "Deklariert aufzählbare Konstanten"
+  },
+  "If Statement": {
+    "prefix": "if",
+    "body": [
+      "if ${1:condition} then",
+      "\t${0}",
+      "end if"
+    ],
+    "description": "Bedingte Verzweigung if ... then"
+  },
+  "If-Else Statement": {
+    "prefix": "ifelse",
+    "body": [
+      "if ${1:condition} then",
+      "\t${2}",
+      "else",
+      "\t${0}",
+      "end if"
+    ],
+    "description": "Bedingte Verzweigung if ... else"
+  },
+  "For Loop": {
+    "prefix": "for",
+    "body": [
+      "for ${1:i} = ${2:1} to ${3:length(s)} do",
+      "\t${0}",
+      "end for"
+    ],
+    "description": "Zählschleife for ... to ... do"
+  },
+  "While Loop": {
+    "prefix": "while",
+    "body": [
+      "while ${1:condition} do",
+      "\t${0}",
+      "end while"
+    ],
+    "description": "Kopfgesteuerte Schleife while ... do"
+  },
+  "Loop-Until": {
+    "prefix": "loop",
+    "body": [
+      "loop",
+      "\t${0}",
+      "until ${1:condition}"
+    ],
+    "description": "Fußgesteuerte Schleife loop ... until"
+  },
+  "Switch Case": {
+    "prefix": "switch",
+    "body": [
+      "switch ${1:value} do",
+      "\tcase ${2:1} then",
+      "\t\t${3}",
+      "\tcase else",
+      "\t\t${0}",
+      "end switch"
+    ],
+    "description": "Fallunterscheidung switch ... case ... end switch"
+  },
+  "MCP Server Template": {
+    "prefix": "mcp_server",
+    "body": [
+      "include std/mcp.e",
+      "",
+      "integer srv = mcp:server(\"${1:my-mcp-server}\", \"1.0.0\", \"${2:Euphorix MCP Server}\")",
+      "",
+      "function on_${3:tool}(sequence args)",
+      "\tsequence input_val = mcp:arg(args, \"input\", \"\")",
+      "\treturn mcp:tool_result(\"Ergebnis: \" & input_val)",
+      "end function",
+      "mcp:register_tool(srv, \"${3:tool}\", \"${4:Tool Beschreibung}\", routine_id(\"on_${3:tool}\"))",
+      "",
+      "mcp:run_stdio(srv)"
+    ],
+    "description": "Erzeugt einen vollständigen MCP Server für KI-Agenten und Claude Desktop"
+  },
+  "RAG Pipeline Template": {
+    "prefix": "rag_pipeline",
+    "body": [
+      "include std/rag.e",
+      "",
+      "sequence kb = rag:create_kb(\"${1:wissensdatenbank}\", {}, \":memory:\")",
+      "rag:add_document(kb, \"${2:doc1}\", \"${3:Titel}\", \"${4:Inhaltstext...}\")",
+      "sequence results = rag:retrieve(kb, \"${5:Suchbegriff}\", 3)",
+      "",
+      "for i = 1 to length(results) do",
+      "\tprintf(1, \"Treffer %d: %s\\n\", {i, results[i][1]})",
+      "end for"
+    ],
+    "description": "Erzeugt eine semantische RAG-Wissensdatenbank mit FTS5 & Vektorspeicher"
+  },
+  "Universal LLM Chat Template": {
+    "prefix": "llm_chat",
+    "body": [
+      "include std/llm.e",
+      "",
+      "sequence cli = llm:client(llm:PROVIDER_OLLAMA, {{\"model\", \"${1:llama3}\"}})",
+      "sequence reply = llm:complete(cli, \"${2:Schreibe eine kurze Zusammenfassung:}\")",
+      "puts(1, reply & \"\\n\")"
+    ],
+    "description": "Initialisiert einen LLM-Client (Ollama/OpenAI) und führt einen Prompt aus"
+  },
+  "VS-UI Web App Template": {
+    "prefix": "vsui_app",
+    "body": [
+      "include std/vsui.e as vsui",
+      "",
+      "integer app = vsui:app(\"${1:Meine Anwendung}\", ${2:8089})",
+      "",
+      "function on_submit(sequence ctx)",
+      "\tsequence name = vsui:val(ctx, \"name\")",
+      "\treturn vsui:updates({vsui:set_val(\"out\", \"Hallo \" & name)})",
+      "end function",
+      "vsui:on_click(app, \"btn_submit\", routine_id(\"on_submit\"))",
+      "",
+      "vsui:run(app)"
+    ],
+    "description": "Erzeugt eine reaktive VS-UI Browser-Applikation mit Event-Loop"
+  },
+  "Loom Virtual Thread Worker": {
+    "prefix": "thread_spawn",
+    "body": [
+      "include std/thread.e",
+      "",
+      "procedure worker()",
+      "\t${0}",
+      "end procedure",
+      "",
+      "thread:spawn(routine_id(\"worker\"), {})"
+    ],
+    "description": "Startet eine Routine in einem Java 25 Loom Virtual Thread"
+  }
+}

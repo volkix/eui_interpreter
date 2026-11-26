@@ -1,21 +1,22 @@
 --****
--- == VS-UI / CGIBASH-HTML Framework for Euphorix (std/vsui.e)
+-- == VS-UI Autarkes High-Density Web-Framework für Euphorix (std/vsui.e)
 --
--- Alternative, lightweight enterprise Web-UI library based on Volker Schulte's
--- cgibash/html framework (/home/volkix/prj/cgibash/html).
+-- Native, leichtgewichtige Enterprise Web-UI Bibliothek mit Assets direkt
+-- im Projektverzeichnis html/.
 --
 -- Features:
--- * Zero external dependencies: Uses native ES6 modules, `ldom.js`, and `vsevent.js`.
--- * High-density enterprise styling (vs.css & globalblauklein.css) with compact layouts,
---   monospace / clear typography, and custom CSS variables (--vs-blau, --vs-gruen).
--- * Full component suite: vsbutton, vsinput, vsnuminput, vsdateinput, vstimeinput,
+-- * Zero external dependencies: Verwendet native ES6 Module, `ldom.js`, und `vsevent.js`.
+-- * High-density Enterprise Styling (vs.css & globalblauklein.css) mit kompakten Layouts,
+--   präziser Typografie und anpassbaren CSS-Variablen (--vs-blau, --vs-gruen).
+-- * Vollständige Komponenten-Suite: vsbutton, vsinput, vsnuminput, vsdateinput, vstimeinput,
 --   vscheck, vstextarea, vscombo, vslabel, vsgroup, vspanel, vscollapse, vsgrid (DataGrid
---   with sticky headers & live search), vstabs, vsmodal, vstoast, vssplitter, vstreeview.
--- * Built-in static file server directly serving /lib2/*, /css/*, /img/*, /app/* from
---   the local /home/volkix/prj/cgibash/html repository.
--- * Reactive Event-Bridge connecting frontend `vsevent` ("button_click", "changevalue")
---   directly to OpenEuphoria `routine_id` handlers with live DOM patches (`vsui:patch()`,
---   `vsui:set_val()`, `vsui:toast_show()`, `vsui:modal_open()`).
+--   mit Sticky Headers & Live-Suche), vstabs, vsmodal, vstoast, vssplitter, vsdragdrop-upload,
+--   responsive SVG-Charts (Bar, Line, Pie, Doughnut).
+-- * Integrierter statischer Webserver direkt für /lib2/*, /css/*, /img/*, /app/* aus
+--   dem lokalen Projektverzeichnis html/.
+-- * Reaktive Event-Bridge: Verknüpft Frontend-Ereignisse (`vsevent`: "button_click", "changevalue")
+--   direkt mit OpenEuphoria `routine_id`-Handlern über flackerfreie DOM-Patches (`vsui:patch()`,
+--   `vsui:set_val()`, `vsui:toast_show()`, `vsui:modal_open()`, `vsui:field_error()`).
 --
 
 namespace vsui
@@ -25,6 +26,7 @@ include std/json.e as json
 include std/io.e as io
 include std/filesys.e as filesys
 include std/text.e as text
+include std/get.e as get
 
 -- =============================================================================
 -- 1. Constants & Configuration
@@ -112,6 +114,39 @@ function get_opt(sequence opts, sequence key, sequence default_val = "")
     return default_val
 end function
 
+function get_style_opt(sequence opts, sequence default_style = "")
+    sequence style = get_opt(opts, "style", default_style)
+    -- Check for xywh positioning: {"xywh", {x, y, w, h}}
+    for i = 1 to length(opts) do
+        if sequence(opts[i]) and length(opts[i]) >= 2 then
+            if equal(opts[i][1], "xywh") and sequence(opts[i][2]) and length(opts[i][2]) = 4 then
+                sequence pos = opts[i][2]
+                sequence xywh_str = sprintf("position:absolute; left:%dpx; top:%dpx; width:%dpx; height:%dpx;",
+                                            {pos[1], pos[2], pos[3], pos[4]})
+                if length(style) > 0 then
+                    style = xywh_str & " " & style
+                else
+                    style = xywh_str
+                end if
+                exit
+            end if
+        end if
+    end for
+    return style
+end function
+
+--**
+-- Construct an option pair for pixel-exact positioning matching `ldom.js: setXYWH(x, y, w, h)`.
+public function opt_xywh(integer x, integer y, integer w, integer h)
+    return {"xywh", {x, y, w, h}}
+end function
+
+--**
+-- Construct an inline CSS string for setXYWH.
+public function xywh_style(integer x, integer y, integer w, integer h)
+    return sprintf("position:absolute; left:%dpx; top:%dpx; width:%dpx; height:%dpx;", {x, y, w, h})
+end function
+
 function iff(integer cond, object true_val, object false_val)
     if cond then return true_val else return false_val end if
 end function
@@ -163,19 +198,308 @@ function get_client_bridge_js()
 import { e, _, n } from "/lib2/ldom.js";
 import * as ui from "/lib2/ui.js";
 import vsevent from "/lib2/vsevent.js";
+import vsnumber from "/lib2/vsnumber.js";
 
 window._vs_e = e;
 window._vs__ = _;
 window._vs_n = n;
 window._vs_ui = ui;
 window._vs_vsevent = vsevent;
+window._vs_number = vsnumber;
+
+// Initialize and wire up lib2 vsnuminput fields (supporting German formatting & nk precision)
+window.initVsNumInputs = function(root) {
+  var scope = root || document;
+  var elems = (scope.querySelectorAll) ? scope.querySelectorAll('input.vs-number, input[data-vs-type="vsnuminput"]') : [];
+  elems.forEach(function(elem) {
+    if (elem._vs_num_init) return;
+    elem._vs_num_init = true;
+    var nk = parseInt(elem.getAttribute('data-nk') || (elem.nk !== undefined ? elem.nk : 2), 10);
+    elem.nk = nk;
+    elem.oldvalue = elem.value;
+
+    elem.addEventListener('blur', function(e) {
+      if (typeof vsnumber !== 'undefined' && typeof vsnumber.fz === 'function') {
+        e.target.value = vsnumber.fz(e.target.value, nk);
+      }
+      if (e.target.value !== e.target.oldvalue) {
+        vsevent.send('changevalue', {
+          id: e.target.id,
+          type: 'vs-number' + nk,
+          oldvalue: e.target.oldvalue,
+          newvalue: e.target.value
+        });
+        e.target.oldvalue = e.target.value;
+      }
+    });
+
+    elem.setValue = function(v) {
+      var strVal = (v !== null && v !== undefined) ? String(v) : '';
+      var formatted = (typeof vsnumber !== 'undefined' && typeof vsnumber.fz === 'function')
+                      ? vsnumber.fz(strVal, elem.nk)
+                      : strVal;
+      elem.value = formatted;
+      vsevent.send('changevalue', {
+        id: elem.id,
+        type: 'vs-number' + elem.nk,
+        oldvalue: elem.oldvalue,
+        newvalue: elem.value
+      });
+      elem.oldvalue = elem.value;
+    };
+    elem.getValue = function() {
+      return elem.value;
+    };
+    elem.setNumValue = function(v) {
+      if (typeof vsnumber !== 'undefined' && typeof vsnumber.n2s === 'function') {
+        elem.setValue(vsnumber.n2s(v, elem.nk));
+      } else {
+        elem.setValue(v);
+      }
+    };
+    elem.getNumValue = function() {
+      if (typeof vsnumber !== 'undefined' && typeof vsnumber.s2n === 'function') {
+        return vsnumber.s2n(elem.value, elem.nk);
+      }
+      return parseFloat(elem.value || 0);
+    };
+  });
+};
+
+// Initialize and wire up lib2 vstooltip
+window.initVsTooltips = function(root) {
+  var scope = root || document;
+  var elems = (scope.querySelectorAll) ? scope.querySelectorAll('[data-vs-tooltip]') : [];
+  elems.forEach(function(el) {
+    if (el._vs_tooltip_init) return;
+    el._vs_tooltip_init = true;
+    var tipText = el.getAttribute('data-vs-tooltip');
+    if (tipText && window._vs_ui && typeof window._vs_ui.vstooltip === 'function') {
+      window._vs_ui.vstooltip(el, tipText);
+    }
+  });
+};
+
+// Initialize and wire up lib2 vscontextmenu
+window.initVsContextMenus = function(root) {
+  var scope = root || document;
+  var elems = (scope.querySelectorAll) ? scope.querySelectorAll('[data-vs-contextmenu]') : [];
+  elems.forEach(function(el) {
+    if (el._vs_ctx_init) return;
+    el._vs_ctx_init = true;
+    try {
+      var rawItems = JSON.parse(el.getAttribute('data-vs-contextmenu') || '[]');
+      if (Array.isArray(rawItems) && window._vs_ui && typeof window._vs_ui.vscontextmenu === 'function') {
+        var items = rawItems.map(function(it) {
+          if (it.divider) return { divider: true };
+          return {
+            label: it.label,
+            action: function(ev) {
+              window.sendVsEvent('contextmenu_click', {
+                id: el.id,
+                action: it.action || it.label
+              });
+            }
+          };
+        });
+        window._vs_ui.vscontextmenu(el, items);
+      }
+    } catch (e) {
+      console.error('Error initializing context menu:', e);
+    }
+  });
+};
+
+// Apply reactive DOM patches received from Euphorix backend
+window.applyVsPatches = function(patches) {
+  if (!patches) return;
+  if (!Array.isArray(patches)) patches = [patches];
+  patches.forEach(function(p) {
+    if (!p || !p.type) return;
+    if (p.type === 'patch') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.innerHTML = p.html;
+        if (window.initVsNumInputs) window.initVsNumInputs(target);
+        if (window.initVsTooltips) window.initVsTooltips(target);
+        if (window.initVsContextMenus) window.initVsContextMenus(target);
+      }
+    } else if (p.type === 'append') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.insertAdjacentHTML('beforeend', p.html);
+        if (window.initVsNumInputs) window.initVsNumInputs(target);
+        if (window.initVsTooltips) window.initVsTooltips(target);
+        if (window.initVsContextMenus) window.initVsContextMenus(target);
+      }
+    } else if (p.type === 'setValue') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        if (typeof target.setValue === 'function') {
+          target.setValue(p.val);
+        } else {
+          target.value = p.val;
+        }
+      }
+    } else if (p.type === 'setFocus') {
+      var target = document.getElementById(p.id);
+      if (target && typeof target.focus === 'function') target.focus();
+    } else if (p.type === 'setEnabled') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.disabled = !p.enabled;
+        if (p.enabled) target.removeAttribute('disabled');
+        else target.setAttribute('disabled', 'disabled');
+      }
+    } else if (p.type === 'setVisible') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.style.display = p.visible ? '' : 'none';
+      }
+    } else if (p.type === 'setCss') {
+      var target = document.getElementById(p.id);
+      if (target && target.style) {
+        target.style[p.prop] = p.val;
+      }
+    } else if (p.type === 'setClass') {
+      var target = document.getElementById(p.id);
+      if (target && target.classList) {
+        if (p.action === 'remove') target.classList.remove(p.cls);
+        else if (p.action === 'toggle') target.classList.toggle(p.cls);
+        else target.classList.add(p.cls);
+      }
+    } else if (p.type === 'fieldError') {
+      var target = document.getElementById(p.id);
+      if (target) {
+        target.classList.add('vs-field-error');
+        var errEl = document.getElementById(p.id + '_error');
+        if (!errEl) {
+          errEl = document.createElement('div');
+          errEl.id = p.id + '_error';
+          errEl.className = 'vs-error-tip';
+          target.parentNode.insertBefore(errEl, target.nextSibling);
+        }
+        errEl.textContent = p.msg;
+        errEl.style.display = 'block';
+      }
+    } else if (p.type === 'fieldClearError') {
+      var target = document.getElementById(p.id);
+      if (target) target.classList.remove('vs-field-error');
+      var errEl = document.getElementById(p.id + '_error');
+      if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+    } else if (p.type === 'clearForm') {
+      var container = (p.id && p.id.length > 0) ? document.getElementById(p.id) : document;
+      if (container) {
+        container.querySelectorAll('input, select, textarea').forEach(function(el) {
+          if (typeof el.setValue === 'function') {
+            el.setValue('');
+          } else if (el.type === 'checkbox' || el.type === 'radio') {
+            el.checked = false;
+          } else {
+            el.value = '';
+          }
+        });
+      }
+    } else if (p.type === 'gridSetData') {
+      var grid = document.getElementById(p.id);
+      if (grid && typeof grid.setData === 'function') {
+        grid.setData(p.data);
+      } else {
+        var targetTable = document.getElementById(p.id + '_data') || (grid && grid.querySelector('table.vs-table')) || grid;
+        if (targetTable) {
+          var tbody = targetTable.querySelector('tbody') || targetTable;
+          var html = '';
+          var rows = Array.isArray(p.data) ? p.data : [];
+          for (var r = 0; r < rows.length; r++) {
+            var row = rows[r];
+            var trCls = (r % 2 === 0) ? 'vs-tbody-tr even' : 'vs-tbody-tr odd';
+            html += '<tr class="' + trCls + '">';
+            if (Array.isArray(row)) {
+              for (var c = 0; c < row.length; c++) {
+                var cellVal = (row[c] !== null && row[c] !== undefined) ? row[c] : '';
+                var th = document.querySelector('#' + p.id + '_head th:nth-child(' + (c + 1) + ')');
+                var lbl = th ? th.textContent.trim() : '';
+                html += '<td class="vs-tbody-td"' + (lbl ? ' data-label="' + lbl + '"' : '') + '>' + cellVal + '</td>';
+              }
+            } else if (typeof row === 'object' && row !== null) {
+              var keys = Object.keys(row);
+              for (var c = 0; c < keys.length; c++) {
+                var cellVal = (row[keys[c]] !== null && row[keys[c]] !== undefined) ? row[keys[c]] : '';
+                html += '<td class="vs-tbody-td" data-label="' + keys[c] + '">' + cellVal + '</td>';
+              }
+            }
+            html += '</tr>';
+          }
+          tbody.innerHTML = html;
+        }
+      }
+    } else if (p.type === 'toast') {
+      if (window._vs_ui && typeof window._vs_ui.vstoast === 'function') {
+        window._vs_ui.vstoast(p.text, p.toast_type || 'info', p.duration || 3000);
+      } else {
+        var t = document.createElement('div');
+        t.className = 'vs-toast vs-toast-' + (p.toast_type || 'info') + ' show';
+        t.textContent = p.text;
+        document.body.appendChild(t);
+        setTimeout(function() { t.remove(); }, p.duration || 3000);
+      }
+    } else if (p.type === 'modalOpen') {
+      var m = document.getElementById(p.id);
+      if (m) m.style.display = 'flex';
+    } else if (p.type === 'modalClose') {
+      var m = document.getElementById(p.id);
+      if (m) m.style.display = 'none';
+    } else if (p.type === 'blockerShow') {
+      if (window._vs_ui && typeof window._vs_ui.vsblocker === 'function') {
+        window._vs_ui.vsblocker(p.id, p.zindex || 9999);
+      } else {
+        var b = document.createElement('div');
+        b.id = p.id;
+        b.className = 'blocker';
+        b.style.zIndex = p.zindex || 9999;
+        document.body.appendChild(b);
+      }
+    } else if (p.type === 'blockerHide') {
+      var blk = document.getElementById(p.id);
+      if (blk && blk.classList.contains('blocker')) blk.remove();
+    } else if (p.type === 'setXYWH') {
+      var target = document.getElementById(p.id);
+      if (target && window._vs_n) {
+        window._vs_n(target).setXYWH(p.x, p.y, p.w, p.h);
+      } else if (target) {
+        target.style.position = 'absolute';
+        target.style.left = p.x + 'px';
+        target.style.top = p.y + 'px';
+        target.style.width = p.w + 'px';
+        target.style.height = p.h + 'px';
+      }
+    } else if (p.type === 'centerWin') {
+      var target = document.getElementById(p.id);
+      if (target && window._vs_n) {
+        if (p.axis === 'x' || p.axis === 'both') window._vs_n(target).centerWinX();
+        if (p.axis === 'y' || p.axis === 'both') window._vs_n(target).centerWinY();
+      }
+    } else if (p.type === 'centerParent') {
+      var target = document.getElementById(p.id);
+      if (target && window._vs_n) {
+        if (p.axis === 'x' || p.axis === 'both') window._vs_n(target).centerX();
+        if (p.axis === 'y' || p.axis === 'both') window._vs_n(target).centerY();
+      }
+    } else if (p.type === 'chartSetData') {
+      var ch = document.getElementById(p.id + '_chart');
+      if (ch && p.svg) ch.outerHTML = p.svg;
+    } else if (p.type === 'redirect') {
+      window.location.href = p.url;
+    }
+  });
+};
 
 // Dispatch event from frontend to Euphorix backend
 window.sendVsEvent = function(eventName, eventData) {
   var data = Object.assign({}, eventData || {});
   
-  // Collect input values (utilizing getValue() if component supports it)
-  document.querySelectorAll('input.vs-input, input.vs-check, select.vs-combo, textarea.vs-textarea').forEach(function(el) {
+  // Collect input values
+  document.querySelectorAll('input, select, textarea').forEach(function(el) {
     if (el.id) {
       if (typeof el.getValue === 'function') {
         data[el.id] = el.getValue();
@@ -183,6 +507,9 @@ window.sendVsEvent = function(eventName, eventData) {
         data[el.id] = el.checked ? '1' : '0';
       } else {
         data[el.id] = el.value;
+      }
+      if (typeof el.getNumValue === 'function') {
+        data[el.id + '__num'] = el.getNumValue();
       }
     }
   });
@@ -194,142 +521,29 @@ window.sendVsEvent = function(eventName, eventData) {
   })
   .then(function(res) { return res.json(); })
   .then(function(patches) {
-    if (!Array.isArray(patches)) patches = [patches];
-    patches.forEach(function(p) {
-      if (!p || !p.type) return;
-      if (p.type === 'patch') {
-        var target = document.getElementById(p.id);
-        if (target) target.innerHTML = p.html;
-      } else if (p.type === 'append') {
-        var target = document.getElementById(p.id);
-        if (target) target.insertAdjacentHTML('beforeend', p.html);
-      } else if (p.type === 'setValue') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.value = p.val;
-          if (typeof target.setValue === 'function') target.setValue(p.val);
-        }
-      } else if (p.type === 'setFocus') {
-        var target = document.getElementById(p.id);
-        if (target && typeof target.focus === 'function') target.focus();
-      } else if (p.type === 'setEnabled') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.disabled = !p.enabled;
-          if (p.enabled) target.removeAttribute('disabled');
-          else target.setAttribute('disabled', 'disabled');
-        }
-      } else if (p.type === 'setVisible') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.style.display = p.visible ? '' : 'none';
-        }
-      } else if (p.type === 'setCss') {
-        var target = document.getElementById(p.id);
-        if (target && target.style) {
-          target.style[p.prop] = p.val;
-        }
-      } else if (p.type === 'setClass') {
-        var target = document.getElementById(p.id);
-        if (target && target.classList) {
-          if (p.action === 'remove') target.classList.remove(p.cls);
-          else if (p.action === 'toggle') target.classList.toggle(p.cls);
-          else target.classList.add(p.cls);
-        }
-      } else if (p.type === 'fieldError') {
-        var target = document.getElementById(p.id);
-        if (target) {
-          target.classList.add('vs-field-error');
-          var errEl = document.getElementById(p.id + '_error');
-          if (!errEl) {
-            errEl = document.createElement('div');
-            errEl.id = p.id + '_error';
-            errEl.className = 'vs-error-tip';
-            target.parentNode.insertBefore(errEl, target.nextSibling);
-          }
-          errEl.textContent = p.msg;
-          errEl.style.display = 'block';
-        }
-      } else if (p.type === 'fieldClearError') {
-        var target = document.getElementById(p.id);
-        if (target) target.classList.remove('vs-field-error');
-        var errEl = document.getElementById(p.id + '_error');
-        if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
-      } else if (p.type === 'clearForm') {
-        var container = (p.id && p.id.length > 0) ? document.getElementById(p.id) : document;
-        if (container) {
-          container.querySelectorAll('input.vs-input, input.vs-check, select.vs-combo, textarea.vs-textarea').forEach(function(el) {
-            if (typeof el.setValue === 'function') {
-              el.setValue('');
-            } else if (el.type === 'checkbox' || el.type === 'radio') {
-              el.checked = false;
-            } else {
-              el.value = '';
-            }
-          });
-        }
-      } else if (p.type === 'gridSetData') {
-        var grid = document.getElementById(p.id);
-        if (grid && typeof grid.setData === 'function') {
-          grid.setData(p.data);
-        } else {
-          var targetTable = document.getElementById(p.id + '_data') || (grid && grid.querySelector('table.vs-table')) || grid;
-          if (targetTable) {
-            var tbody = targetTable.querySelector('tbody') || targetTable;
-            var html = '';
-            var rows = Array.isArray(p.data) ? p.data : [];
-            for (var r = 0; r < rows.length; r++) {
-              var row = rows[r];
-              var trCls = (r % 2 === 0) ? 'vs-tbody-tr even' : 'vs-tbody-tr odd';
-              html += '<tr class="' + trCls + '">';
-              if (Array.isArray(row)) {
-                for (var c = 0; c < row.length; c++) {
-                  var cellVal = (row[c] !== null && row[c] !== undefined) ? row[c] : '';
-                  var th = document.querySelector('#' + p.id + '_head th:nth-child(' + (c + 1) + ')');
-                  var lbl = th ? th.textContent.trim() : '';
-                  html += '<td class="vs-tbody-td"' + (lbl ? ' data-label="' + lbl + '"' : '') + '>' + cellVal + '</td>';
-                }
-              } else if (typeof row === 'object' && row !== null) {
-                var keys = Object.keys(row);
-                for (var c = 0; c < keys.length; c++) {
-                  var cellVal = (row[keys[c]] !== null && row[keys[c]] !== undefined) ? row[keys[c]] : '';
-                  html += '<td class="vs-tbody-td" data-label="' + keys[c] + '">' + cellVal + '</td>';
-                }
-              }
-              html += '</tr>';
-            }
-            tbody.innerHTML = html;
-          }
-        }
-      } else if (p.type === 'toast') {
-        if (typeof ui.vstoast === 'function') {
-          ui.vstoast(p.text, p.toast_type || 'info', p.duration || 3000);
-        } else {
-          var t = document.createElement('div');
-          t.className = 'vs-toast vs-toast-' + (p.toast_type || 'info') + ' show';
-          t.textContent = p.text;
-          document.body.appendChild(t);
-          setTimeout(function() { t.remove(); }, p.duration || 3000);
-        }
-      } else if (p.type === 'modalOpen') {
-        var m = document.getElementById(p.id);
-        if (m) m.style.display = 'flex';
-      } else if (p.type === 'modalClose') {
-        var m = document.getElementById(p.id);
-        if (m) m.style.display = 'none';
-      } else if (p.type === 'redirect') {
-        window.location.href = p.url;
-      }
-    });
+    window.applyVsPatches(patches);
   })
-  .catch(function(err) { console.error('Euphorix VS-UI Bridge Error:', err); });
+  .catch(function(err) {
+    console.error('Euphorix VS-UI Bridge Error:', err);
+  });
 };
 
 // Wire up global click on .vs-button elements
 document.addEventListener('click', function(ev) {
+  var closeBtn = ev.target.closest('[data-vs-close]');
+  if (closeBtn) {
+    var modalId = closeBtn.getAttribute('data-vs-close');
+    var m = document.getElementById(modalId);
+    if (m) m.style.display = 'none';
+  }
+
   var btn = ev.target.closest('.vs-button, [data-vs-click]');
   if (btn) {
+    if (btn.closest('.vs-upload-dropzone') && !btn.hasAttribute('data-vs-click')) {
+      return;
+    }
     var clickAction = btn.getAttribute('data-vs-click') || btn.id;
+    if (!clickAction && !btn.id) return;
     var params = { id: btn.id, action: clickAction };
     for (var i = 0; i < btn.attributes.length; i++) {
       var a = btn.attributes[i];
@@ -339,18 +553,11 @@ document.addEventListener('click', function(ev) {
     }
     window.sendVsEvent('button_click', params);
   }
-
-  var closeBtn = ev.target.closest('[data-vs-close]');
-  if (closeBtn) {
-    var modalId = closeBtn.getAttribute('data-vs-close');
-    var m = document.getElementById(modalId);
-    if (m) m.style.display = 'none';
-  }
 });
 
-// Wire up change on input and combo
+// Wire up change on input, select, textarea
 document.addEventListener('change', function(ev) {
-  var inp = ev.target.closest('.vs-input, .vs-check, .vs-combo');
+  var inp = ev.target.closest('.vs-input, .vs-check, .vs-combo, select, textarea');
   if (inp && inp.id) {
     window.sendVsEvent('changevalue', { id: inp.id, value: inp.value });
   }
@@ -372,23 +579,56 @@ window.initVsUpload = function(dropzoneId, uploadUrl) {
   function handleFiles(files) {
     if (!files || files.length === 0) return;
     var file = files[0];
-    if (preview) preview.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
-    var formData = new FormData();
-    formData.append('file', file);
+    if (preview) preview.textContent = 'Lade hoch: ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)...';
     if (progress) progress.style.width = '35%';
-    fetch(uploadUrl, { method: 'POST', body: formData })
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var contentData = e.target.result;
+      var payload = {
+        id: dropzoneId,
+        filename: file.name,
+        size: file.size,
+        type: file.type || 'application/octet-stream',
+        lastModified: file.lastModified,
+        data: contentData
+      };
+      if (progress) progress.style.width = '70%';
+
+      fetch(uploadUrl || '/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(payload)
+      })
       .then(function(res) {
         if (progress) progress.style.width = '100%';
-        if (typeof window.sendVsEvent === 'function') {
-          window.sendVsEvent('upload_complete', { id: dropzoneId, filename: file.name, size: file.size, status: res.status });
+        return res.json().catch(function() { return []; });
+      })
+      .then(function(result) {
+        if (preview) preview.textContent = '✓ Erfolgreich übertragen: ' + file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+        if (window.applyVsPatches && Array.isArray(result) && result.length > 0) {
+          window.applyVsPatches(result);
         }
+        if (typeof window.sendVsEvent === 'function') {
+          window.sendVsEvent('upload_complete', {
+            id: dropzoneId,
+            filename: file.name,
+            size: file.size,
+            status: 200
+          });
+        }
+        setTimeout(function() {
+          if (progress) progress.style.width = '0%';
+        }, 3000);
       })
       .catch(function(err) {
         if (preview) preview.textContent = 'Upload-Fehler: ' + err;
+        if (progress) progress.style.width = '0%';
       });
+    };
+    reader.readAsDataURL(file);
   }
 
-  zone.onclick = function() { if (fileInput) fileInput.click(); };
   zone.ondragover = function(e) { e.preventDefault(); zone.classList.add('vs-upload-active'); };
   zone.ondragleave = function(e) { zone.classList.remove('vs-upload-active'); };
   zone.ondrop = function(e) {
@@ -396,13 +636,53 @@ window.initVsUpload = function(dropzoneId, uploadUrl) {
     zone.classList.remove('vs-upload-active');
     handleFiles(e.dataTransfer.files);
   };
-  if (fileInput) fileInput.onchange = function() { handleFiles(fileInput.files); };
+  if (fileInput) {
+    fileInput.addEventListener('click', function(e) { e.stopPropagation(); });
+    fileInput.addEventListener('change', function() { handleFiles(fileInput.files); });
+  }
 };
+
+// Automatic dropzone and component discovery and initialization
+function initAllVsComponents() {
+  document.querySelectorAll('.vs-upload-dropzone').forEach(function(zone) {
+    if (zone.dataset.initialized) return;
+    zone.dataset.initialized = 'true';
+    var uploadUrl = zone.getAttribute('data-upload-url') || '/api/upload';
+    window.initVsUpload(zone.id, uploadUrl);
+  });
+  if (window.initVsNumInputs) window.initVsNumInputs(document);
+  if (window.initVsTooltips) window.initVsTooltips(document);
+  if (window.initVsContextMenus) window.initVsContextMenus(document);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAllVsComponents);
+} else {
+  initAllVsComponents();
+}
+
+document.addEventListener('click', function(e) {
+  if (e.target.closest('.vs-tab-btn')) {
+    setTimeout(initAllVsComponents, 50);
+  }
+
+  // Hierarchical treeview toggle
+  var tvHeader = e.target.closest('.vs-treeview-header');
+  if (tvHeader && !e.target.closest('button, input, select, a')) {
+    var tvToggle = tvHeader.querySelector('.vs-treeview-toggle');
+    var tvNode = tvHeader.closest('.vs-treeview-node');
+    if (tvNode && tvToggle && !tvToggle.classList.contains('empty')) {
+      tvToggle.classList.toggle('collapsed');
+      var tvContent = tvNode.querySelector('.vs-treeview-content-container');
+      if (tvContent) tvContent.classList.toggle('collapsed');
+    }
+  }
+});
 </script>`
 end function
 
 --**
--- Construct a complete HTML5 page styled with the user's `cgibash/html` framework.
+-- Construct a complete HTML5 page styled with the high-density VS-UI framework (`html/`).
 public function page(sequence title, object content, sequence options = {})
     sequence cont_id = get_opt(options, "container_id", "cont")
     sequence extra_head = get_opt(options, "head", "")
@@ -430,14 +710,14 @@ public function page(sequence title, object content, sequence options = {})
 end function
 
 -- =============================================================================
--- 4. Component Builders (Matching cgibash/html & globalblauklein.css)
+-- 4. Component Builders (Matching VS-UI & globalblauklein.css)
 -- =============================================================================
 
 --**
 -- Construct a .vs-button.
 public function button(sequence id, sequence text, sequence options = {})
     sequence action = get_opt(options, "action", id)
-    sequence style  = get_opt(options, "style", "")
+    sequence style  = get_style_opt(options, "")
     integer disabled = equal(get_opt(options, "disabled", "0"), "1")
 
     sequence html = sprintf("<button id=\"%s\" class=\"vs-button\" data-vs-click=\"%s\"", {id, action})
@@ -461,7 +741,7 @@ end function
 -- Construct an input.vs-input text field.
 public function input(sequence id, sequence value = "", sequence options = {})
     sequence ph    = get_opt(options, "placeholder", "")
-    sequence style = get_opt(options, "style", "")
+    sequence style = get_style_opt(options, "")
     sequence itype = get_opt(options, "type", "text")
     integer readonly = equal(get_opt(options, "readonly", "0"), "1")
 
@@ -475,17 +755,138 @@ public function input(sequence id, sequence value = "", sequence options = {})
 end function
 
 --**
--- Construct a numeric input.vs-input.
-public function numinput(sequence id, atom value = 0, sequence options = {})
-    sequence style = get_opt(options, "style", "")
-    return sprintf("<input id=\"%s\" class=\"vs-input\" type=\"number\" value=\"%g\" style=\"%s\" />",
-                   {id, value, style})
+-- Format a numeric atom as a German formatted string (e.g. 50000 -> "50.000,00")
+-- matching the behavior of html/lib2/vsnumber.js (n2s/fz).
+public function format_num_de(atom val, integer nk = 2)
+    sequence s
+    if nk <= 0 then
+        s = sprintf("%.0f", {val})
+    else
+        s = sprintf(sprintf("%%.%df", nk), {val})
+    end if
+    
+    integer dot_pos = find('.', s)
+    sequence int_part = s
+    sequence dec_part = ""
+    if dot_pos > 0 then
+        int_part = s[1..dot_pos - 1]
+        dec_part = s[dot_pos + 1..$]
+    end if
+    
+    -- Insert thousand separators into integer part
+    integer is_neg = 0
+    if length(int_part) > 0 and int_part[1] = '-' then
+        is_neg = 1
+        int_part = int_part[2..$]
+    end if
+    
+    sequence grouped = ""
+    integer count = 0
+    for i = length(int_part) to 1 by -1 do
+        if count > 0 and remainder(count, 3) = 0 then
+            grouped = "." & grouped
+        end if
+        grouped = int_part[i] & grouped
+        count += 1
+    end for
+    if is_neg then grouped = "-" & grouped end if
+    
+    if nk > 0 then
+        return grouped & "," & dec_part
+    else
+        return grouped
+    end if
+end function
+
+--**
+-- Parse a German or standard number string into an atom (e.g. "1.234,56" or "1234.56" -> 1234.56).
+public function parse_num_de(sequence s, atom default_val = 0.0)
+    integer comma_pos = find(',', s)
+    sequence clean = ""
+    if comma_pos > 0 then
+        -- German format: dots are thousand separators, comma is decimal
+        for i = 1 to length(s) do
+            integer c = s[i]
+            if c = '.' then
+                -- skip thousand separator
+            elsif c = ',' then
+                clean &= '.'
+            elsif (c >= '0' and c <= '9') or c = '-' or c = '+' or c = 'e' or c = 'E' then
+                clean &= c
+            end if
+        end for
+    else
+        -- No comma: handle standard format (e.g. 1234.56) or clean string
+        for i = 1 to length(s) do
+            integer c = s[i]
+            if (c >= '0' and c <= '9') or c = '.' or c = '-' or c = '+' or c = 'e' or c = 'E' then
+                clean &= c
+            end if
+        end for
+    end if
+    if length(clean) = 0 or equal(clean, "-") or equal(clean, "+") then
+        return default_val
+    end if
+    object res = get:value(clean)
+    if res[1] = get:GET_SUCCESS and atom(res[2]) then
+        return res[2]
+    end if
+    return default_val
+end function
+
+--**
+-- Construct a numeric input using the lib2 vsnuminput / vsnumber architecture.
+-- Supports:
+-- * `nk`: Number of decimal places (default: 2; 0 for integers).
+-- * German number formatting (thousand dots, decimal comma) with auto-formatting on blur via `lib2/vsnumber.js`.
+-- * High-density right-aligned styling (`class="vs-input vs-number"`).
+-- * Direct element methods in browser: `setValue()`, `getValue()`, `setNumValue()`, `getNumValue()`.
+-- * Options: `style`, `placeholder`, `readonly`, `type` (default "text" for formatted strings, or "number"),
+--   `min`, `max`, `step`.
+public function numinput(sequence id, object value = 0, object nk_or_options = 2, sequence options = {})
+    integer nk = 2
+    sequence opts = options
+    if sequence(nk_or_options) and length(nk_or_options) > 0 and sequence(nk_or_options[1]) then
+        opts = nk_or_options
+    elsif integer(nk_or_options) then
+        nk = nk_or_options
+    end if
+
+    sequence style    = get_style_opt(opts, "")
+    sequence ph       = get_opt(opts, "placeholder", "")
+    sequence itype    = get_opt(opts, "type", "text")
+    integer readonly  = equal(get_opt(opts, "readonly", "0"), "1")
+    sequence min_val  = get_opt(opts, "min", "")
+    sequence max_val  = get_opt(opts, "max", "")
+    sequence step_val = get_opt(opts, "step", "")
+
+    sequence val_str = ""
+    if atom(value) then
+        if equal(itype, "number") then
+            val_str = sprintf("%g", {value})
+        else
+            val_str = format_num_de(value, nk)
+        end if
+    else
+        val_str = value
+    end if
+
+    sequence html = sprintf("<input id=\"%s\" class=\"vs-input vs-number\" type=\"%s\" data-vs-type=\"vsnuminput\" data-nk=\"%d\" value=\"%s\"",
+                            {id, itype, nk, escape_html(val_str)})
+    if length(ph) > 0 then html &= sprintf(" placeholder=\"%s\"", {escape_html(ph)}) end if
+    if length(style) > 0 then html &= sprintf(" style=\"%s\"", {style}) end if
+    if length(min_val) > 0 then html &= sprintf(" min=\"%s\"", {min_val}) end if
+    if length(max_val) > 0 then html &= sprintf(" max=\"%s\"", {max_val}) end if
+    if length(step_val) > 0 then html &= sprintf(" step=\"%s\"", {step_val}) end if
+    if readonly then html &= " readonly" end if
+    html &= " />"
+    return html
 end function
 
 --**
 -- Construct a date input.vs-input.
 public function dateinput(sequence id, sequence value = "", sequence options = {})
-    sequence style = get_opt(options, "style", "")
+    sequence style = get_style_opt(options, "")
     return sprintf("<input id=\"%s\" class=\"vs-input\" type=\"date\" value=\"%s\" style=\"%s\" />",
                    {id, escape_html(value), style})
 end function
@@ -493,7 +894,7 @@ end function
 --**
 -- Construct a time input.vs-input.
 public function timeinput(sequence id, sequence value = "", sequence options = {})
-    sequence style = get_opt(options, "style", "")
+    sequence style = get_style_opt(options, "")
     return sprintf("<input id=\"%s\" class=\"vs-input\" type=\"time\" value=\"%s\" style=\"%s\" />",
                    {id, escape_html(value), style})
 end function
@@ -511,7 +912,7 @@ end function
 -- Construct a textarea.vs-input.
 public function textarea(sequence id, sequence value = "", integer rows = 4, sequence options = {})
     sequence ph    = get_opt(options, "placeholder", "")
-    sequence style = get_opt(options, "style", "height:auto; min-height:80px;")
+    sequence style = get_style_opt(options, "height:auto; min-height:80px;")
     return sprintf("<textarea id=\"%s\" class=\"vs-input\" rows=\"%d\" placeholder=\"%s\" style=\"%s\">%s</textarea>",
                    {id, rows, escape_html(ph), style, escape_html(value)})
 end function
@@ -519,7 +920,7 @@ end function
 --**
 -- Construct a select.vs-combo dropdown.
 public function combo(sequence id, sequence options_list, sequence selected_val = "", sequence options = {})
-    sequence style = get_opt(options, "style", "")
+    sequence style = get_style_opt(options, "")
     sequence html = sprintf("<select id=\"%s\" class=\"vs-input vs-combo\"", {id})
     if length(style) > 0 then html &= sprintf(" style=\"%s\"", {style}) end if
     html &= ">\n"
@@ -539,7 +940,7 @@ end function
 --**
 -- Construct a label.vs-label.
 public function ui_label(sequence text, sequence for_id = "", sequence options = {})
-    sequence style = get_opt(options, "style", "")
+    sequence style = get_style_opt(options, "")
     sequence html = "<label class=\"vs-label\""
     if length(for_id) > 0 then html &= sprintf(" for=\"%s\"", {for_id}) end if
     if length(style) > 0 then html &= sprintf(" style=\"%s\"", {style}) end if
@@ -550,7 +951,7 @@ end function
 --**
 -- Construct a fieldset.vs-group container.
 public function group(sequence legend_text, object content, sequence options = {})
-    sequence style = get_opt(options, "style", "margin: 8px 0; padding: 10px; border: 1px solid silver;")
+    sequence style = get_style_opt(options, "margin: 8px 0; padding: 10px; border: 1px solid silver;")
     sequence html = sprintf("<fieldset class=\"vs-group\" style=\"%s\">\n", {style})
     html &= sprintf("  <legend class=\"vs-legend\" style=\"padding: 0 6px; font-weight: bold; color: var(--vs-blau, #41518b);\">%s</legend>\n",
                     {escape_html(legend_text)})
@@ -562,7 +963,7 @@ end function
 --**
 -- Construct a .vs-panel container.
 public function panel(sequence id, sequence title, object content, sequence options = {})
-    sequence style = get_opt(options, "style", "margin-bottom: 12px;")
+    sequence style = get_style_opt(options, "margin-bottom: 12px;")
     sequence html = sprintf("<div id=\"%s\" class=\"vs-panel\" style=\"%s\">\n", {id, style})
     html &= sprintf("  <div class=\"vs-panel-header\" style=\"padding: 6px 12px; font-weight: bold;\">%s</div>\n",
                     {escape_html(title)})
@@ -598,7 +999,7 @@ end function
 -- Construct a vsgrid (DataGrid matching `vsgrid.js`).
 -- Features sticky header, live search, alternating row styling, and mobile responsive card-views.
 public function grid(sequence id, sequence columns, sequence rows, sequence options = {})
-    sequence style = get_opt(options, "style", "width: 100%; border-collapse: collapse;")
+    sequence style = get_style_opt(options, "width: 100%; border-collapse: collapse;")
     sequence filter_fn_name = "filterVsGrid_" & id
 
     sequence html = sprintf("<div id=\"%s_container\" class=\"vsgrid-container\" style=\"overflow:auto; max-height:480px; position:relative;\">\n", {id})
@@ -726,6 +1127,113 @@ public function splitter(sequence id, object left_content, object right_content,
     return html
 end function
 
+--**
+-- Construct a full-page overlay blocker element (`vsblocker.js`).
+public function blocker(sequence id, integer zindex = 9999, sequence options = {})
+    sequence style = get_style_opt(options, "")
+    return sprintf("<div id=\"%s\" class=\"blocker\" style=\"z-index: %d; %s\"></div>", {id, zindex, style})
+end function
+
+--**
+-- Helper to recursively render a single treeview node matching `html/lib2/components/vstreeview.js`.
+function render_tree_node(object node, sequence prefix_id, integer idx)
+    sequence node_id = sprintf("%s_node_%d", {prefix_id, idx})
+    sequence node_label = ""
+    sequence children = {}
+    integer is_expanded = 0
+    if sequence(node) and length(node) >= 1 then
+        node_label = to_content_string(node[1])
+        if length(node) >= 2 and sequence(node[2]) then
+            children = node[2]
+        end if
+        if length(node) >= 3 and integer(node[3]) then
+            is_expanded = node[3]
+        end if
+    end if
+
+    integer has_children = (length(children) > 0)
+    sequence toggle_cls = "vs-treeview-toggle"
+    if not has_children then
+        toggle_cls &= " empty"
+    elsif not is_expanded then
+        toggle_cls &= " collapsed"
+    end if
+
+    sequence html = sprintf("  <li id=\"%s\" class=\"vs-treeview-node\">\n", {node_id})
+    html &= "    <div class=\"vs-treeview-header\">\n"
+    html &= sprintf("      <span class=\"%s\">&#9660;</span>\n", {toggle_cls})
+    html &= sprintf("      <div class=\"vs-treeview-label-container\">%s</div>\n", {node_label})
+    html &= "    </div>\n"
+
+    if has_children then
+        sequence content_cls = "vs-treeview-content-container"
+        if not is_expanded then
+            content_cls &= " collapsed"
+        end if
+        html &= sprintf("    <div class=\"%s\">\n", {content_cls})
+        html &= "      <ul>\n"
+        for c = 1 to length(children) do
+            html &= render_tree_node(children[c], node_id, c)
+        end for
+        html &= "      </ul>\n"
+        html &= "    </div>\n"
+    end if
+    html &= "  </li>\n"
+    return html
+end function
+
+--**
+-- Construct a hierarchical treeview component (`vstreeview.js`).
+-- Each node in `nodes` is `{label, children = {}, is_expanded = 0}`.
+public function treeview(sequence id, sequence nodes, sequence options = {})
+    sequence style = get_style_opt(options, "")
+    sequence html = sprintf("<ul id=\"%s\" class=\"vs-treeview\"", {id})
+    if length(style) > 0 then html &= sprintf(" style=\"%s\"", {style}) end if
+    html &= ">\n"
+    for i = 1 to length(nodes) do
+        html &= render_tree_node(nodes[i], id, i)
+    end for
+    html &= "</ul>\n"
+    return html
+end function
+
+--**
+-- Attach a floating tooltip (`vstooltip.js`) to any HTML element.
+public function with_tooltip(sequence element_html, sequence tooltip_text)
+    integer space_pos = find(' ', element_html)
+    if space_pos > 0 then
+        return sprintf("%s data-vs-tooltip=\"%s\"%s",
+                       {element_html[1..space_pos - 1], escape_html(tooltip_text), element_html[space_pos..$]})
+    end if
+    return element_html
+end function
+
+--**
+-- Bind a custom right-click context menu (`vscontextmenu.js`) to an element.
+-- `items` is a list of `{label, action}` or `{"-"}` for dividers.
+public function with_contextmenu(sequence element_html, sequence items)
+    sequence items_json = "["
+    for i = 1 to length(items) do
+        if i > 1 then items_json &= "," end if
+        sequence item = items[i]
+        if length(item) = 1 and equal(item[1], "-") then
+            items_json &= `{"divider":true}`
+        elsif length(item) >= 2 then
+            items_json &= sprintf(`{"label":"%s","action":"%s"}`, {escape_html(item[1]), escape_html(item[2])})
+        else
+            items_json &= sprintf(`{"label":"%s","action":"%s"}`, {escape_html(item[1]), escape_html(item[1])})
+        end if
+    end for
+    items_json &= "]"
+
+    integer space_pos = find(' ', element_html)
+    if space_pos > 0 then
+        return sprintf("%s data-vs-contextmenu='%s'%s",
+                       {element_html[1..space_pos - 1], items_json, element_html[space_pos..$]})
+    end if
+    return element_html
+end function
+
 -- =============================================================================
 -- 5. Reactive Patch & Bridge Helpers
 -- =============================================================================
@@ -774,6 +1282,25 @@ public function set_css(sequence id, sequence prop, sequence val)
 end function
 
 --**
+-- Dynamically set position and dimensions of an element matching `ldom: setXYWH(x, y, w, h)`.
+public function set_xywh(sequence id, integer x, integer y, integer w, integer h)
+    return {{"type", "setXYWH"}, {"id", id}, {"x", x}, {"y", y}, {"w", w}, {"h", h}}
+end function
+
+--**
+-- Dynamically center an element in the browser window matching `ldom: centerWinX / centerWinY`.
+-- axis: "both", "x", or "y".
+public function center_win(sequence id, sequence axis = "both")
+    return {{"type", "centerWin"}, {"id", id}, {"axis", axis}}
+end function
+
+--**
+-- Dynamically center an element within its parent container matching `ldom: centerX / centerY`.
+public function center_parent(sequence id, sequence axis = "both")
+    return {{"type", "centerParent"}, {"id", id}, {"axis", axis}}
+end function
+
+--**
 -- Add, remove, or toggle a CSS class on an element (action: "add", "remove", or "toggle").
 public function set_class(sequence id, sequence class_name, sequence action = "add")
     return {{"type", "setClass"}, {"id", id}, {"cls", class_name}, {"action", action}}
@@ -795,6 +1322,14 @@ end function
 
 public function modal_close(sequence id)
     return {{"type", "modalClose"}, {"id", id}}
+end function
+
+public function blocker_show(sequence id, integer zindex = 9999)
+    return {{"type", "blockerShow"}, {"id", id}, {"zindex", zindex}}
+end function
+
+public function blocker_hide(sequence id)
+    return {{"type", "blockerHide"}, {"id", id}}
 end function
 
 public function redirect(sequence url)
@@ -823,26 +1358,68 @@ public function val(sequence ctx, sequence key, sequence default_val = "")
     return default_val
 end function
 
+--**
+-- Extract a numeric value from event data / form context, handling both German formatting (1.234,56)
+-- and raw float values.
+public function val_num(sequence ctx, sequence field_id, atom default_val = 0.0)
+    -- Check if client sent explicit __num property
+    sequence num_key = field_id & "__num"
+    sequence v_raw = val(ctx, num_key, "")
+    if length(v_raw) > 0 then
+        object res = get:value(v_raw)
+        if res[1] = get:GET_SUCCESS and atom(res[2]) then
+            return res[2]
+        end if
+    end if
+    sequence raw = val(ctx, field_id, "")
+    if length(raw) = 0 then return default_val end if
+    return parse_num_de(raw, default_val)
+end function
+
 -- =============================================================================
 -- 6. Application Lifecycle & HTTP Server Integration
 -- =============================================================================
 
 function resolve_static_dir(sequence given_dir)
+    -- 1. Check environment variables
+    object env_dir = getenv("VSUI_STATIC_DIR")
+    if sequence(env_dir) and length(env_dir) > 0 and filesys:file_exists(env_dir & "/lib2/ldom.js") then
+        return env_dir
+    end if
+    object env_html = getenv("EUPHORIX_HTML")
+    if sequence(env_html) and length(env_html) > 0 and filesys:file_exists(env_html & "/lib2/ldom.js") then
+        return env_html
+    end if
+
+    -- 2. Check explicitly given directory
     if length(given_dir) > 0 and filesys:file_exists(given_dir & "/lib2/ldom.js") then
         return given_dir
     end if
-    -- Check local relative directory: html
+
+    -- 3. Check relative to binary executable (e.g. standalone runtime target directory)
+    sequence cmd = command_line()
+    if length(cmd) > 0 and sequence(cmd[1]) and length(cmd[1]) > 0 then
+        sequence bin_dir = filesys:dirname(cmd[1])
+        if filesys:file_exists(bin_dir & "/html/lib2/ldom.js") then
+            return filesys:canonical_path(bin_dir & "/html")
+        end if
+    end if
+
+    -- 4. Check local relative directory: html
     if filesys:file_exists("html/lib2/ldom.js") then
         return filesys:canonical_path("html")
     end if
-    -- Check intpret repository
+
+    -- 5. Check intpret repository
     if filesys:file_exists("/home/volkix/prj/intpret/html/lib2/ldom.js") then
         return "/home/volkix/prj/intpret/html"
     end if
-    -- Fallback to cgibash/html if present
+
+    -- 6. Fallback to cgibash/html if present
     if filesys:file_exists("/home/volkix/prj/cgibash/html/lib2/ldom.js") then
         return "/home/volkix/prj/cgibash/html"
     end if
+
     return given_dir
 end function
 
@@ -883,8 +1460,8 @@ function internal_route_handler(sequence req)
         sequence app_inst = registered_apps[a]
         sequence static_dir = app_inst[APP_STATIC_DIR]
 
-        -- 1. Check custom page routes (GET)
-        if equal(req_method, "GET") then
+        -- 1. Check custom page routes (GET & HEAD)
+        if equal(req_method, "GET") or equal(req_method, "HEAD") then
             sequence pages = app_inst[APP_PAGES]
             for p = 1 to length(pages) do
                 if equal(pages[p][1], req_path) then
@@ -949,6 +1526,55 @@ function internal_route_handler(sequence req)
                 return http:response_json(200, `[]`)
             end if
             return http:response_json(400, `{"error":"invalid json"}`)
+        elsif equal(req_method, "POST") and equal(req_path, "/api/upload") then
+            sequence body_str = req[http:REQ_BODY]
+            sequence data_list = {}
+            object parsed = json:parse(body_str)
+            if sequence(parsed) and length(parsed) = 2 and parsed[1] = 1 then
+                object doc = parsed[2]
+                if json:is_object(doc) then
+                    sequence pairs = doc[2]
+                    for k = 1 to length(pairs) do
+                        sequence pair = pairs[k]
+                        if sequence(pair) and length(pair) = 2 and sequence(pair[1]) then
+                            sequence v_str = ""
+                            object unwrapped_val = json:unwrap(pair[2])
+                            if sequence(unwrapped_val) then
+                                v_str = unwrapped_val
+                            elsif atom(unwrapped_val) then
+                                v_str = sprintf("%g", unwrapped_val)
+                            end if
+                            data_list = append(data_list, {pair[1], v_str})
+                        end if
+                    end for
+                end if
+            else
+                data_list = {{"filename", "hochgeladene_datei"}, {"size", sprintf("%d", length(body_str))}, {"id", "drop_belege"}}
+            end if
+
+            sequence upload_id = val(data_list, "id", "drop_belege")
+            sequence events = app_inst[APP_EVENTS]
+            for x = 1 to length(events) do
+                sequence ev_key = events[x][1]
+                if equal(ev_key, "file_upload") or equal(ev_key, "upload") or equal(ev_key, upload_id) then
+                    integer ev_rid = events[x][2]
+                    object res = call_func(ev_rid, {data_list})
+                    if sequence(res) and length(res) >= 3 and integer(res[1]) then
+                        return res
+                    end if
+                    return http:response_json(200, res)
+                end if
+            end for
+            sequence default_name = val(data_list, "filename", "Datei")
+            sequence default_size = val(data_list, "size", "")
+            return http:response_json(200, {
+                {json:JSON_OBJECT, {
+                    {"type", "toast"},
+                    {"text", "Datei '" & default_name & "' (" & default_size & " Bytes) erfolgreich empfangen."},
+                    {"toast_type", "success"},
+                    {"duration", 3000}
+                }}
+            })
         end if
     end for
 
@@ -999,21 +1625,30 @@ end function
 
 --**
 -- Validate that a string represents a valid number within [min_val, max_val].
+-- Supports both German (1.234,56) and international (1234.56) formats.
 public function validate_number(sequence num_str, atom min_val = -1e9, atom max_val = 1e9)
     if length(num_str) = 0 then
         return {0, "Bitte geben Sie eine Zahl ein."}
     end if
-    -- Parse number
-    atom n = 0.0
-    integer valid = 0
+    integer has_digit = 0
     for i = 1 to length(num_str) do
         integer c = num_str[i]
-        if (c >= '0' and c <= '9') or c = '.' or c = '-' then
-            valid = 1
-        else
+        if c >= '0' and c <= '9' then
+            has_digit = 1
+        elsif c != '.' and c != ',' and c != '-' and c != '+' and c != ' ' and c != 'e' and c != 'E' then
             return {0, "Ungültiges Zahlenformat."}
         end if
     end for
+    if not has_digit then
+        return {0, "Ungültiges Zahlenformat."}
+    end if
+    atom n = parse_num_de(num_str, -999999999)
+    if n < min_val then
+        return {0, sprintf("Der Wert darf nicht kleiner als %g sein.", {min_val})}
+    end if
+    if n > max_val then
+        return {0, sprintf("Der Wert darf nicht größer als %g sein.", {max_val})}
+    end if
     return {1, ""}
 end function
 
@@ -1024,16 +1659,19 @@ end function
 --**
 -- Create a modern drag-and-drop file upload dropzone.
 public function upload(sequence id, sequence target_url = "/api/upload", sequence options = {})
-    sequence prompt = get_opt(options, "prompt", "Datei hierher ziehen oder durchsuchen")
+    sequence prompt = get_opt(options, "prompt", "Datei hierher ziehen oder manuell auswählen")
     sequence accept = get_opt(options, "accept", "*/*")
     
-    sequence html = sprintf(`<div id="%s" class="vs-upload-dropzone">` & "\n", {id})
-    html &= sprintf(`  <input type="file" accept="%s" style="display:none;" />` & "\n", {accept})
-    html &= `  <div class="vs-upload-icon">&#8682;</div>` & "\n"
-    html &= sprintf(`  <div class="vs-upload-text">%s</div>` & "\n", {escape_html(prompt)})
-    html &= `  <div class="vs-upload-preview"></div>` & "\n"
+    sequence html = sprintf(`<div id="%s" class="vs-upload-dropzone" data-upload-url="%s">` & "\n", {id, target_url})
+    html &= sprintf(`  <input type="file" id="%s_file" accept="%s" style="display:none;" />` & "\n", {id, accept})
+    html &= sprintf(`  <label for="%s_file" style="display:block; cursor:pointer; width:100%%; margin:0; padding:12px 0;">` & "\n", {id})
+    html &= `    <div class="vs-upload-icon" style="font-size:36px; line-height:1; pointer-events:none;">&#8682;</div>` & "\n"
+    html &= sprintf(`    <div class="vs-upload-text" style="font-weight:bold; margin-top:6px; pointer-events:none;">%s</div>` & "\n", {escape_html(prompt)})
+    html &= `    <div style="margin-top:10px;"><span class="vs-button" style="pointer-events:none; display:inline-block; font-size:12px; padding:5px 14px; background:var(--vs-blau,#41518b); color:white; border-radius:3px;">📁 Datei manuell auswählen...</span></div>` & "\n"
+    html &= `  </label>` & "\n"
+    html &= `  <div class="vs-upload-preview" style="font-size:12px; margin-top:8px; font-weight:bold; color:var(--vs-blau,#41518b);"></div>` & "\n"
     html &= `  <div class="vs-upload-progress"><div class="vs-upload-progress-bar"></div></div>` & "\n"
-    html &= sprintf(`  <script>if(window.initVsUpload) window.initVsUpload("%s", "%s");</script>` & "\n", {id, target_url})
+    html &= sprintf(`  <script>if(typeof window.initVsUpload === 'function') window.initVsUpload("%s", "%s");</script>` & "\n", {id, target_url})
     html &= `</div>` & "\n"
     return html
 end function
@@ -1226,7 +1864,7 @@ public procedure run(integer app_id)
         return
     end if
     printf(1, "=====================================================================\n")
-    printf(1, "  Euphorix VS-UI (cgibash/html) Server läuft auf http://127.0.0.1:%d/\n",
+    printf(1, "  Euphorix VS-UI Server läuft auf http://127.0.0.1:%d/\n",
            {registered_apps[app_id][APP_PORT]})
     printf(1, "  Static Assets: %s\n", {registered_apps[app_id][APP_STATIC_DIR]})
     printf(1, "  Beenden mit Ctrl+C\n")

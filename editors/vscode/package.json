@@ -1,0 +1,120 @@
+{
+  "name": "euphorix-lsp",
+  "displayName": "Euphorix (OpenEuphoria) Support",
+  "description": "Language Server Protocol, Code Completion, Live Diagnostics, Parameter Hints, Hover & Formatting for Euphorix / OpenEuphoria",
+  "version": "1.1.0",
+  "publisher": "euphorix",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Snippets",
+    "Formatters"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:euphoria"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "euphoria",
+        "aliases": [
+          "Euphoria",
+          "OpenEuphoria",
+          "Euphorix"
+        ],
+        "extensions": [
+          ".ex",
+          ".e",
+          ".ew",
+          ".eu"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "euphoria",
+        "scopeName": "source.euphoria",
+        "path": "./syntaxes/euphoria.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "euphoria",
+        "path": "./snippets/euphoria.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Euphorix Configuration",
+      "properties": {
+        "euphorix.executablePath": {
+          "type": "string",
+          "default": "euphorix",
+          "description": "Pfad zur ausführbaren Euphorix-Binärdatei (z. B. /home/volkix/prj/intpret/euphorix oder euphorix)"
+        },
+        "euphorix.lsp.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Aktiviert den Euphorix Language Server (LSP) für Code-Completion, Hover, Diagnose und Formatierung."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "euphorix.runFile",
+        "title": "Euphorix: Skript im Terminal ausführen",
+        "category": "Euphorix",
+        "icon": "$(play)"
+      },
+      {
+        "command": "euphorix.compileFile",
+        "title": "Euphorix: Zu Bytecode kompilieren (.exb)",
+        "category": "Euphorix"
+      },
+      {
+        "command": "euphorix.restartServer",
+        "title": "Euphorix: Language Server neustarten",
+        "category": "Euphorix",
+        "icon": "$(refresh)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "euphorix.runFile",
+        "key": "f5",
+        "when": "editorTextFocus && editorLangId == euphoria"
+      },
+      {
+        "command": "euphorix.compileFile",
+        "key": "ctrl+shift+b",
+        "when": "editorTextFocus && editorLangId == euphoria"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "euphorix.runFile",
+          "when": "resourceLangId == euphoria",
+          "group": "navigation"
+        },
+        {
+          "command": "euphorix.compileFile",
+          "when": "resourceLangId == euphoria",
+          "group": "navigation"
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "euphorix.runFile",
+          "when": "resourceLangId == euphoria",
+          "group": "navigation"
+        }
+      ]
+    }
+  }
+}

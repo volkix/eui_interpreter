@@ -4,6 +4,7 @@ eu/DataEngines$3.class
 eu/JavaInterop.class
 eu/Token.class
 eu/TokenType.class
+eu/LspServer$RoutineDoc.class
 eu/Compiler$LocalVar.class
 eu/DataEngines$1.class
 eu/Bytecode$RoutineProto.class
@@ -12,6 +13,8 @@ eu/VM$VmAbortException.class
 eu/VM$1.class
 eu/VM$ManagedSocket.class
 eu/Bytecode.class
+eu/LspServer.class
+eu/RuntimeMain.class
 eu/Compiler$LoopContext.class
 eu/Lexer.class
 eu/VM.class

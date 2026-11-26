@@ -1,0 +1,123 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Euphoria",
+  "scopeName": "source.euphoria",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#builtins" },
+    { "include": "#routines" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-dash.euphoria",
+          "match": "--.*$"
+        },
+        {
+          "name": "comment.block.euphoria",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.euphoria",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.euphoria",
+              "match": "\\\\([\\\\\"'nrt0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4})"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.euphoria",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.euphoria",
+              "match": "\\\\([\\\\\"'nrt0]|x[0-9a-fA-F]{2})"
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.raw.euphoria",
+          "begin": "`",
+          "end": "`"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.hex.euphoria",
+          "match": "\\b(0[xX]|#)[0-9a-fA-F]+(_[0-9a-fA-F]+)*\\b"
+        },
+        {
+          "name": "constant.numeric.binary.euphoria",
+          "match": "\\b0[bB][01]+(_[01]+)*\\b"
+        },
+        {
+          "name": "constant.numeric.float.euphoria",
+          "match": "\\b[0-9]+(_[0-9]+)*\\.[0-9]+(_[0-9]+)*([eE][+-]?[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.decimal.euphoria",
+          "match": "\\b[0-9]+(_[0-9]+)*([eE][+-]?[0-9]+)?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.euphoria",
+          "match": "\\b(if|then|elsif|else|end|for|to|by|do|while|loop|until|switch|case|break|exit|continue|retry|fallthru|entry|label)\\b"
+        },
+        {
+          "name": "keyword.other.declaration.euphoria",
+          "match": "\\b(function|procedure|type|constant|enum|include|as|public|export|global|with|without|deprecate|override|return)\\b"
+        },
+        {
+          "name": "keyword.operator.logical.euphoria",
+          "match": "\\b(and|or|not|xor)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.euphoria",
+          "match": "\\b(atom|integer|sequence|object)\\b"
+        }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        {
+          "name": "support.function.builtin.euphoria",
+          "match": "\\b(puts|printf|print|length|append|prepend|equal|compare|find|match|routine_id|call_func|call_proc|command_line|getenv|abort|power|sqrt|rand|time|date|system|system_exec)\\b"
+        }
+      ]
+    },
+    "routines": {
+      "patterns": [
+        {
+          "match": "\\b(function|procedure|type)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.other.declaration.euphoria" },
+            "2": { "name": "entity.name.function.euphoria" }
+          }
+        }
+      ]
+    }
+  }
+}

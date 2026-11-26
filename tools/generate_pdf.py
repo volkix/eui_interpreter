@@ -95,7 +95,11 @@ def md_to_html(md_text, title="Dokumentation"):
             continue
         if stripped.startswith('## '):
             if in_list: html_lines.append(f'</{list_type}>'); in_list = False
-            html_lines.append(f'<h2>{inline_fmt(stripped[3:])}</h2>')
+            heading_text = stripped[3:].strip()
+            if re.match(r'^\d+\.', heading_text):
+                html_lines.append(f'<h2 class="chapter-heading">{inline_fmt(heading_text)}</h2>')
+            else:
+                html_lines.append(f'<h2>{inline_fmt(heading_text)}</h2>')
             i += 1
             continue
         if stripped.startswith('# '):
@@ -187,6 +191,16 @@ def md_to_html(md_text, title="Dokumentation"):
       padding-bottom: 3px;
       margin-top: 16pt;
       margin-bottom: 8pt;
+      page-break-after: avoid;
+    }}
+    h2.chapter-heading {{
+      page-break-before: always;
+      font-size: 16pt;
+      color: #1e3a8a;
+      border-bottom: 2pt solid #41518b;
+      padding-bottom: 4px;
+      margin-top: 24pt;
+      margin-bottom: 12pt;
       page-break-after: avoid;
     }}
     h3 {{
@@ -303,6 +317,7 @@ def build_pdf(src_md, dest_pdf, title):
             '--headless',
             '--disable-gpu',
             '--no-sandbox',
+            '--generate-pdf-document-outline',
             f'--print-to-pdf={dest_pdf}',
             temp_html_path
         ]
