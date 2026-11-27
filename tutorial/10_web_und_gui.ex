@@ -30,6 +30,12 @@ printf(1, "Generierter Button-HTML:   %s\n", {btn_save})
 -- Kaufmännische Zahlenformatierung (DIN 5008)
 printf(1, "Formatierte Zahl (2 NK):   %s €\n", {vsui:format_num_de(50000.0, 2)})
 
+-- Dashboard KPI Stat-Card & Dark-Mode Theme-Toggle
+sequence kpi_card = vsui:stat_card("kpi_umsatz", "Jahresumsatz", "142.500,00 €", "+12.4% ggü. Vorjahr", vsui:TREND_UP, "💶")
+sequence btn_theme = vsui:theme_toggle("btn_theme_toggle")
+printf(1, "KPI Stat-Card HTML:        %s\n", {kpi_card[1..45] & "..."})
+printf(1, "Theme-Toggle Button:       %s\n", {btn_theme})
+
 -- Dynamischer Client-Patch ohne Seiten-Reload (HTMX-Hypermedia-Prinzip)
 sequence patch_antw = vsui:updates({
     vsui:set_val("txt_kdnr", "10043"),

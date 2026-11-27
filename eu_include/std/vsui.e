@@ -42,6 +42,11 @@ public constant
     TOAST_WARNING = "warning",
     TOAST_ERROR   = "error"
 
+public constant
+    TREND_UP      = 1,
+    TREND_DOWN    = -1,
+    TREND_NEUTRAL = 0
+
 -- Internal App Structure:
 -- {title, port, static_dir, srv_id, pages_map, events_map, running}
 public constant
@@ -310,6 +315,74 @@ window.initVsContextMenus = function(root) {
   });
 };
 
+// Initialize and wire up lib2 vsgrid component on containers
+window.initVsGrids = function(root) {
+  var scope = root || document;
+  var elems = (scope.querySelectorAll) ? scope.querySelectorAll('[data-vs-grid], .vsgrid-container') : [];
+  elems.forEach(function(container) {
+    if (container._vs_grid_init) return;
+    var gridId = container.getAttribute('data-vs-grid') || (container.id ? container.id.replace(/_container$/, '') : '');
+    if (!gridId) return;
+    container._vs_grid_init = true;
+    
+    var metaEl = document.getElementById(gridId + '_meta');
+    var columns = [];
+    var initialData = [];
+    
+    if (metaEl) {
+      try {
+        var meta = JSON.parse(metaEl.textContent || '{}');
+        columns = meta.columns || [];
+        initialData = meta.data || [];
+      } catch(e) {}
+    } else {
+      var ths = container.querySelectorAll('#' + gridId + '_head th, table.vs-table-sticky th');
+      ths.forEach(function(th, idx) {
+        var w = th.style.width || th.getAttribute('width') || '';
+        columns.push({
+          title: th.textContent.replace(/[▲▼]/g, '').trim(),
+          field: 'col_' + (idx + 1),
+          width: w,
+          align: th.style.textAlign || 'left'
+        });
+      });
+      var trs = container.querySelectorAll('#' + gridId + '_data tbody tr, table.vs-table tbody tr');
+      trs.forEach(function(tr) {
+        var row = [];
+        tr.querySelectorAll('td').forEach(function(td) {
+          row.push(td.innerHTML);
+        });
+        initialData.push(row);
+      });
+    }
+
+    if (window._vs_ui && typeof window._vs_ui.vsgrid === 'function') {
+      var gridInstance = window._vs_ui.vsgrid(gridId, columns, initialData);
+      
+      container.setData = function(data) {
+        gridInstance.setData(data);
+      };
+      container.render = function() {
+        gridInstance.render();
+      };
+      
+      window._vs_grids = window._vs_grids || {};
+      window._vs_grids[gridId] = gridInstance;
+      window._vs_grids[container.id] = gridInstance;
+
+      // Mount into container
+      container.innerHTML = '';
+      while (gridInstance.firstChild) {
+        container.appendChild(gridInstance.firstChild);
+      }
+      container._data = gridInstance._data;
+      container._columns = gridInstance._columns;
+      container.setData = gridInstance.setData;
+      container.render = gridInstance.render;
+    }
+  });
+};
+
 // Apply reactive DOM patches received from Euphorix backend
 window.applyVsPatches = function(patches) {
   if (!patches) return;
@@ -323,6 +396,7 @@ window.applyVsPatches = function(patches) {
         if (window.initVsNumInputs) window.initVsNumInputs(target);
         if (window.initVsTooltips) window.initVsTooltips(target);
         if (window.initVsContextMenus) window.initVsContextMenus(target);
+        if (window.initVsGrids) window.initVsGrids(target);
       }
     } else if (p.type === 'append') {
       var target = document.getElementById(p.id);
@@ -331,6 +405,7 @@ window.applyVsPatches = function(patches) {
         if (window.initVsNumInputs) window.initVsNumInputs(target);
         if (window.initVsTooltips) window.initVsTooltips(target);
         if (window.initVsContextMenus) window.initVsContextMenus(target);
+        if (window.initVsGrids) window.initVsGrids(target);
       }
     } else if (p.type === 'setValue') {
       var target = document.getElementById(p.id);
@@ -401,7 +476,7 @@ window.applyVsPatches = function(patches) {
         });
       }
     } else if (p.type === 'gridSetData') {
-      var grid = document.getElementById(p.id);
+      var grid = (window._vs_grids && window._vs_grids[p.id]) || document.getElementById(p.id) || document.getElementById(p.id + '_container');
       if (grid && typeof grid.setData === 'function') {
         grid.setData(p.data);
       } else {
@@ -419,13 +494,18 @@ window.applyVsPatches = function(patches) {
                 var cellVal = (row[c] !== null && row[c] !== undefined) ? row[c] : '';
                 var th = document.querySelector('#' + p.id + '_head th:nth-child(' + (c + 1) + ')');
                 var lbl = th ? th.textContent.trim() : '';
-                html += '<td class="vs-tbody-td"' + (lbl ? ' data-label="' + lbl + '"' : '') + '>' + cellVal + '</td>';
+                var colW = th ? (th.style.width || th.getAttribute('width') || '') : '';
+                var wAttr = colW ? ' width="' + colW + '" style="width:' + colW + ';"' : '';
+                html += '<td class="vs-tbody-td"' + wAttr + (lbl ? ' data-label="' + lbl + '"' : '') + '>' + cellVal + '</td>';
               }
             } else if (typeof row === 'object' && row !== null) {
               var keys = Object.keys(row);
               for (var c = 0; c < keys.length; c++) {
                 var cellVal = (row[keys[c]] !== null && row[keys[c]] !== undefined) ? row[keys[c]] : '';
-                html += '<td class="vs-tbody-td" data-label="' + keys[c] + '">' + cellVal + '</td>';
+                var th = document.querySelector('#' + p.id + '_head th:nth-child(' + (c + 1) + ')');
+                var colW = th ? (th.style.width || th.getAttribute('width') || '') : '';
+                var wAttr = colW ? ' width="' + colW + '" style="width:' + colW + ';"' : '';
+                html += '<td class="vs-tbody-td"' + wAttr + ' data-label="' + keys[c] + '">' + cellVal + '</td>';
               }
             }
             html += '</tr>';
@@ -514,6 +594,15 @@ window.sendVsEvent = function(eventName, eventData) {
     }
   });
 
+  var bar = document.getElementById('vs-loading-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'vs-loading-bar';
+    document.body.appendChild(bar);
+  }
+  bar.style.width = '35%';
+  bar.classList.add('active');
+
   fetch('/__vs_event', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -525,6 +614,15 @@ window.sendVsEvent = function(eventName, eventData) {
   })
   .catch(function(err) {
     console.error('Euphorix VS-UI Bridge Error:', err);
+  })
+  .finally(function() {
+    if (bar) {
+      bar.style.width = '100%';
+      setTimeout(function() {
+        bar.classList.remove('active');
+        setTimeout(function() { bar.style.width = '0%'; }, 200);
+      }, 120);
+    }
   });
 };
 
@@ -653,6 +751,7 @@ function initAllVsComponents() {
   if (window.initVsNumInputs) window.initVsNumInputs(document);
   if (window.initVsTooltips) window.initVsTooltips(document);
   if (window.initVsContextMenus) window.initVsContextMenus(document);
+  if (window.initVsGrids) window.initVsGrids(document);
 }
 
 if (document.readyState === 'loading') {
@@ -678,6 +777,57 @@ document.addEventListener('click', function(e) {
     }
   }
 });
+
+// Light/Dark Theme Switching
+window.vsToggleTheme = function() {
+  var htmlEl = document.documentElement;
+  var isDark = htmlEl.getAttribute('data-theme') === 'dark';
+  var next = isDark ? 'light' : 'dark';
+  if (next === 'dark') {
+    htmlEl.setAttribute('data-theme', 'dark');
+  } else {
+    htmlEl.removeAttribute('data-theme');
+  }
+  try { localStorage.setItem('vs-theme', next); } catch(e){}
+  var icon = document.getElementById('vs_theme_icon');
+  var lbl = document.getElementById('vs_theme_label');
+  if (icon) icon.textContent = (next === 'dark' ? '☀️' : '🌙');
+  if (lbl) lbl.textContent = (next === 'dark' ? 'Light Mode' : 'Dark Mode');
+};
+(function(){
+  try {
+    var s = localStorage.getItem('vs-theme');
+    if (s === 'dark') {
+      var icon = document.getElementById('vs_theme_icon');
+      var lbl = document.getElementById('vs_theme_label');
+      if (icon) icon.textContent = '☀️';
+      if (lbl) lbl.textContent = 'Light Mode';
+    }
+  } catch(e){}
+})();
+
+// Power User Keyboard Shortcuts
+document.addEventListener('keydown', function(ev) {
+  var key = ev.key.toLowerCase();
+  var mod = (ev.ctrlKey || ev.metaKey) ? 'ctrl+' : (ev.altKey ? 'alt+' : '');
+  var stroke = mod + key;
+  var isForm = ev.target.matches('input, select, textarea');
+  if (isForm && !ev.ctrlKey && !ev.metaKey && !ev.altKey && key !== 'escape' && key.indexOf('f') !== 0) {
+    return;
+  }
+  var target = document.querySelector('[data-vs-shortcut="' + stroke + '"]') ||
+               document.querySelector('[data-vs-shortcut="' + key + '"]');
+  if (target) {
+    ev.preventDefault();
+    if (typeof target.click === 'function') target.click();
+    else if (typeof target.focus === 'function') target.focus();
+  }
+});
+
+// PWA Service Worker Registration
+if ('serviceWorker' in navigator && window.location.protocol.indexOf('http') === 0) {
+  navigator.serviceWorker.register('/sw.js').catch(function(){});
+}
 </script>`
 end function
 
@@ -693,10 +843,25 @@ public function page(sequence title, object content, sequence options = {})
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#41518b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="/manifest.json">
   <title>` & escape_html(title) & `</title>
   <link rel="stylesheet" href="/css/vs.css">
   <link rel="stylesheet" href="/css/globalblauklein.css">
   <link rel="stylesheet" href="/css/vs-mobile.css">
+  <script>
+    (function(){
+      try {
+        var s = localStorage.getItem('vs-theme');
+        if (s === 'dark' || (!s && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } catch(e){}
+    })();
+  </script>
   ` & extra_head & `
 </head>
 <body>
@@ -714,6 +879,60 @@ end function
 -- =============================================================================
 
 --**
+-- Attach a keyboard shortcut attribute (e.g. "ctrl+s", "f2", "escape") to a component options list.
+public function with_shortcut(sequence options, sequence shortcut_key)
+    return append(options, {"data-vs-shortcut", text:lower(shortcut_key)})
+end function
+
+--**
+-- Construct a Light/Dark Mode toggle button.
+public function theme_toggle(sequence id = "btn_vs_theme", sequence options = {})
+    sequence style = get_style_opt(options, "")
+    sequence html = sprintf("<button id=\"%s\" class=\"vs-theme-toggle\" type=\"button\" onclick=\"vsToggleTheme()\"", {id})
+    if length(style) > 0 then html &= sprintf(" style=\"%s\"", {style}) end if
+    html &= "><span id=\"vs_theme_icon\">🌙</span> <span id=\"vs_theme_label\">Dark Mode</span></button>"
+    return html
+end function
+
+--**
+-- Construct an ERP KPI Dashboard Stat-Card widget.
+public function stat_card(sequence id, sequence title, sequence val_str, sequence trend_str = "",
+                          integer trend_dir = TREND_NEUTRAL, sequence icon_str = "", sequence options = {})
+    sequence style = get_style_opt(options, "")
+    sequence html = sprintf("<div id=\"%s\" class=\"vs-stat-card\"", {id})
+    if length(style) > 0 then html &= sprintf(" style=\"%s\"", {style}) end if
+    html &= ">\n"
+
+    html &= "  <div class=\"vs-stat-header\">\n"
+    html &= sprintf("    <span class=\"vs-stat-title\">%s</span>\n", {escape_html(title)})
+    if length(icon_str) > 0 then
+        html &= sprintf("    <span class=\"vs-stat-icon\">%s</span>\n", {icon_str})
+    end if
+    html &= "  </div>\n"
+
+    html &= sprintf("  <div class=\"vs-stat-value\">%s</div>\n", {escape_html(val_str)})
+
+    if length(trend_str) > 0 then
+        sequence trend_cls = "vs-trend-neutral"
+        sequence trend_arrow = ""
+        if trend_dir = TREND_UP then
+            trend_cls = "vs-trend-up"
+            trend_arrow = "↗ "
+        elsif trend_dir = TREND_DOWN then
+            trend_cls = "vs-trend-down"
+            trend_arrow = "↘ "
+        end if
+        html &= "  <div class=\"vs-stat-footer\">\n"
+        html &= sprintf("    <span class=\"vs-stat-trend %s\">%s%s</span>\n",
+                        {trend_cls, trend_arrow, escape_html(trend_str)})
+        html &= "  </div>\n"
+    end if
+
+    html &= "</div>\n"
+    return html
+end function
+
+--**
 -- Construct a .vs-button.
 public function button(sequence id, sequence text, sequence options = {})
     sequence action = get_opt(options, "action", id)
@@ -727,7 +946,8 @@ public function button(sequence id, sequence text, sequence options = {})
     for i = 1 to length(options) do
         if sequence(options[i]) and length(options[i]) >= 2 then
             sequence k = options[i][1]
-            if length(k) > 11 and equal(k[1..11], "data-param-") then
+            if (length(k) > 11 and equal(k[1..11], "data-param-")) or
+               (length(k) > 8 and equal(k[1..8], "data-vs-")) then
                 html &= sprintf(" %s=\"%s\"", {k, escape_html(options[i][2])})
             end if
         end if
@@ -999,21 +1219,17 @@ end function
 -- Construct a vsgrid (DataGrid matching `vsgrid.js`).
 -- Features sticky header, live search, alternating row styling, and mobile responsive card-views.
 public function grid(sequence id, sequence columns, sequence rows, sequence options = {})
-    sequence style = get_style_opt(options, "width: 100%; border-collapse: collapse;")
+    sequence base_style = get_style_opt(options, "width: 100%; border-collapse: collapse; table-layout: fixed;")
+    if match("table-layout", base_style) = 0 then
+        base_style &= " table-layout: fixed;"
+    end if
     sequence filter_fn_name = "filterVsGrid_" & id
 
-    sequence html = sprintf("<div id=\"%s_container\" class=\"vsgrid-container\" style=\"overflow:auto; max-height:480px; position:relative;\">\n", {id})
-    
-    -- Live search input
-    html &= sprintf("  <input type=\"text\" class=\"vs-spreadsheet-search\" placeholder=\" Suchen...\" " &
-                    "style=\"position:sticky; top:0; z-index:10; width:100%%; box-sizing:border-box; margin-bottom:2px;\" " &
-                    "oninput=\"%s(this.value)\" />\n", {filter_fn_name})
-
-    -- Header table (sticky)
-    html &= sprintf("  <table id=\"%s_head\" class=\"vs-table-sticky\" style=\"%s position:sticky; top:28px; z-index:9; background:var(--vs-blau,#41518b); color:white;\">\n",
-                    {id, style})
-    html &= "    <thead>\n      <tr class=\"vs-thead-tr\">\n"
     sequence col_titles = {}
+    sequence col_widths = {}
+    integer total_px = 0
+    sequence colgroup_html = "  <colgroup>\n"
+
     for i = 1 to length(columns) do
         sequence col_name = ""
         sequence col_width = ""
@@ -1024,6 +1240,66 @@ public function grid(sequence id, sequence columns, sequence rows, sequence opti
             col_name = to_content_string(columns[i])
         end if
         col_titles = append(col_titles, col_name)
+        col_widths = append(col_widths, col_width)
+
+        if length(col_width) > 0 then
+            colgroup_html &= sprintf("    <col style=\"width: %s;\">\n", {col_width})
+            if length(col_width) > 2 and equal(col_width[$-1..$], "px") then
+                object parsed_w = get:value(col_width[1..$-2])
+                if parsed_w[1] = get:GET_SUCCESS and integer(parsed_w[2]) then
+                    total_px += parsed_w[2]
+                end if
+            end if
+        else
+            colgroup_html &= "    <col>\n"
+        end if
+    end for
+    colgroup_html &= "  </colgroup>\n"
+
+    sequence table_style = base_style
+    if total_px > 0 and match("min-width", table_style) = 0 then
+        table_style &= sprintf(" min-width: %dpx;", {total_px})
+    end if
+
+    sequence meta_cols = {}
+    for i = 1 to length(col_titles) do
+        sequence col_obj = {
+            {"title", col_titles[i]},
+            {"field", sprintf("col_%d", {i})},
+            {"width", col_widths[i]},
+            {"align", "left"}
+        }
+        meta_cols = append(meta_cols, {json:JSON_OBJECT, col_obj})
+    end for
+    sequence meta_rows = {}
+    for r = 1 to length(rows) do
+        sequence row_cells = {}
+        for c = 1 to length(rows[r]) do
+            row_cells = append(row_cells, to_content_string(rows[r][c]))
+        end for
+        meta_rows = append(meta_rows, {json:JSON_ARRAY, row_cells})
+    end for
+    sequence meta_json = json:encode({json:JSON_OBJECT, {
+        {"columns", {json:JSON_ARRAY, meta_cols}},
+        {"data", {json:JSON_ARRAY, meta_rows}}
+    }})
+
+    sequence html = sprintf("<div id=\"%s_container\" class=\"vsgrid-container\" data-vs-grid=\"%s\" style=\"overflow:auto; max-height:480px; position:relative;\">\n", {id, id})
+    html &= sprintf("  <script type=\"application/json\" id=\"%s_meta\">%s</script>\n", {id, meta_json})
+    
+    -- Live search input
+    html &= sprintf("  <input type=\"text\" class=\"vs-spreadsheet-search\" placeholder=\" Suchen...\" " &
+                    "style=\"position:sticky; top:0; z-index:10; width:100%%; box-sizing:border-box; margin-bottom:2px;\" " &
+                    "oninput=\"%s(this.value)\" />\n", {filter_fn_name})
+
+    -- Header table (sticky)
+    html &= sprintf("  <table id=\"%s_head\" class=\"vs-table-sticky\" style=\"%s position:sticky; top:28px; z-index:9; background:var(--vs-blau,#41518b); color:white;\">\n",
+                    {id, table_style})
+    html &= colgroup_html
+    html &= "    <thead>\n      <tr class=\"vs-thead-tr\">\n"
+    for i = 1 to length(columns) do
+        sequence col_name = col_titles[i]
+        sequence col_width = col_widths[i]
         html &= "        <th class=\"vs-thead-th\""
         if length(col_width) > 0 then html &= sprintf(" style=\"width: %s;\"", {col_width}) end if
         html &= sprintf(">%s</th>\n", {escape_html(col_name)})
@@ -1031,17 +1307,25 @@ public function grid(sequence id, sequence columns, sequence rows, sequence opti
     html &= "      </tr>\n    </thead>\n  </table>\n"
 
     -- Data table (with responsive card styling on mobile)
-    html &= sprintf("  <table id=\"%s_data\" class=\"vs-table vs-table-responsive\" style=\"%s\">\n    <tbody>\n", {id, style})
+    html &= sprintf("  <table id=\"%s_data\" class=\"vs-table vs-table-responsive\" style=\"%s\">\n", {id, table_style})
+    html &= colgroup_html
+    html &= "    <tbody>\n"
     for r = 1 to length(rows) do
         sequence row = rows[r]
         sequence tr_cls = iff(remainder(r, 2) = 0, "vs-tbody-tr even", "vs-tbody-tr odd")
         html &= sprintf("      <tr class=\"%s\">\n", {tr_cls})
         for c = 1 to length(row) do
             sequence col_title = ""
+            sequence col_width = ""
             if c <= length(col_titles) then
                 col_title = col_titles[c]
+                col_width = col_widths[c]
             end if
-            html &= sprintf("        <td class=\"vs-tbody-td\" data-label=\"%s\">%s</td>\n",
+            html &= "        <td class=\"vs-tbody-td\""
+            if length(col_width) > 0 then
+                html &= sprintf(" width=\"%s\" style=\"width: %s;\"", {col_width, col_width})
+            end if
+            html &= sprintf(" data-label=\"%s\">%s</td>\n",
                             {escape_html(col_title), to_content_string(row[c])})
         end for
         html &= "      </tr>\n"
@@ -1452,7 +1736,7 @@ public procedure on_click(integer app_id, sequence button_id, integer handler_ri
     on_event(app_id, button_id, handler_rid)
 end procedure
 
-function internal_route_handler(sequence req)
+public function internal_route_handler(sequence req)
     sequence req_path = req[http:REQ_PATH]
     sequence req_method = req[http:REQ_METHOD]
 
@@ -1475,7 +1759,42 @@ function internal_route_handler(sequence req)
                 end if
             end for
 
-            -- 2. Serve static files from static_dir (/lib2/*, /css/*, /img/*, /app/*)
+            -- 2. Built-in PWA Manifest & Service Worker Routes
+            if equal(req_path, "/manifest.json") then
+                sequence app_title = app_inst[APP_TITLE]
+                sequence manifest = sprintf("{\n" &
+                    "  \"name\": \"%s\",\n" &
+                    "  \"short_name\": \"%s\",\n" &
+                    "  \"start_url\": \"/\",\n" &
+                    "  \"display\": \"standalone\",\n" &
+                    "  \"background_color\": \"#0f172a\",\n" &
+                    "  \"theme_color\": \"#41518b\"\n" &
+                    "}\n", {escape_html(app_title), escape_html(app_title)})
+                return http:response(200, manifest, "application/manifest+json; charset=utf-8")
+            elsif equal(req_path, "/sw.js") then
+                sequence sw_code = "// Euphorix VS-UI Cache-First Service Worker\n" &
+                    "const CACHE_NAME = 'vsui-pwa-v1';\n" &
+                    "const STATIC_ASSETS = ['/', '/css/vs.css', '/css/globalblauklein.css', '/css/vs-mobile.css', '/lib2/ldom.js', '/lib2/vsevent.js', '/lib2/vsnumber.js'];\n" &
+                    "self.addEventListener('install', e => {\n" &
+                    "  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()));\n" &
+                    "});\n" &
+                    "self.addEventListener('activate', e => {\n" &
+                    "  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))).then(() => self.clients.claim()));\n" &
+                    "});\n" &
+                    "self.addEventListener('fetch', e => {\n" &
+                    "  if (e.request.method !== 'GET') return;\n" &
+                    "  e.respondWith(caches.match(e.request).then(cached => cached || fetch(e.request).then(res => {\n" &
+                    "    if (res.status === 200 && (e.request.url.includes('/css/') || e.request.url.includes('/lib2/'))) {\n" &
+                    "      let clone = res.clone();\n" &
+                    "      caches.open(CACHE_NAME).then(c => c.put(e.request, clone));\n" &
+                    "    }\n" &
+                    "    return res;\n" &
+                    "  })).catch(() => caches.match('/')));\n" &
+                    "});\n"
+                return http:response(200, sw_code, "application/javascript; charset=utf-8")
+            end if
+
+            -- 3. Serve static files from static_dir (/lib2/*, /css/*, /img/*, /app/*)
             sequence target_file = static_dir & req_path
             if filesys:file_exists(target_file) then
                 object file_bytes = io:read_file(target_file)

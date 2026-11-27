@@ -126,7 +126,7 @@ function render_kunden_grid()
         {"Jahresumsatz", "110px"},
         {"Kategorie", "90px"},
         {"Status", "75px"},
-        {"Aktion", "85px"}
+        {"Aktion","125px"}
     }
     return vsui:grid("grd_kunden", cols, grid_rows)
 end function
@@ -243,48 +243,42 @@ function render_cockpit_page(sequence req)
         "    " & vsui:textarea("txt_notiz", "Erste Kontaktaufnahme über Fachmesse Hannover 2026.", 3) & "\n",
         "  </div>\n",
         "  <div style=\"display:flex; gap: 8px;\">\n",
-        "    " & vsui:button("btn_add_kunde", "💾 Kunde anlegen", {{"action", "add_kunde"}, {"style", "background:var(--vs-blau, #41518b); color:white; font-weight:bold;"}}),
+        "    " & vsui:button("btn_add_kunde", "💾 Kunde anlegen [Ctrl+S]", vsui:with_shortcut({{"action", "add_kunde"}, {"style", "background:var(--vs-blau, #41518b); color:white; font-weight:bold;"}}, "ctrl+s")),
         "    " & vsui:button("btn_clear_kunde", "🧹 Formular leeren", {{"action", "clear_form"}}),
         "    " & vsui:button("btn_open_info", "ℹ️ Systeminfo Dialog", {{"action", "open_info_modal"}}),
         "  </div>\n",
         "</div>\n"
     }
 
-    -- Header-Banner
+    -- Header-Banner mit Dark-Mode-Umschalter
     sequence header_bar = {
         "<div style=\"background: var(--vs-blau, #41518b); color: white; padding: 10px 18px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2);\">\n",
         "  <div style=\"display:flex; align-items:center; gap:12px;\">\n",
         "    <span style=\"font-size: 20px; font-weight: bold; letter-spacing: 0.5px;\">⚡ Euphorix CRM / ERP Cockpit</span>\n",
         "    <span style=\"background: rgba(255,255,255,0.2); padding: 3px 8px; border-radius: 3px; font-size: 11px;\">VS-UI High-Density Suite</span>\n",
         "  </div>\n",
-        "  <div style=\"font-size: 12px; display:flex; align-items:center; gap:8px;\">\n",
+        "  <div style=\"font-size: 12px; display:flex; align-items:center; gap:10px;\">\n",
+        "    " & vsui:theme_toggle("btn_theme_toggle"), "\n",
         "    <span>Angemeldet als: <b>Volker Schulte</b></span>\n",
         "    <span style=\"background:#27ae60; color:white; padding:2px 6px; border-radius:2px; font-size:10px;\">ONLINE</span>\n",
         "  </div>\n",
         "</div>\n"
     }
 
-    -- KPI Panels
+    -- KPI Panels via moderne vsui:stat_card Widgets
     integer kunden_anz = sqlite:query_value(db, "SELECT COUNT(*) FROM kunden;", {}, 0)
     atom umsatz_ges    = 0.0
     object u_val       = sqlite:query_value(db, "SELECT COALESCE(SUM(umsatz), 0.0) FROM kunden;", {}, 0.0)
     if atom(u_val) then umsatz_ges = u_val end if
     integer auftrag_anz = sqlite:query_value(db, "SELECT COUNT(*) FROM auftraege;", {}, 0)
 
-    sequence kpi_row = sprintf("<div style=\"display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin: 14px 0;\">\n" &
-                               "  <div class=\"vs-panel\" style=\"padding:12px; border-left:4px solid var(--vs-blau,#41518b); background:white;\">" &
-                               "    <div style=\"font-size:11px; color:#666;\">GESAMT KUNDEN</div>" &
-                               "    <div id=\"kpi_kunden\" style=\"font-size:22px; font-weight:bold; color:var(--vs-blau,#41518b);\">%d</div>" &
-                               "  </div>\n" &
-                               "  <div class=\"vs-panel\" style=\"padding:12px; border-left:4px solid var(--vs-gruen,#3e8548); background:white;\">" &
-                               "    <div style=\"font-size:11px; color:#666;\">JAHRESUMSATZ (PIPELINE)</div>" &
-                               "    <div id=\"kpi_umsatz\" style=\"font-size:22px; font-weight:bold; color:var(--vs-gruen,#3e8548);\">%.2f €</div>" &
-                               "  </div>\n" &
-                               "  <div class=\"vs-panel\" style=\"padding:12px; border-left:4px solid #f39c12; background:white;\">" &
-                               "    <div style=\"font-size:11px; color:#666;\">OFFENE AUFTRÄGE</div>" &
-                               "    <div id=\"kpi_auftraege\" style=\"font-size:22px; font-weight:bold; color:#f39c12;\">%d</div>" &
-                               "  </div>\n" &
-                               "</div>\n", {kunden_anz, umsatz_ges, auftrag_anz})
+    sequence kpi_row = {
+        "<div style=\"display:flex; flex-wrap:wrap; gap:8px; margin: 12px 0;\">\n",
+        vsui:stat_card("kpi_kunden", "Gesamt Kunden", sprintf("%d", {kunden_anz}), "4 von 5 aktiv", vsui:TREND_UP, "👥", {{"style", "flex:1;"}}),
+        vsui:stat_card("kpi_umsatz", "Jahresumsatz", sprintf("%.2f €", {umsatz_ges}), "+12.4% ggü. Vorjahr", vsui:TREND_UP, "💶", {{"style", "flex:1;"}}),
+        vsui:stat_card("kpi_auftraege", "Offene Aufträge", sprintf("%d", {auftrag_anz}), "-2 erledigt", vsui:TREND_DOWN, "📦", {{"style", "flex:1;"}}),
+        "</div>\n"
+    }
 
     -- Splitter für Kundenstamm: DataGrid links, Schnellansicht/Detail-Panel rechts
     sequence details_sidebar = {
